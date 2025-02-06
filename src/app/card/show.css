@@ -34,6 +34,12 @@
     border-radius: 0.5em;
 }
 
+.card .card-art img {
+    border-radius: 0.5em;
+    object-fit: cover;
+    flex-grow: 1;
+}
+
 .card .card-art h2.card-type {
     font-size: 1em;
     background: #fff;

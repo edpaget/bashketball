@@ -2,11 +2,19 @@
   (:require [uix.core :as uix :refer [defui $]]
             [uix.dom]))
 
-(defui text-widget [{:keys [name label field card on-change]}]
+(defn convert-to-blob
+  [event update-field]
+  (let [file (aget (.. event -target -files) 0)
+        reader (js/FileReader.)]
+    (set! (.-onload reader) #(update-field :img (.. % -target -result)))
+    (.readAsDataURL reader file)))
+
+(defui text-widget [{:keys [name label field card on-change input-type] :or {input-type "text"}}]
   (let [for-value (str name "-input")]
     ($ :div.widget
        ($ :label {:for for-value} label)
        ($ :input {:value (get card field "")
+                  :type input-type
                   :id for-value
                   :name name
                   :on-change #(on-change field (.. % -target -value))}))))
@@ -16,15 +24,19 @@
                          :field :deck-size}
                         {:name "sht"
                          :label "Shot"
+                         :input-type "number"
                          :field :sht}
                         {:name "pss"
                          :label "Pass"
+                         :input-type "number"
                          :field :pss}
                         {:name "def"
                          :label "Defense"
+                         :input-type "number"
                          :field :def}
                         {:name "speed"
                          :label "Speed"
+                         :input-type "number"
                          :field :speed}])
 
 (defui player-fields [{:keys [card update-card-field]}]
@@ -63,5 +75,12 @@
                         :field :name
                         :card card
                         :on-change update-card-field})
+        ($ :div.widget
+            ($ :label {:for "card-img-input"} "Card Image")
+            ($ :input {:type "file"
+                       :accept "image/*"
+                       :id "card-img-input"
+                       :name "card-img"
+                       :on-change #(convert-to-blob % update-card-field)}))
         (condp = (:type card)
           :player ($ player-fields {:card card :update-card-field update-card-field})))))
