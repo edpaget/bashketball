@@ -1,0 +1,29 @@
+.card-edit form {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-edit form h1 {
+    margin-top: 0;
+}
+
+.card-edit form .widget {
+    display: flex;
+    margin-bottom: 1em;
+}
+
+.card-edit form .widget label {
+    width: 8em;
+}
+
+.card-edit form .widget label::after {
+    content: ":"
+}
+
+.card-edit form .widget select {
+    flex-grow: 1;
+}
+
+.card-edit form .widget input {
+    flex-grow: 1;
+}

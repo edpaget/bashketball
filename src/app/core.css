@@ -22,4 +22,6 @@ body {
 .app-container .content {
     margin: 1em;
     display: flex;
+    grid-gap: 2em;
+    justify-content: center;
 }
