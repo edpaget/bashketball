@@ -27,3 +27,7 @@
 .card-edit form .widget input {
     flex-grow: 1;
 }
+
+.card-edit form .widget textarea {
+    flex-grow: 1;
+}
