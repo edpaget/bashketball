@@ -1,5 +1,6 @@
 (ns app.card.show
-  (:require [uix.core :as uix :refer [defui $]]
+  (:require [app.card.types :as card-types]
+            [uix.core :as uix :refer [defui $]]
             [uix.dom]))
 
 (def player-card {:type :player
@@ -13,18 +14,34 @@
                   :abilities []
                   :img nil})
 
-(defui show-card [card]
+(defui split-abilities [{:keys [offense defense]}]
+  ($ :div.abilities.split
+     ($ :div.ability
+        ($ :p offense))
+     ($ :div.ability
+        ($ :p defense))))
+
+(defui list-abilities [{:keys [abilities]}]
+  ($ :div.abilities
+     (for [[idx ability] (map-indexed vector abilities)]
+       ($ :div.ability {:key (str "ability-idx-" idx)}
+          ($ :p ability)))))
+
+(defui show-card [{:keys [type] :as card}]
   ($ :div.card
-     (condp = (:type card)
+     ($ :div.card-header
+        ($ :h1 (:name card))
+        (condp = type
+          :ability nil
+          :player ($ :small (str (:deck-size card) " cards"))
+          ($ :small (:fate card))))
+     ($ :div.card-art
+        (if-let [img (:img card)]
+          ($ :img {:src img})
+          ($ :div.card-img-placeholder))
+        ($ :h2.card-type (get-in card-types/types [type :type-label])))
+     (condp = type
        :player ($ :<>
-                  ($ :div.card-header
-                     ($ :h1 (:name card))
-                     ($ :small (str (:deck-size card) " cards")))
-                  ($ :div.card-art
-                     (if-let [img (:img card)]
-                       ($ :img {:src img})
-                       ($ :div.card-img-placeholder))
-                     ($ :h2.card-type "Player"))
                   ($ :div.player-stats-top
                      ($ :ul
                         ($ :li (str "SHT - " (:sht card)))
@@ -34,9 +51,14 @@
                      ($ :ul
                         ($ :li (str "SPEED - " (:speed card)))
                         ($ :li (str "SIZE - " (:size card)))))
-                  ($ :div.abilities
-                     (for [ability (:abilities card)]
-                       ($ :div.ability {:key ability}
-                          ($ :p ability)))))
-       ($ :div.no-type
-          ($ :h1 "Select Card Type")))))
+                  ($ list-abilities card))
+       :coaching ($ :div.ability
+                    ($ :p (:coaching card)))
+       :play ($ :div.ability
+                    ($ :p (:play card)))
+       :team-asset ($ :div.ability
+                    ($ :p (:asset-power card)))
+       :split-play ($ split-abilities card)
+       :standard-action ($ split-abilities card)
+       :ability ($ list-abilities card)
+       ($ :p "unimplemented"))))

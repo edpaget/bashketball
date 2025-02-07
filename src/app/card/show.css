@@ -86,12 +86,25 @@
     width: 33%;
 }
 
-.card .abilities .ability {
+.card .ability {
+    margin-top: 1em;
     border: 1px solid #333;
     border-radius: .5em;
+    height: 40%;
 }
 
-.card .abilities .ability p {
+.card .ability p {
     padding: 0 .5em;
     margin: .5em 0;
+}
+
+.card .abilities.split {
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+}
+
+.card .abilities .ability {
+    height: auto;
+    flex-grow: 1;
 }
