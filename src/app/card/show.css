@@ -6,6 +6,7 @@
     padding: .75em;
     display: flex;
     flex-direction: column;
+    align-self: start;
 }
 
 .card .card-header {
@@ -83,4 +84,14 @@
     text-align: center;
     font-weight: 500;
     width: 33%;
+}
+
+.card .abilities .ability {
+    border: 1px solid #333;
+    border-radius: .5em;
+}
+
+.card .abilities .ability p {
+    padding: 0 .5em;
+    margin: .5em 0;
 }

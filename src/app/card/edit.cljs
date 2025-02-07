@@ -21,13 +21,24 @@
                   :on-change #(on-change field (.. % -target -value))}))))
 
 (defui multi-text [{:keys [name label field card on-change] :as args}]
-  ($ :fieldset.widget {:key field :name name}
-     ($ :legend label)
-     (for [item (get card field)]
-       ($ :textarea {:value item
-                     :key item
-                     :on-change #(prn %)}))
-     ($ :button {:type "button" :on-click #(prn %)} "+")))
+  (let [for-value (str name "-input")
+        [widget-state set-widget-state!] (uix/use-state (field card [""]))]
+    (uix/use-effect
+     (fn []
+       (on-change field widget-state))
+     [on-change field widget-state])
+    ($ :div.widget {:key field :name name}
+       ($ :label {:for for-value} label)
+       ($ :div.multitext {:id for-value}
+          (for [[idx item] (map-indexed vector widget-state)]
+            ($ :span {:key (str "ability-" idx)}
+               ($ :textarea {:value item
+                             :name for-value
+                             :on-change #(set-widget-state! (assoc widget-state idx (.. % -target -value)))})
+               ($ :button {:type "button" :on-click #(set-widget-state! (into (subvec widget-state 0 idx)
+                                                                              (subvec widget-state (+ idx 1))))}
+                  "-")))
+          ($ :button {:type "button" :on-click #(set-widget-state! (conj widget-state ""))} "+")))))
 
 (defui card-fields [{:keys [card update-card-field]}]
   ($ :<>

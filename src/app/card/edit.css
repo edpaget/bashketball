@@ -31,3 +31,19 @@
 .card-edit form .widget textarea {
     flex-grow: 1;
 }
+
+.card-edit form .widget .multitext {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-edit form .widget .multitext span {
+    margin-bottom: 1em;
+    display: flex;
+}
+
+.card-edit form .widget .multitext textarea {
+    flex-grow: 1;
+    margin-right: 0.5em;
+}
