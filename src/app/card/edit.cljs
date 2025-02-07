@@ -83,4 +83,5 @@
                        :name "card-img"
                        :on-change #(convert-to-blob % update-card-field)}))
         (condp = (:type card)
-          :player ($ player-fields {:card card :update-card-field update-card-field})))))
+          :player ($ player-fields {:card card :update-card-field update-card-field})
+          ($ :<>)))))
