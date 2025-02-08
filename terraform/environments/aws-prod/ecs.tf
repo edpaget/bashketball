@@ -3,6 +3,7 @@ resource "aws_ecs_cluster" "prod_blood_basket" {
 }
 
 resource "aws_ecs_task_definition" "blood_basket_task" {
+  count = 0
   family       = "blood-basket-ecs-task-definition"
   track_latest = true
 
@@ -39,6 +40,7 @@ resource "aws_ecs_task_definition" "blood_basket_task" {
 }
 
 resource "aws_ecs_service" "blood_basket" {
+  count = 0
   name            = "blood-basket-ecs-service"
   cluster         = aws_ecs_cluster.prod_blood_basket.id
   task_definition = aws_ecs_task_definition.blood_basket_task.arn
