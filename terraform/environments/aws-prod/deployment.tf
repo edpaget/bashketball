@@ -71,7 +71,7 @@ data "aws_iam_policy_document" "blood_basket_ecr_deployment_policy_doc" {
       "ecr:BatchCheckLayerAvailability",
       "ecr:PutImage",
     ]
-    resources = [data.aws_ecr_repository.blood_basket.arn]
+    resources = [aws_ecr_repository.blood_basket.arn]
   }
 
   statement {

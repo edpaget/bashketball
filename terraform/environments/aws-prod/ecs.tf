@@ -10,7 +10,7 @@ resource "aws_ecs_task_definition" "blood_basket_task" {
   container_definitions = jsonencode([{
     name      = "blood-basket-container"
     essential = true
-    image     = "${data.aws_ecr_repository.blood_basket.repository_url}:main"
+    image     = "${aws_ecr_repository.blood_basket.repository_url}:main"
     logConfiguration = {
       logDriver = "awslogs"
       options = {
