@@ -13,5 +13,8 @@
     "react-dom": "^19.0.0",
     "react-refresh": "^0.14.0",
     "shadow-cljs": "2.28.19"
+  },
+  "dependencies": {
+    "@react-oauth/google": "^0.12.1"
   }
 }
