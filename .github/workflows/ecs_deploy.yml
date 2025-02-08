@@ -1,0 +1,84 @@
+name: Deploy
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**/*.clj
+      - src/**/*.cljc
+      - deps.edn
+      - Dockerfile
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@13.0
+        with:
+          cli: latest
+      - name: Cache clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: cljdeps-${{ hashFiles('deps.edn') }}
+          restore-keys: cljdeps-
+      - name: Build
+        run: |
+          clj -T:build uber
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::311245061868:role/blood-basket-github-oidc-deployment-role
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: blood-basket
+          SHA_TAG: ${{ github.sha }}
+          BRANCH_TAG: ${{ github.ref_name }}
+        run: |
+          ls target/
+          # docker build \
+          #   -t $ECR_REGISTRY/$ECR_REPOSITORY:$SHA_TAG \
+          #   -t $ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG .
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
+          # echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$BRANCH_TAG"
+
+      # - name: Fill in the new image ID in the Amazon ECS task definition
+      #   id: task-def
+      #   uses: aws-actions/amazon-ecs-render-task-definition@v1
+      #   with:
+      #     task-definition-arn: arn:aws:ecs:us-east-2:311245061868:task-definition/blood-basket-ecs-task-definition
+      #     container-name: blood-basket-container
+      #     image: ${{ steps.build-image.outputs.image }}
+
+      # - name: Deploy Amazon ECS task definition
+      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      #   with:
+      #     task-definition: ${{ steps.task-def.outputs.task-definition }}
+      #     service: blood-basket-ecs-service
+      #     cluster: prod-blood-basket-ecs-cluster
+      #     wait-for-service-stability: true
+      #     force-new-deployment: true
