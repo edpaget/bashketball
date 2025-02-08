@@ -120,15 +120,15 @@ data "aws_iam_policy_document" "blood_basket_ecs_deployment_policy_doc" {
     ]
   }
 
-  statement {
-    sid    = "DeployService"
-    effect = "Allow"
-    actions = [
-      "ecs:UpdateService",
-      "ecs:DescribeServices"
-    ]
-    resources = [
-      aws_ecs_service.blood_basket.id
-    ]
-  }
+  # statement {
+  #   sid    = "DeployService"
+  #   effect = "Allow"
+  #   actions = [
+  #     "ecs:UpdateService",
+  #     "ecs:DescribeServices"
+  #   ]
+  #   resources = [
+  #     aws_ecs_service.blood_basket.id
+  #   ]
+  # }
 }
