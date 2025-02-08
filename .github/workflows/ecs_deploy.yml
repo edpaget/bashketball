@@ -39,7 +39,7 @@ jobs:
           restore-keys: cljdeps-
       - name: Build
         run: |
-          clj -T:build uber
+          clojure -T:build uber
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
