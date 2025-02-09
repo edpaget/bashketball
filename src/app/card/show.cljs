@@ -3,17 +3,6 @@
             [uix.core :as uix :refer [defui $]]
             [uix.dom]))
 
-(def player-card {:type :player
-                  :name "basic player"
-                  :deck-size 5
-                  :sht 1
-                  :pss 1
-                  :def 1
-                  :speed 5
-                  :size "sm"
-                  :abilities []
-                  :img nil})
-
 (defui split-abilities [{:keys [offense defense]}]
   ($ :div.abilities.split
      ($ :div.ability

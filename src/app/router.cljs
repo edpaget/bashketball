@@ -7,6 +7,7 @@
 (def router-def
   (r/router
    [["/" :home-page]
+    ["/login" :login-page]
     ["/cards" :cards-index]
     ["/cards/new" :cards-new]
     ["/cards/:id" :cards-show]]
@@ -33,7 +34,6 @@
 (defui router [{:keys [router-store children]}]
   (let [router-state (react/useSyncExternalStore (:subscribe router-store)
                                                  (:snapshot router-store))]
-    (prn router-state)
     ($ router-provider {:value router-state}
        children)))
 
