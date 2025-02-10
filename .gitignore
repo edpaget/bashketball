@@ -21,3 +21,8 @@ node_modules/
 .idea
 *.iml
 /localstack/ready.d/
+/terraform/environments/localstack/.terraform.lock.hcl
+/terraform/environments/localstack/.terraform/
+/terraform/environments/localstack/terraform.tfstate.backup
+/volume/
+/terraform/environments/localstack/terraform.tfstate
