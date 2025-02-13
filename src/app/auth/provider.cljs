@@ -17,14 +17,14 @@
           children))))
 
 (defui login-button []
-  (let [{:keys [set-token!] :as auth} (uix/use-context auth-provider)]
-    (prn auth)
+  (let [{:keys [set-token!]} (uix/use-context auth-provider)]
     ($ gauth/GoogleLogin
        {:on-success #(set-token! (aget % "credential"))
         :on-error #(prn %)})))
 
 (defui logout-button []
-  (let [{:keys [set-token!]} (uix/use-context auth-provider)]
+  (let [{:keys [set-token!] :as auth} (uix/use-context auth-provider)]
+    (prn auth)
     ($ :button.logout {:type "button"
                        :on-click #(set-token! "")}
        "Logout")))

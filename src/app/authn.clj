@@ -8,12 +8,14 @@
   (fn [token]
     (try
       (if-let [sub (get (clj-jwt/unsign jwks token) :sub)]
-        (if-let [user (ddb/get-item dynamo (str "user#" sub) "USER")]
-          user
-          (do
-            (ddb/put-item dynamo (str "user#" sub) "USER" {"enrollment" {:S "incomplete"}
-                                                           "username" {:S ""}})
-            (ddb/get-item dynamo (str "user#" sub) "USER")))
+        (let [user (ddb/get-item dynamo (str "user#" sub) "USER")]
+          (if-not (empty? user)
+            user
+            (do
+              (ddb/put-item dynamo (str "user#" sub) "USER" {"id" sub
+                                                             "enrollment" {:S "incomplete"}
+                                                             "username" {:S ""}})
+              (ddb/get-item dynamo (str "user#" sub) "USER"))))
         {})
       (catch Throwable _ {}))))
 
@@ -26,9 +28,6 @@
                  request)
                request))))
 
-(defn require-authentication
-  [handler]
-  (fn [request]
-    (if (:authenticated-user request)
-      (handler request)
-      {:status 401})))
+(defn current-user
+  [request]
+  (:authenticated-user request))

@@ -1,0 +1,6 @@
+{:objects
+ {:User {:fields {:id {:type String}
+                  :username {:type String}
+                  :enrollment {:type String}}}
+  :Query {:fields
+          {:me {:type :User}}}}}
