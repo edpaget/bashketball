@@ -219,7 +219,7 @@
                           :default 0}
                          {:name "asset-ability"
                           :label "Asset Power"
-                          :field :coaching
+                          :field :asset-power
                           :input-type "textarea"
                           :auto-widget true
                           :default ""}]}})
