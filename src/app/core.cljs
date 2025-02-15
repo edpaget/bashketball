@@ -2,7 +2,7 @@
   (:require [uix.core :as uix :refer [defui $]]
             [uix.dom]
             [app.router :as router]
-            [app.auth.provider :as auth]
+            [app.authn.provider :as authn]
             [app.card.edit :refer [edit-card]]
             [app.card.reducer :as card-reducer ]
             [app.card.show :refer [show-card]]))
@@ -23,11 +23,11 @@
 
 (defui app []
   ($ router/router {:router-store router/router-store}
-     ($ auth/authn
+     ($ authn/authn
         ($ :div.app-container
            ($ :div.navbar
               ($ :h1 "Blood Basket")
-              ($ auth/login-required ($ auth/logout-button)))
+              ($ authn/login-required ($ authn/logout-button)))
            ($ :div.content
               ($ :<>
                  ($ router/route {:route-name :home-page}
@@ -35,7 +35,7 @@
                  ($ router/route {:route-name :cards-index}
                     ($ cards-index))
                  ($ router/route {:route-name :cards-new}
-                    ($ auth/login-required {:show-prompt true}
+                    ($ authn/login-required {:show-prompt true}
                        ($ cards-show)))
                  ($ router/route {:route-name :cards-show}
                     ($ cards-show)))))

@@ -4,7 +4,7 @@
             [ring.middleware.json :refer [wrap-json-response
                                           wrap-json-body]]
             [integrant.core :as ig]
-            [app.authn :as authn]
+            [app.authn.middleware :as authn]
             [app.dynamo :as ddb]
             [app.graphql :as graphql])
   (:gen-class))

@@ -11,6 +11,7 @@
         com.cognitect.aws/dynamodb {:mvn/version "871.2.29.52", :aws/serviceFullName "Amazon DynamoDB"}
         com.github.sikt-no/clj-jwt {:mvn/version "0.5.98"}
         com.walmartlabs/lacinia {:mvn/version "1.2.2"}
+        metosin/malli {:mvn/version "0.17.0"}
         integrant/integrant {:mvn/version "0.13.1"}}
  :paths ["src"]
  :aliases {:dev {:extra-deps {thheller/shadow-cljs {:mvn/version "2.28.19"}

@@ -1,11 +1,10 @@
-(ns app.auth.provider
+(ns app.authn.provider
   (:require [uix.core :as uix :refer [defui $]]
             ["@react-oauth/google" :as gauth]
             ))
 
 (def client-id
   "964961527303-t0l0f6a8oa42p8c15928b4f4vavvbj9v.apps.googleusercontent.com")
-
 
 (def auth-provider (uix/create-context {}))
 

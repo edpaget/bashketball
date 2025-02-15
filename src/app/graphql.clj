@@ -1,5 +1,5 @@
 (ns app.graphql
-  (:require [app.authn :refer [current-user]]
+  (:require [app.authn.middleware :refer [current-user]]
             [clojure.edn :as edn]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.util :refer [inject-resolvers]]

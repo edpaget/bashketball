@@ -1,4 +1,4 @@
-(ns app.authn
+(ns app.authn.middleware
   (:require [app.dynamo :as ddb]
             [com.github.sikt-no.clj-jwt :as clj-jwt]))
 
