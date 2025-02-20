@@ -1,9 +1,8 @@
 (ns app.models.user
-  (:require [malli.core :as m])
-  )
+  (:require [app.models.core :as mc]))
 
-(def User
-  [:map
+(defmethod mc/schema :models/User [_]
+  [:map {:pk [:id] :type "user"}
    [:id :string]
    [:enrollment-state :string]
    [:username [:maybe :string]]])

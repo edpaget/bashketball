@@ -1,23 +1,19 @@
 (ns app.authn.middleware
-  (:require [app.dynamo :as ddb]
+  (:require [app.models.core :as mc]
             [com.github.sikt-no.clj-jwt :as clj-jwt]))
 
 (def jwks "https://www.googleapis.com/oauth2/v3/certs")
 
 (defn make-authenticator [{:keys [dynamo]}]
   (fn [token]
-    (try
-      (if-let [sub (get (clj-jwt/unsign jwks token) :sub)]
-        (let [user (ddb/get-item dynamo (str "user#" sub) "USER")]
-          (if-not (empty? user)
-            user
-            (do
-              (ddb/put-item dynamo (str "user#" sub) "USER" {"id" sub
-                                                             "enrollment" {:S "incomplete"}
-                                                             "username" {:S ""}})
-              (ddb/get-item dynamo (str "user#" sub) "USER"))))
-        {})
-      (catch Throwable _ {}))))
+    (if-let [sub (get (clj-jwt/unsign jwks token) :sub)]
+      (let [user (mc/get-model dynamo :models/User {:id sub})]
+        (if-not (empty? user)
+          user
+          (mc/save-model! dynamo :models/User {:id sub
+                                               :enrollment-state "incomplete"
+                                               :username ""})))
+      {})))
 
 (defn authenticate
   [authenticator handler]

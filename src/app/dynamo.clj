@@ -18,16 +18,16 @@
                                  :secret-access-key "XYZ"}))))))
 
 (defn get-item
-  [client pk sk]
+  [client key]
   (aws/invoke client {:op :GetItem
                       :request {:TableName table-name
-                                :Key {"pk" {:S pk}
-                                      "sk" {:S sk}}}}))
+                                :Key key}}))
 
 (defn put-item
-  [client pk sk fields]
+  [client item]
+  (prn {:op :PutItem
+                      :request {:TableName table-name
+                                :Item item}})
   (aws/invoke client {:op :PutItem
                       :request {:TableName table-name
-                                :Item (merge {"pk" {:S pk}
-                                              "sk" {:S sk}}
-                                             fields)}}))
+                                :Item item}}))

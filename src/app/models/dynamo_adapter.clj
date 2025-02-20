@@ -6,16 +6,21 @@
 (defn- set-keys
   [schema _]
   (let [pk-cols (-> schema m/properties :pk)
-        sk-cols (-> schema m/properties :sk)]
+        sk-cols (-> schema m/properties :sk)
+        type (-> schema m/properties :type)]
     (letfn [(key-col-builder [key-cols map-data]
               (str/join "#" (->> ((apply juxt key-cols) map-data)
                                  (map str)
                                  (map vector (map name key-cols))
-                                 (map #(str/join ":" %)))))]
+                                 (map #(str/join ":" %)))))
+            (set-type [sk]
+              (cond-> type
+                (not-empty sk) (str "#" sk)))]
       (fn [x]
         (cond-> x
           pk-cols (assoc "pk" {:S (key-col-builder pk-cols x)})
-          sk-cols (assoc "sk" {:S (key-col-builder sk-cols x)}))))))
+          sk-cols (assoc "sk" {:S (key-col-builder sk-cols x)})
+          true (update-in ["sk" :S] set-type))))))
 
 (defn- unset-keys [schema _]
   (let [has-dynamo-keys (boolean (or (-> schema m/properties :pk)

@@ -5,7 +5,8 @@
 
 (def TestSchema
   [:map {:pk [:int-key]
-         :sk [:string-key :bool-key]}
+         :sk [:string-key :bool-key]
+         :type "test-schema"}
    [:string-key :string]
    [:bool-key :boolean]
    [:int-key :int]
@@ -17,7 +18,7 @@
                         "int-key" {:N "123123"}
                         "double-key" {:N "123123.123123"}
                         "pk" {:S "int-key:123123"}
-                        "sk" {:S "string-key:string-value#bool-key:true"}}
+                        "sk" {:S "test-schema#string-key:string-value#bool-key:true"}}
         decoded (m/decode TestSchema dynamo-encoded sut/dynamo-transfomer)]
     (t/testing "decode"
       (t/is (= "string-value"
@@ -48,5 +49,5 @@
                (get dynamo-encoded "string-key")))
       (t/is (= {:S "int-key:123123"}
                (get dynamo-encoded "pk")))
-      (t/is (= {:S "string-key:string-value#bool-key:true"}
+      (t/is (= {:S "test-schema#string-key:string-value#bool-key:true"}
                (get dynamo-encoded "sk"))))))
