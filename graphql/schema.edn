@@ -4,3 +4,7 @@
                   :enrollment {:type String}}}
   :Query {:fields
           {:me {:type :User}}}}}
+
+{:User {:fields {:id {:type (non-null String)},
+                 :enrollment-state {:type (non-null String)},
+                 :username {:type String}}}}

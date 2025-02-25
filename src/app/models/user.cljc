@@ -6,4 +6,3 @@
    [:id :string]
    [:enrollment-state :string]
    [:username [:maybe :string]]])
-

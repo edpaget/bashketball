@@ -1,11 +1,14 @@
 {:deps {org.clojure/clojure {:mvn/version "1.12.0"}
         org.clojure/clojurescript {:mvn/version "1.11.60"}
+        org.clojure/core.match {:mvn/version "1.1.0"}
+        camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
         metosin/reitit {:mvn/version "0.8.0-alpha1"}
         com.pitch/uix.core {:mvn/version "1.3.0"}
         com.pitch/uix.dom {:mvn/version "1.3.0"}
         ring/ring-core {:mvn/version "1.13.0"}
         ring/ring-jetty-adapter {:mvn/version "1.13.0"}
         ring/ring-json {:mvn/version "0.5.1"}
+        meta-merge/meta-merge {:mvn/version "1.0.0"}
         com.cognitect.aws/api {:mvn/version "0.8.730-beta01"}
         com.cognitect.aws/endpoints {:mvn/version "871.2.30.11"}
         com.cognitect.aws/dynamodb {:mvn/version "871.2.29.52", :aws/serviceFullName "Amazon DynamoDB"}
@@ -16,7 +19,8 @@
  :paths ["src"]
  :aliases {:dev {:extra-deps {thheller/shadow-cljs {:mvn/version "2.28.19"}
                               binaryage/devtools {:mvn/version "1.0.7"}
-                              integrant/repl {:mvn/version "0.4.0"}}}
+                              integrant/repl {:mvn/version "0.4.0"}
+                              dev.weavejester/hashp {:mvn/version "0.3.0"}}}
            :server {:main-opts ["-m" "app.server"]}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.6" :git/sha "52cf7d6"}}
                    :ns-default build}}}
