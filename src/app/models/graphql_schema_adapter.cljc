@@ -1,15 +1,19 @@
 (ns app.models.graphql-schema-adapter
   (:require [clojure.walk :as w]
-            [clojure.core.match :as match]
             [camel-snake-kebab.core :as csk]
             [meta-merge.core :refer [meta-merge]]
             [malli.core :as mc]))
 
-(declare malli-schema->graphql-schema)
+(defn malli-schema->graphql-type-name
+  [schema]
+  (let [schema (mc/deref schema)]
+    (csk/->PascalCaseKeyword
+     (or (get (mc/properties schema) :graphql/type)
+         (get (mc/properties schema) :type)))))
 
 (defn- ->graphql-field
   [[field-name _opts field-type]]
-  [field-name field-type])
+  [(csk/->camelCaseKeyword field-name) {:type field-type}])
 
 (defn- replace-dispatch
   [dispatch-field dispatch-enum]
@@ -18,51 +22,78 @@
     (w/postwalk (fn [form]
                   (if (and  (vector? form)
                             (= dispatch-field (first form)))
-                    {:type (list 'non-null dispatch-enum)}
+                    {dispatch-field {:type (list 'non-null dispatch-enum)}}
                     form))
                 schema)))
 
-(def ->PascalKeyword (comp csk/->PascalCase keyword))
+(defmulti walk-malli-map->graphql-type (fn [schema _ _ _] (mc/type schema)))
 
-(defn- walk-malli-map->graphql-type
-  [schema _ children _]
-  (match/match [(mc/form schema) children]
-    [:string _]  (list 'not-null 'String)
-    [:int _] (list 'not-null 'Integer)
-    [[:maybe _] [([_ type] :seq)]] type
-    [[:vector _] [vector-type]] (cons 'list vector-type)
-    [[:map (:or {:graphql/type graphql-type}
-                {:type graphql-type}) & _] [& fields]]
+(defmethod walk-malli-map->graphql-type :default
+  [schema _ _ _]
+  (mc/form schema))
+
+(defmethod walk-malli-map->graphql-type :string
+  [_ _ _ _]
+  (list 'non-null 'String))
+
+(defmethod walk-malli-map->graphql-type :int
+  [_ _ _ _]
+  (list 'non-null 'Int))
+
+(defmethod walk-malli-map->graphql-type :enum
+  [_ _ _ _]
+  (list 'non-null 'String))
+
+(defmethod walk-malli-map->graphql-type :maybe
+  [_ _ [[_ type]] _]
+  type)
+
+(defmethod walk-malli-map->graphql-type :vector
+  [_ _ [[_ type]] _]
+  (list 'list type))
+
+(defmethod walk-malli-map->graphql-type :map
+  [schema _ fields _]
+  (when-let [graphql-type (malli-schema->graphql-type-name schema)]
     {:objects
-     {(->PascalKeyword graphql-type)
+     {graphql-type
       {:fields (->> (map ->graphql-field fields)
-                    (into {}))}}}
-    [[:multi {:dispatch dispatch-field} & _] [& sub-types]]
-    (update-in
-     (->> (map last sub-types)
-          (map (replace-dispatch dispatch-field (->PascalKeyword dispatch-field)))
-          (apply meta-merge))
-     [:enums (->PascalKeyword dispatch-field)]
-     update
-     :values
-     concat
-     (->> (map last sub-types)
-          (tree-seq coll? seq)
-          (filter vector?)
-          (filter #(= dispatch-field (first %)))
-          (map (comp last last))
-          (map (comp csk/->SCREAMING_SNAKE_CASE keyword))
-          (into [])))
-    [x _] x))
+                    (into {}))}}}))
+
+(defmethod walk-malli-map->graphql-type :multi
+  [schema _ sub-types _]
+  (let [union-type (get (mc/properties schema) :graphql/union-type)
+        dispatch-field (-> (mc/properties schema)
+                           (get :dispatch)
+                           csk/->camelCaseKeyword)]
+    (cond-> (->> (map last sub-types)
+                 (map (replace-dispatch dispatch-field (csk/->PascalCaseKeyword dispatch-field)))
+                 (apply meta-merge))
+      dispatch-field (update-in
+                      [:enums (csk/->PascalCaseKeyword dispatch-field)]
+                      update
+                      :values
+                      concat
+                      (->> (map last sub-types)
+                           (tree-seq coll? seq)
+                           (filter vector?)
+                           (filter #(and (= dispatch-field #p (first %))
+                                         (map? #p (second %))
+                                         (= := #p ((comp first first vals second) %))))
+                           (map (comp last first vals last))
+                           (map csk/->SCREAMING_SNAKE_CASE_KEYWORD)
+                           (into [])))
+      union-type (assoc-in
+                  [:unions (csk/->PascalCaseKeyword union-type) :members]
+                  (->> (map last sub-types))))))
 
 (defn malli-schema->graphql-schema
   "Convert a malli schema into graphql type(s)"
   [schema]
-  (let [schema (mc/deref schema)]
-    (mc/walk schema walk-malli-map->graphql-type)))
+  (mc/walk schema walk-malli-map->graphql-type))
 
 (comment
-  (require '[app.models.core :as models.core])
+  (require '[app.models.core])
   (require '[app.models.card])
   (require '[app.registry])
-  (malli-schema->graphql-schema (models.core/schema :models/Card)))
+  (malli-schema->graphql-schema (app.models.core/schema :models/Card)))

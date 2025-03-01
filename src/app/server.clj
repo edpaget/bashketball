@@ -6,7 +6,8 @@
             [integrant.core :as ig]
             [app.authn.middleware :as authn]
             [app.dynamo :as ddb]
-            [app.graphql :as graphql])
+            [app.graphql :as graphql]
+            [app.registry])
   (:gen-class))
 
 (defn ping-handler [_]

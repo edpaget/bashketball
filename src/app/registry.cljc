@@ -3,6 +3,12 @@
             [malli.util :as mu]
             [malli.registry :as mr]))
 
-(def registry (merge (m/default-schemas) (mu/schemas)))
+(defonce type-registry (atom {}))
 
-(mr/set-default-registry! registry)
+(defn register-type! [type ?schema]
+  (swap! type-registry assoc type ?schema))
+
+(mr/set-default-registry! (mr/composite-registry
+                           (merge (m/default-schemas) (mu/schemas))
+                           (mr/mutable-registry
+                            type-registry)))

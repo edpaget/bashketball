@@ -25,5 +25,5 @@
                request))))
 
 (defn current-user
-  [request]
+  [request _ _]
   (:authenticated-user request))

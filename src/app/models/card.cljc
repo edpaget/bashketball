@@ -1,8 +1,7 @@
 (ns app.models.card
-  (:require [app.models.core :as mc]))
+  (:require [app.registry :refer [register-type!]]))
 
-(defmethod mc/schema :models/Card [_]
-  [:merge
+(register-type! :models/Card [:merge
    ;; default fields
    [:map {:pk [:card-type] :sk [:name :version] :type "card"}
     [:name :string]

@@ -1,8 +1,8 @@
 (ns app.models.user
-  (:require [app.models.core :as mc]))
+  (:require [app.registry :refer [register-type!]]))
 
-(defmethod mc/schema :models/User [_]
-  [:map {:pk [:id] :type "user"}
-   [:id :string]
-   [:enrollment-state :string]
-   [:username [:maybe :string]]])
+(register-type! :models/User
+                [:map {:pk [:id] :type "user"}
+                 [:id :string]
+                 [:enrollment-state :string]
+                 [:username [:maybe :string]]])
