@@ -25,9 +25,6 @@
 
 (defn put-item
   [client item]
-  (prn {:op :PutItem
-                      :request {:TableName table-name
-                                :Item item}})
   (aws/invoke client {:op :PutItem
                       :request {:TableName table-name
                                 :Item item}}))

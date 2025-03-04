@@ -5,25 +5,37 @@
             [com.walmartlabs.lacinia.util :refer [inject-resolvers]]
             [com.walmartlabs.lacinia.schema :as schema]
             [meta-merge.core :refer [meta-merge]]
-            [app.models.core :as models]))
+            [app.models.core :as models]
+            [ring.util.response :as ring.response]
+            [tick.core :as t]))
+
+(defn date-scalar
+  [schema]
+  (update-in schema [:scalars :Date] assoc
+             :parse str
+             :serialize t/instant))
 
 (def resolvers
-  {:Query/me [:models/User current-user]})
+  {:Query/me [:models/User current-user]}
+  ;;:Query/card [:models/Card (constantly {:cardType "blah"}) [:map [:card-name :string]]]
+  ;;:Query/cards [:models/Card (constantly {:cardType "blah"})]
+  )
 
 (def graphql-types [:models/User :models/Card])
 
 (defn- build-graphql-schema
   [types resolvers-map]
-  (assoc-in
-   (->> types
-        (map models/schema)
-        (map models.graphql/malli-schema->graphql-schema)
-        (apply meta-merge))
-   [:objects :Query :fields]
-   (zipmap (->> resolvers-map keys (map (comp keyword name)))
-           (->> resolvers-map vals
-                (map (comp models.graphql/malli-schema->graphql-type-name first))
-                (map #(assoc nil :type %))))))
+  (->
+   (assoc-in
+    (->> types
+         (map models/schema)
+         (map models.graphql/malli-schema->graphql-schema)
+         (apply meta-merge))
+    [:objects :Query :fields]
+    (zipmap (->> resolvers-map keys (map (comp keyword name)))
+            (for [[type _] (vals resolvers-map)]
+              {:type (models.graphql/malli-schema->graphql-type-name type)})))
+   date-scalar))
 
 (defn- injectable-resolvers
   [resolvers-map]
@@ -36,6 +48,7 @@
                               schema/compile)]
     (fn [request]
       (let [query (get-in request [:body "query"])]
-        {:status 200
-         :headers {"content-type" "application/json"}
-         :body (execute blood-bowl-schema query nil request)}))))
+        (ring.response/content-type
+         {:status 200
+          :body (execute blood-bowl-schema query nil request)}
+         "application/json")))))

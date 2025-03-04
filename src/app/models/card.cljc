@@ -7,7 +7,7 @@
     [:name :string]
     [:version {:default-value "0"} :string]
     [:img-url :string]]
-   [:multi {:dispatch :card-type}
+   [:multi {:dispatch :card-type :graphql/union-type "card"}
     ;; Player card
     [1 [:map {:graphql/type "player-card"}
         [:card-type [:= "player"]]

@@ -9,6 +9,7 @@
         ring/ring-jetty-adapter {:mvn/version "1.13.0"}
         ring/ring-json {:mvn/version "0.5.1"}
         meta-merge/meta-merge {:mvn/version "1.0.0"}
+        tick/tick {:mvn/version "1.0"}
         com.cognitect.aws/api {:mvn/version "0.8.730-beta01"}
         com.cognitect.aws/endpoints {:mvn/version "871.2.30.11"}
         com.cognitect.aws/dynamodb {:mvn/version "871.2.29.52", :aws/serviceFullName "Amazon DynamoDB"}

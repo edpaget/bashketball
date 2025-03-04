@@ -1,7 +1,8 @@
 (ns app.models.dynamo-adapter
   (:require [clojure.string :as str]
             [malli.core :as m]
-            [malli.transform :as mt]))
+            [malli.transform :as mt]
+            [tick.core :as t]))
 
 (defn- set-keys
   [schema _]
@@ -37,13 +38,17 @@
    (mt/transformer
     {:decoders
      {:map {:compile unset-keys}
+      :uuid (fn [x] (parse-uuid (get x :S)))
       :string (fn [x] (get x :S))
       :int (fn [x] (Integer. (get x :N)))
       :double (fn [x] (Double. (get x :N)))
-      :boolean (fn [x] (boolean (get x :BOOL)))}
+      :boolean (fn [x] (boolean (get x :BOOL)))
+      :time/zoned-date-time (fn [x] (t/instant (get x :S)))}
      :encoders
      {:map {:compile set-keys}
+      :uuid (fn [x] {:S (str x)})
       :string (fn [x] {:S x})
       :int (fn [x] {:N (str x)})
       :double (fn [x] {:N (str x)})
-      :boolean (fn [x] {:BOOL x})}})))
+      :boolean (fn [x] {:BOOL x})
+      :time/zoned-date-time (fn [x] {:S (str x)})}})))

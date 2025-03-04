@@ -9,6 +9,7 @@
   (let [schema (mc/deref schema)]
     (csk/->PascalCaseKeyword
      (or (get (mc/properties schema) :graphql/type)
+         (get (mc/properties schema) :graphql/union-type)
          (get (mc/properties schema) :type)))))
 
 (defn- ->graphql-field
@@ -28,6 +29,8 @@
 
 (defmulti walk-malli-map->graphql-type (fn [schema _ _ _] (mc/type schema)))
 
+(defmulti walk-malli-map->graphql-args (fn [schema _ _ _] (mc/type schema)))
+
 (defmethod walk-malli-map->graphql-type :default
   [schema _ _ _]
   (mc/form schema))
@@ -43,6 +46,10 @@
 (defmethod walk-malli-map->graphql-type :enum
   [_ _ _ _]
   (list 'non-null 'String))
+
+(defmethod walk-malli-map->graphql-type :time/zoned-date-time
+  [_ _ _ _]
+  (list 'non-null 'Date))
 
 (defmethod walk-malli-map->graphql-type :maybe
   [_ _ [[_ type]] _]
@@ -77,20 +84,37 @@
                       (->> (map last sub-types)
                            (tree-seq coll? seq)
                            (filter vector?)
-                           (filter #(and (= dispatch-field #p (first %))
-                                         (map? #p (second %))
-                                         (= := #p ((comp first first vals second) %))))
+                           (filter #(and (= dispatch-field (first %))
+                                         (map? (second %))
+                                         (= := ((comp first first vals second) %))))
                            (map (comp last first vals last))
                            (map csk/->SCREAMING_SNAKE_CASE_KEYWORD)
                            (into [])))
       union-type (assoc-in
                   [:unions (csk/->PascalCaseKeyword union-type) :members]
-                  (->> (map last sub-types))))))
+                  (->> (map last sub-types)
+                       (map (comp keys :objects))
+                       flatten
+                       (into []))))))
+
+(defmethod walk-malli-map->graphql-args :default
+  [& args]
+  (apply walk-malli-map->graphql-type args))
+
+(defmethod walk-malli-map->graphql-args :map
+  [_ _ fields _]
+  {:args
+   (->> (map ->graphql-field fields)
+        (into {}))})
 
 (defn malli-schema->graphql-schema
   "Convert a malli schema into graphql type(s)"
   [schema]
   (mc/walk schema walk-malli-map->graphql-type))
+
+(defn malli-schema->graph-args
+  [schema]
+  (mc/walk schema walk-malli-map->graphql-args))
 
 (comment
   (require '[app.models.core])

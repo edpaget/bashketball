@@ -4,7 +4,8 @@
             [malli.core :as mc]
 
             [app.models.user]
-            [app.models.card]))
+            [app.models.card]
+            [app.models.session]))
 
 (defn schema
   [schema-ref]
@@ -36,9 +37,13 @@
 
 (defn save-model!
   [client model-type model]
-  (when (validate model-type model)
-    (ddb/put-item client (encode model-type model))
-    model))
+  (if (validate model-type model)
+    (do
+      (ddb/put-item client (encode model-type model))
+      model)
+    (throw (ex-info "Failed to validate model"
+                    {:model-type model-type
+                     :msg (mc/explain model-type model)}))))
 
 (defn get-model
   [client model-type partial-model]
