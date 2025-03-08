@@ -3,9 +3,11 @@
             [uix.dom]
             [app.router :as router]
             [app.authn.provider :as authn]
+            [app.graphql.client :as graphql]
             [app.card.edit :refer [edit-card]]
             [app.card.reducer :as card-reducer ]
-            [app.card.show :refer [show-card]]))
+            [app.card.show :refer [show-card]]
+            ["@apollo/client" :as apollo.client]))
 
 (defui home-page []
   ($ :a {:href (router/href :cards-index)}
@@ -23,23 +25,24 @@
 
 (defui app []
   ($ router/router {:router-store router/router-store}
-     ($ authn/authn
-        ($ :div.app-container
-           ($ :div.navbar
-              ($ :h1 "Blood Basket")
-              ($ authn/login-required ($ authn/logout-button)))
-           ($ :div.content
-              ($ :<>
-                 ($ router/route {:route-name :home-page}
-                    ($ home-page))
-                 ($ router/route {:route-name :cards-index}
-                    ($ cards-index))
-                 ($ router/route {:route-name :cards-new}
-                    ($ authn/login-required {:show-prompt true}
-                       ($ cards-show)))
-                 ($ router/route {:route-name :cards-show}
-                    ($ cards-show)))))
-        ($ :div.footer))))
+     ($ apollo.client/ApolloProvider {:client graphql/client}
+        ($ authn/authn
+           ($ :div.app-container
+              ($ :div.navbar
+                 ($ :h1 "Blood Basket")
+                 ($ authn/login-required ($ authn/logout-button)))
+              ($ :div.content
+                 ($ :<>
+                    ($ router/route {:route-name :home-page}
+                       ($ home-page))
+                    ($ router/route {:route-name :cards-index}
+                       ($ cards-index))
+                    ($ router/route {:route-name :cards-new}
+                       ($ authn/login-required {:show-prompt true}
+                          ($ cards-show)))
+                    ($ router/route {:route-name :cards-show}
+                       ($ cards-show)))))
+           ($ :div.footer)))))
 
 (defonce root
   (uix.dom/create-root (js/document.getElementById "root")))

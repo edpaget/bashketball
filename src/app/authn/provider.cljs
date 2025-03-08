@@ -1,7 +1,7 @@
 (ns app.authn.provider
   (:require [uix.core :as uix :refer [defui $]]
-            ["@react-oauth/google" :as gauth]
-            ))
+            [app.graphql.client :as graphql.client]
+            ["@react-oauth/google" :as gauth]))
 
 (def client-id
   "964961527303-t0l0f6a8oa42p8c15928b4f4vavvbj9v.apps.googleusercontent.com")
@@ -18,6 +18,7 @@
                                                           #js {"id-token" oidc-token})
                                        "headers" #js {"content-type" "application/json"}})))
                     [oidc-token])
+    (prn oidc-token)
     ($ gauth/GoogleOAuthProvider {:client-id client-id}
        ($ auth-provider {:value {:id-token oidc-token
                                  :set-token! set-oidc-token!}}
@@ -30,15 +31,19 @@
         :on-error #(prn %)})))
 
 (defui logout-button []
-  (let [{:keys [set-token!] :as auth} (uix/use-context auth-provider)]
-    (prn auth)
-    ($ :button.logout {:type "button"
-                       :on-click #(set-token! "")}
-       "Logout")))
+  (let [{:keys [loading error data]} (graphql.client/use-query  "query { me { id username } }")]
+    (prn loading)
+    (prn error)
+    (prn data)
+    (when data
+      ($ :button.logout {:type "button"
+                         :on-click #(prn "HERE")}
+         "Logout"))))
 
 (defui login-required [{:keys [show-prompt children]}]
-  (let [{:keys [id-token]} (uix/use-context auth-provider)]
+  (let [{:keys [loading error data]} (graphql.client/use-query  "query { me { id username } }")]
+    (prn "DATA" data)
     (cond
-      (not-empty id-token) children
+      (not-empty data) children
       show-prompt ($ login-button)
       :else nil)))
