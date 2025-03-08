@@ -50,7 +50,7 @@
                             :models/Session
                             {:id session-id
                              :user-id (:id user)})
-          (-> {:status 204}
+          #p (-> {:status 204}
               (ring.response/set-cookie cookie-name session-id))
           {:status 401}))
       {:status :401})))

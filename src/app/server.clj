@@ -3,6 +3,7 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.json :as ring.json]
             [ring.middleware.cookies :as ring.cookies]
+            [ring.util.response :as ring.response]
             [integrant.core :as ig]
             [app.authn.middleware :as authn]
             [app.dynamo :as ddb]
@@ -13,6 +14,24 @@
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
 
+(defn create-index-handler
+  "Create a handler to render index.html on any request."
+  ([]
+   (create-index-handler {}))
+  ([{:keys [index-file root]
+     :or {index-file "index.html"
+          root "public"}}]
+   (letfn [(index-handler-fn
+             [_request]
+             (-> index-file
+                 (ring.response/file-response {:root root})
+                 (ring.response/content-type "text/html")))]
+     (fn
+       ([request]
+        (index-handler-fn request))
+       ([request respond _]
+        (respond (index-handler-fn request)))))))
+
 (defn make-handler
   [{:keys [session-authenticator
            session-creator
@@ -21,13 +40,19 @@
    (r/router
     [["/ping" {:get ping-handler}]
      ["/authn" {:post session-creator
-                :middleware [ring.json/wrap-json-body]}]
+                :middleware [ring.json/wrap-json-body
+                             ring.cookies/wrap-cookies]}]
      ["/graphql" {:post schema-handler
                   :middleware [ring.json/wrap-json-response
-                               ring.json/wrap-json-body]}]])
-   nil
-   {:middleware [ring.cookies/wrap-cookies
-                 (authn/wrap-session-authn session-authenticator)]}))
+                               ring.json/wrap-json-body
+                               ring.cookies/wrap-cookies
+
+                               (authn/wrap-session-authn session-authenticator)]}]])
+   (r/routes
+    (r/create-file-handler {:path "/js" :root "public/js"})
+    (r/create-file-handler {:path "/main.css" :root "public/main.css"})
+    (create-index-handler)
+    (r/create-default-handler))))
 
 (def config
   {:adapter/jetty {:handler (ig/ref :handler/router) :port 3000}

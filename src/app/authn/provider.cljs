@@ -10,8 +10,16 @@
 
 (defui authn [{:keys [children]}]
   (let [[oidc-token set-oidc-token!] (uix/use-state "")]
+    (uix/use-effect (fn []
+                      (when-not (empty? oidc-token)
+                        (js/fetch "/authn"
+                                  #js {"method" "POST"
+                                       "body" (.stringify js/JSON
+                                                          #js {"id-token" oidc-token})
+                                       "headers" #js {"content-type" "application/json"}})))
+                    [oidc-token])
     ($ gauth/GoogleOAuthProvider {:client-id client-id}
-       ($ auth-provider {:value {:auth-token oidc-token
+       ($ auth-provider {:value {:id-token oidc-token
                                  :set-token! set-oidc-token!}}
           children))))
 
@@ -29,8 +37,8 @@
        "Logout")))
 
 (defui login-required [{:keys [show-prompt children]}]
-  (let [{:keys [auth-token]} (uix/use-context auth-provider)]
+  (let [{:keys [id-token]} (uix/use-context auth-provider)]
     (cond
-      (not-empty auth-token) children
+      (not-empty id-token) children
       show-prompt ($ login-button)
       :else nil)))
