@@ -3,6 +3,7 @@
             [ring.adapter.jetty :refer [run-jetty]]
             [ring.middleware.json :as ring.json]
             [ring.middleware.cookies :as ring.cookies]
+            [ring.middleware.reload :as ring.reload]
             [ring.util.response :as ring.response]
             [integrant.core :as ig]
             [app.authn.middleware :as authn]
@@ -55,7 +56,9 @@
     (r/create-default-handler))))
 
 (def config
-  {:adapter/jetty {:handler (ig/ref :handler/router) :port 3000}
+  {:adapter/jetty {:handler (ig/ref :handler/router)
+                   :reload? true
+                   :port 3000}
    :handler/router {:session-authenticator (ig/ref :auth/session-authenticator)
                     :session-creator (ig/ref :auth/session-creator)
                     :schema-handler (ig/ref :graphql/schema-handler)}
@@ -75,8 +78,10 @@
 (defmethod ig/init-key :auth/session-creator [_ opts]
   (authn/create-session opts))
 
-(defmethod ig/init-key :adapter/jetty [_ {:keys [handler] :as opts}]
-  (run-jetty handler (-> opts (dissoc :handler) (assoc :join? false))))
+(defmethod ig/init-key :adapter/jetty [_ {:keys [handler reload] :as opts}]
+  (run-jetty (cond-> handler
+               reload ring.reload/wrap-reload)
+             (-> opts (dissoc :handler :reload) (assoc :join? false))))
 
 (defmethod ig/init-key :handler/router [_ opts]
   (make-handler opts))

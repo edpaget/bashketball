@@ -43,17 +43,24 @@
 
 (defn create-session
   [{:keys [authenticator dynamo]}]
-  (fn [{:keys [body]}]
-    (if-let [user (authenticator (get body "id-token"))]
-      (let [session-id (random-uuid)]
-        (if (mc/save-model! dynamo
-                            :models/Session
-                            {:id session-id
-                             :user-id (:id user)})
-          #p (-> {:status 204}
-              (ring.response/set-cookie cookie-name session-id))
-          {:status 401}))
-      {:status :401})))
+  (fn [{:keys [body cookies]}]
+
+    (condp = (get body "action")
+        "login" (if-let [user (authenticator (get body "id-token"))]
+                  (let [session-id (random-uuid)]
+                    (if (mc/save-model! dynamo
+                                        :models/Session
+                                        {:id session-id
+                                         :user-id (:id user)})
+                      (-> {:status 204}
+                          (ring.response/set-cookie cookie-name session-id))
+                      {:status 401}))
+                  {:status :401})
+        "logout" (if-let [session-id (get cookies cookie-name)]
+                   (-> {:status 204}
+                       (ring.response/set-cookie cookie-name session-id {:max-age 1}))
+                   {:status 400})
+        {:status 400})))
 
 (defn current-user
   [request _ _]
