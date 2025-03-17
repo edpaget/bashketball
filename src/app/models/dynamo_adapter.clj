@@ -4,8 +4,8 @@
             [malli.transform :as mt]
             [tick.core :as t]))
 
-(defn- set-keys
-  [schema _]
+(defn key-builder
+  [schema]
   (let [pk-cols (-> schema m/properties :pk)
         sk-cols (-> schema m/properties :sk)
         type (-> schema m/properties :type)]
@@ -17,11 +17,34 @@
             (set-type [sk]
               (cond-> type
                 (not-empty sk) (str "#" sk)))]
-      (fn [x]
-        (cond-> x
-          pk-cols (assoc "pk" {:S (key-col-builder pk-cols x)})
-          sk-cols (assoc "sk" {:S (key-col-builder sk-cols x)})
-          true (update-in ["sk" :S] set-type))))))
+      (fn [map-value]
+        (cond-> {}
+          pk-cols (assoc-in [:Key "pk" :S] (key-col-builder pk-cols map-value))
+          sk-cols (assoc-in [:Key "sk" :S] (key-col-builder sk-cols map-value))
+          true (update-in [:Key "sk" :S] set-type))))))
+
+(defn gather-if-not-exist
+  [schema _ children _]
+  (condp = (m/type schema)
+    :map (->> children
+              (filter (comp :dynamo/on-create second))
+              (map first)
+              (into #{}))
+    nil))
+
+(defn update-expression-builder
+  [schema]
+  (let [if-not-exist (m/walk schema gather-if-not-exist)]
+    (fn [map-value]
+      {:UpdateExpression
+       (->> map-value
+            (map (fn [[k _]]
+                   (str (name k)
+                        (if (contains? if-not-exist k)
+                          (str " = if_not_exists(" (name k) ", :" (name k) ")")
+                          (str " = :" (name k))))))
+            (str/join ", ")
+            (str "SET "))})))
 
 (defn- unset-keys [schema _]
   (let [has-dynamo-keys (boolean (or (-> schema m/properties :pk)
@@ -29,12 +52,17 @@
     (fn [x] (cond-> x
               has-dynamo-keys (dissoc :pk :sk)))))
 
+(def default-now-transformer
+  (mt/default-value-transformer
+   {:key :default-now
+    :default-fn (fn [& args] (t/instant))}))
+
 (defn dynamo-transfomer
   []
   (mt/transformer
    (mt/key-transformer
     {:decode keyword
-     :encode name})
+     :encode (fn [x] (str ":" (name x)))})
    (mt/transformer
     {:decoders
      {:map {:compile unset-keys}
@@ -45,8 +73,7 @@
       :boolean (fn [x] (boolean (get x :BOOL)))
       :time/zoned-date-time (fn [x] (t/instant (get x :S)))}
      :encoders
-     {:map {:compile set-keys}
-      :uuid (fn [x] {:S (str x)})
+     {:uuid (fn [x] {:S (str x)})
       :string (fn [x] {:S x})
       :int (fn [x] {:N (str x)})
       :double (fn [x] {:N (str x)})
