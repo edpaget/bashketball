@@ -47,7 +47,7 @@
   [_ _ _ _]
   (list 'non-null 'String))
 
-(defmethod walk-malli-map->graphql-type :time/zoned-date-time
+(defmethod walk-malli-map->graphql-type :time/instant
   [_ _ _ _]
   (list 'non-null 'Date))
 

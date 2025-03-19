@@ -6,5 +6,8 @@
                  [:id :string]
                  [:enrollment-state :string]
                  [:username [:maybe :string]]
-                 [:created_at {:optional true} [:maybe :time/zoned-date-time]]
-                 [:updated_at {:optional true} [:maybe :time/zoned-date-time]]])
+                 [:created-at {:optional true
+                               :dynamo/on-create true
+                               :default-now true} :time/instant]
+                 [:updated-at {:optional true
+                               :default-now true} :time/instant]])

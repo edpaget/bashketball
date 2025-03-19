@@ -6,7 +6,12 @@
    [:map {:pk [:card-type] :sk [:name :version] :type "card"}
     [:name :string]
     [:version {:default-value "0"} :string]
-    [:img-url :string]]
+    [:img-url :string]
+    [:created-at {:optional true
+                  :dynamo/on-create true
+                  :default-now true} :time/instant]
+    [:updated-at {:optional true
+                  :default-now true} :time/instant]]
    [:multi {:dispatch :card-type :graphql/union-type "card"}
     ;; Player card
     [1 [:map {:graphql/type "player-card"}

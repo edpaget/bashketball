@@ -51,14 +51,16 @@
                     (if (mc/save-model! dynamo
                                         :models/Session
                                         {:id session-id
+                                         :expires-at nil
                                          :user-id (:id user)})
                       (-> {:status 204}
                           (ring.response/set-cookie cookie-name session-id))
                       {:status 401}))
                   {:status :401})
         "logout" (if-let [session-id (get cookies cookie-name)]
-                   (-> {:status 204}
-                       (ring.response/set-cookie cookie-name session-id {:max-age 1}))
+                   (do
+                     (-> {:status 204}
+                         (ring.response/set-cookie cookie-name session-id {:max-age 1})))
                    {:status 400})
         {:status 400})))
 

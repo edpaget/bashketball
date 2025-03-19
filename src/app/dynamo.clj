@@ -20,11 +20,15 @@
 (defn get-item
   [client key]
   (aws/invoke client {:op :GetItem
-                      :request {:TableName table-name
-                                :Key key}}))
+                      :request (merge key {:TableName table-name})}))
 
 (defn put-item
   [client item]
   (aws/invoke client {:op :PutItem
                       :request {:TableName table-name
                                 :Item item}}))
+
+(defn update-item
+  [client update]
+  #p (aws/invoke client {:op :UpdateItem
+                      :request (merge update {:TableName table-name})}))

@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [malli.core :as m]
             [malli.transform :as mt]
+            [camel-snake-kebab.core :as csk]
             [tick.core :as t]))
 
 (defn key-builder
@@ -32,6 +33,16 @@
               (into #{}))
     nil))
 
+(defn- expression-attribute
+  ([attribute-key]
+   (expression-attribute nil attribute-key))
+  ([prefix attribute-key]
+   (str (when prefix ":") (csk/->snake_case (name attribute-key)))))
+
+(defn- clojure-key
+  [expression-attribute-key]
+  (csk/->kebab-case-keyword expression-attribute-key))
+
 (defn update-expression-builder
   [schema]
   (let [if-not-exist (m/walk schema gather-if-not-exist)]
@@ -39,10 +50,10 @@
       {:UpdateExpression
        (->> map-value
             (map (fn [[k _]]
-                   (str (name k)
+                   (str (expression-attribute k)
                         (if (contains? if-not-exist k)
-                          (str " = if_not_exists(" (name k) ", :" (name k) ")")
-                          (str " = :" (name k))))))
+                          (str " = if_not_exists(" (expression-attribute k) ", " (expression-attribute :prefix k) ")")
+                          (str " = " (expression-attribute :prefix k))))))
             (str/join ", ")
             (str "SET "))})))
 
@@ -55,14 +66,15 @@
 (def default-now-transformer
   (mt/default-value-transformer
    {:key :default-now
-    :default-fn (fn [& args] (t/instant))}))
+    :default-fn (fn [& _] (t/instant))
+    ::mt/add-optional-keys true}))
 
 (defn dynamo-transfomer
   []
   (mt/transformer
    (mt/key-transformer
-    {:decode keyword
-     :encode (fn [x] (str ":" (name x)))})
+    {:decode clojure-key
+     :encode (partial expression-attribute :prefix)})
    (mt/transformer
     {:decoders
      {:map {:compile unset-keys}
@@ -71,11 +83,13 @@
       :int (fn [x] (Integer. (get x :N)))
       :double (fn [x] (Double. (get x :N)))
       :boolean (fn [x] (boolean (get x :BOOL)))
-      :time/zoned-date-time (fn [x] (t/instant (get x :S)))}
+      :time/instant (fn [x] (when-let [timestamp (get x :S)]
+                              (when-not (empty? timestamp)
+                                (t/instant timestamp))))}
      :encoders
      {:uuid (fn [x] {:S (str x)})
       :string (fn [x] {:S x})
       :int (fn [x] {:N (str x)})
       :double (fn [x] {:N (str x)})
       :boolean (fn [x] {:BOOL x})
-      :time/zoned-date-time (fn [x] {:S (str x)})}})))
+      :time/instant (fn [x] {:S (str x)})}})))
