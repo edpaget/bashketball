@@ -42,6 +42,9 @@
     (when (= route-name (get-in router-state [:data :name]))
       children)))
 
+(defn use-router []
+  (uix/use-context router-provider))
+
 (defn href
   [page]
   (rfe/href page))

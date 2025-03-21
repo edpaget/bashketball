@@ -5,8 +5,7 @@
 
             [app.models.user]
             [app.models.card]
-            [app.models.session]
-            [malli.transform :as mt]))
+            [app.models.session]))
 
 (defn schema
   [schema-ref]
@@ -60,7 +59,7 @@
 
 (defn save-model!
   [client model-type model]
-  (let [model-with-defaults #p (mc/decode model-type model ddb.adapter/default-now-transformer)]
+  (let [model-with-defaults (mc/decode model-type model ddb.adapter/default-now-transformer)]
     (if (validate model-type model-with-defaults)
       (do
         (ddb/update-item client (apply merge (build-update model-type model-with-defaults)))

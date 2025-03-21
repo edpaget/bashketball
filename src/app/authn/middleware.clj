@@ -2,6 +2,7 @@
   (:require [app.models.core :as mc]
             [app.registry :refer [register-type!]]
             [ring.util.response :as ring.response]
+            [malli.core :as m]
             [com.github.sikt-no.clj-jwt :as clj-jwt]))
 
 (def jwks "https://www.googleapis.com/oauth2/v3/certs")
@@ -14,7 +15,6 @@
                   :authenticator]}
   [{:keys [dynamo]}]
   (fn [token]
-    (prn "tok" token)
     (when-let [sub (get (clj-jwt/unsign jwks token) :sub)]
       (let [user (mc/get-model dynamo :models/User {:id sub})]
         (if-not (empty? user)
@@ -46,24 +46,26 @@
   (fn [{:keys [body cookies]}]
 
     (condp = (get body "action")
-        "login" (if-let [user (authenticator (get body "id-token"))]
-                  (let [session-id (random-uuid)]
-                    (if (mc/save-model! dynamo
-                                        :models/Session
-                                        {:id session-id
-                                         :expires-at nil
-                                         :user-id (:id user)})
-                      (-> {:status 204}
-                          (ring.response/set-cookie cookie-name session-id))
-                      {:status 401}))
-                  {:status :401})
-        "logout" (if-let [session-id (get cookies cookie-name)]
-                   (do
-                     (-> {:status 204}
-                         (ring.response/set-cookie cookie-name session-id {:max-age 1})))
-                   {:status 400})
-        {:status 400})))
+      "login" (if-let [user (authenticator (get body "id-token"))]
+                (let [session-id (random-uuid)]
+                  (if (mc/save-model! dynamo
+                                      :models/Session
+                                      {:id session-id
+                                       :expires-at nil
+                                       :user-id (:id user)})
+                    (-> {:status 204}
+                        (ring.response/set-cookie cookie-name session-id))
+                    {:status 401}))
+                {:status :401})
+      "logout" (if-let [session-id (get cookies cookie-name)]
+                 (do
+                   (-> {:status 204}
+                       (ring.response/set-cookie cookie-name session-id {:max-age 1})))
+                 {:status 400})
+      {:status 400})))
 
+(m/=> current-user [:=> [:cat [:map [:request :map]] :any :any]
+                    :models/User])
 (defn current-user
-  [request _ _]
+  [{:keys [request]} _ _]
   (:authenticated-user request))

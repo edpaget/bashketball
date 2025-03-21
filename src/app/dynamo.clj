@@ -30,5 +30,5 @@
 
 (defn update-item
   [client update]
-  #p (aws/invoke client {:op :UpdateItem
+  (aws/invoke client {:op :UpdateItem
                       :request (merge update {:TableName table-name})}))

@@ -4,13 +4,13 @@
             [meta-merge.core :refer [meta-merge]]
             [malli.core :as mc]))
 
-(defn malli-schema->graphql-type-name
+(defn- malli-schema->graphql-type-name
   [schema]
-  (let [schema (mc/deref schema)]
-    (csk/->PascalCaseKeyword
-     (or (get (mc/properties schema) :graphql/type)
-         (get (mc/properties schema) :graphql/union-type)
-         (get (mc/properties schema) :type)))))
+  (condp = (mc/type schema)
+    (when-let [type-name (or (get (mc/properties schema) :graphql/type)
+                             (get (mc/properties schema) :graphql/union-type)
+                             (get (mc/properties schema) :type))]
+      (csk/->PascalCaseKeyword type-name))))
 
 (defn- ->graphql-field
   [[field-name _opts field-type]]
@@ -103,9 +103,32 @@
 
 (defmethod walk-malli-map->graphql-args :map
   [_ _ fields _]
-  {:args
-   (->> (map ->graphql-field fields)
-        (into {}))})
+  (->> (map ->graphql-field fields)
+       (into {})))
+
+(defmulti walk-malli-map->graphql-returns (fn [schema _ _ _] (mc/type schema)))
+
+(defmethod walk-malli-map->graphql-returns :map
+  [schema _ _ _]
+  (list 'non-null
+        (malli-schema->graphql-type-name schema)))
+
+(defmethod walk-malli-map->graphql-returns :multi
+  [schema _ _ _]
+  (list 'non-null
+        (malli-schema->graphql-type-name schema)))
+
+(defmethod walk-malli-map->graphql-returns :vector
+  [_ _ [[_ & [type]]] _]
+  (list 'list type))
+
+(defmethod walk-malli-map->graphql-returns :maybe
+  [_ _ [[_ & [type]]] _]
+  type)
+
+(defmethod walk-malli-map->graphql-returns :default
+  [_ _ _ _]
+  nil)
 
 (defn malli-schema->graphql-schema
   "Convert a malli schema into graphql type(s)"
@@ -114,7 +137,11 @@
 
 (defn malli-schema->graph-args
   [schema]
-  (mc/walk schema walk-malli-map->graphql-args))
+  (mc/walk (mc/deref-recursive schema) walk-malli-map->graphql-args))
+
+(defn malli-schema->graph-returns
+  [schema]
+  (mc/walk (mc/deref-recursive schema) walk-malli-map->graphql-returns))
 
 (comment
   (require '[app.models.core])

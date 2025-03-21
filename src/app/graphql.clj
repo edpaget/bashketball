@@ -16,10 +16,9 @@
              :serialize t/instant))
 
 (def resolvers
-  {:Query/me [:models/User current-user]}
-  ;;:Query/card [:models/Card (constantly {:cardType "blah"}) [:map [:card-name :string]]]
-  ;;:Query/cards [:models/Card (constantly {:cardType "blah"})]
-  )
+  {:Query/me [[:maybe :models/User] current-user]
+   :Query/card [[:maybe :models/Card] (constantly {:cardType "blah"}) [:map [:card-name :string]]]
+   :Query/cards [[:vector :models/Card] (constantly [{:cardType "blah"}])]})
 
 (def graphql-types [:models/User :models/Card])
 
@@ -33,8 +32,9 @@
          (apply meta-merge))
     [:objects :Query :fields]
     (zipmap (->> resolvers-map keys (map (comp keyword name)))
-            (for [[type _] (vals resolvers-map)]
-              {:type (models.graphql/malli-schema->graphql-type-name type)})))
+            (for [[return _ & [args]] (vals resolvers-map)]
+              (cond-> {:type (models.graphql/malli-schema->graph-returns return)}
+                args (assoc :args (models.graphql/malli-schema->graph-args args))))))
    date-scalar))
 
 (defn- injectable-resolvers
@@ -50,5 +50,5 @@
       (let [query (get-in request [:body "query"])]
         (ring.response/content-type
          {:status 200
-          :body (execute blood-bowl-schema query nil request)}
+          :body (execute blood-bowl-schema query nil {:request request})}
          "application/json")))))
