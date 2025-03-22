@@ -17,8 +17,8 @@
 
 (def resolvers
   {:Query/me [[:maybe :models/User] current-user]
-   :Query/card [[:maybe :models/Card] (constantly {:cardType "blah"}) [:map [:card-name :string]]]
-   :Query/cards [[:vector :models/Card] (constantly [{:cardType "blah"}])]})
+   :Query/card [[:maybe :models/Card] (constantly {:name "test-card" :cardType "player-card"}) [:map [:card-name :string]]]
+   :Query/cards [[:vector :models/Card] (constantly [(schema/tag-with-type {:name "test-card" :cardType "PLAYER"} :PlayerCard)])]})
 
 (def graphql-types [:models/User :models/Card])
 

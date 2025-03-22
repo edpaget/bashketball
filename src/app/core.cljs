@@ -27,7 +27,7 @@
                        ($ card.pages/cards-index))
                     ($ router/route {:route-name :cards-new}
                        ($ authn/login-required {:show-prompt true}
-                          ($ card.pages/cards-show)))
+                          ($ card.pages/cards-new)))
                     ($ router/route {:route-name :cards-show}
                        ($ card.pages/cards-show)))))
            ($ :div.footer)))))

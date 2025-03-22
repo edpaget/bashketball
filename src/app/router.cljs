@@ -46,5 +46,5 @@
   (uix/use-context router-provider))
 
 (defn href
-  [page]
-  (rfe/href page))
+  [page & args]
+  (apply rfe/href page args))

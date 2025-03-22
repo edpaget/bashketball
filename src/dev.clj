@@ -2,7 +2,6 @@
   (:require [app.server :as server]
             [shadow.cljs.devtools.server :as shadow.server]
             [shadow.cljs.devtools.api :as shadow]
-            [hashp.preload]
             [integrant.core :as ig]
             [integrant.repl :refer [clear go halt prep init reset reset-all]]))
 

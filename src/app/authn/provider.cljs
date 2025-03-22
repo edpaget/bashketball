@@ -8,6 +8,8 @@
 
 (def auth-provider (uix/create-context {}))
 
+(def ^:private get-me "query { me { id username } }")
+
 (defn login
   [oidc-token set-auth-status!]
   (when-not (empty? oidc-token)
@@ -49,7 +51,7 @@
 
 (defui logout-button []
   (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
-        {:keys [data refetch]} (graphql.client/use-query  "query { me { id username } }")]
+        {:keys [data refetch]} (graphql.client/use-query get-me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when (-> data :me not-empty)
       ($ :button.logout {:type "button"
@@ -58,8 +60,7 @@
 
 (defui login-required [{:keys [show-prompt children]}]
   (let [{:keys [auth-status]} (uix/use-context auth-provider)
-        {:keys [loading error data refetch]} (graphql.client/use-query
-                                              "query { me { id username } }")]
+        {:keys [loading error data refetch]} (graphql.client/use-query get-me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when error
       (prn error))
