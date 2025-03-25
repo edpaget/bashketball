@@ -21,9 +21,13 @@
        ($ :a {:href (router/href :cards-new)}
           "New Card"))))
 
+(def ^:private get-card
+   "query GetCard($cardName: String!) { card(cardName: $cardName) { ... on PlayerCard { name cardType } } }")
+
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
-        {:keys [loading data]} (graphql.client/use-query "query { card { ... on PlayerCard { name cardType } } }")
+        {:keys [loading data]} (graphql.client/use-query get-card {:card-name card-id})
+        _ (prn (:card data))
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer (:card data))]
     ($ :<>
        ($ authn/login-required {:show-prompt false}

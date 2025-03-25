@@ -1,12 +1,13 @@
 (ns app.graphql.client
-  (:require [uix.core :as uix :refer [defui $]]
-            ["@apollo/client" :as apollo.client]))
+  (:require
+   [camel-snake-kebab.core :as csk]
+   ["@apollo/client" :as apollo.client]))
 
 (def client (apollo.client/ApolloClient. #js {:uri "/graphql"
                                               :cache (apollo.client/InMemoryCache.)}))
 
 (defn use-query
-  [query]
-  (-> (apollo.client/gql query)
-      apollo.client/useQuery
-      (js->clj  :keywordize-keys true)))
+  [query & [variables]]
+  (-> (apollo.client/gql query )
+      (apollo.client/useQuery (clj->js {:variables (update-keys variables csk/->camelCase)}))
+      (js->clj :keywordize-keys true)))

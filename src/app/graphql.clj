@@ -17,7 +17,7 @@
 
 (def resolvers
   {:Query/me [[:maybe :models/User] current-user]
-   :Query/card [[:maybe :models/Card] (constantly {:name "test-card" :cardType "player-card"}) [:map [:card-name :string]]]
+   :Query/card [[:maybe :models/Card] (constantly (schema/tag-with-type {:name "test-card" :cardType "PLAYER"} :PlayerCard)) [:map [:card-name :string]]]
    :Query/cards [[:vector :models/Card] (constantly [(schema/tag-with-type {:name "test-card" :cardType "PLAYER"} :PlayerCard)])]})
 
 (def graphql-types [:models/User :models/Card])
@@ -47,8 +47,10 @@
                               (inject-resolvers (injectable-resolvers resolvers))
                               schema/compile)]
     (fn [request]
-      (let [query (get-in request [:body "query"])]
+      (let [{:strs [query variables]} (:body request)]
+        (prn query)
+        (prn variables)
         (ring.response/content-type
          {:status 200
-          :body (execute blood-bowl-schema query nil {:request request})}
+          :body (execute blood-bowl-schema query (update-keys variables keyword) {:request request})}
          "application/json")))))
