@@ -8,7 +8,7 @@
             [app.card.show :refer [show-card]]))
 
 (defui cards-index []
-  (let [{:keys [loading data]} (graphql.client/use-query "query { cards { ... on PlayerCard { name cardType } } }")]
+  (let [{:keys [loading data]} (graphql.client/use-query "query { cards { ... on PlayerCard { name cardType } } }" :models/Card :cards)]
     (prn data)
     ($ :div {:className "card-index"}
        (cond
@@ -26,7 +26,7 @@
 
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
-        {:keys [loading data]} (graphql.client/use-query get-card {:card-name card-id})
+        {:keys [loading data]} (graphql.client/use-query get-card :models/Card :card {:card-name card-id})
         _ (prn (:card data))
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer (:card data))]
     ($ :<>

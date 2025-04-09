@@ -93,3 +93,42 @@
       :double (fn [x] {:N (str x)})
       :boolean (fn [x] {:BOOL x})
       :time/instant (fn [x] {:S (str x)})}})))
+
+
+(def ^:private -dynamo-encoder
+  (memoize (fn [schema]
+             (m/encoder schema dynamo-transfomer))))
+
+(defn- encode-dynamo
+  [schema model]
+  ((-dynamo-encoder schema) model))
+
+(def ^:private -dynamo-decoder
+  (memoize (fn [schema]
+             (m/coercer schema dynamo-transfomer))))
+
+(defn decode-dynamo
+  [schema model]
+  ((-dynamo-decoder schema) model))
+
+(def ^:private -build-key
+  (memoize (fn [schema]
+             (key-builder schema))))
+
+(defn build-key
+  [schema model]
+  ((-build-key schema) model))
+
+(def ^:private -build-update-expression
+  (memoize (fn [schema]
+             (update-expression-builder schema))))
+
+(defn- build-update-expression
+  [schema model]
+  ((-build-update-expression schema) model))
+
+(defn- encode-dynamo-update
+  [schema model]
+  {:ExpressionAttributeValues (encode-dynamo schema model)})
+
+(def build-update (juxt build-key build-update-expression encode-dynamo-update))

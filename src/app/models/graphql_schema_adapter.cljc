@@ -2,7 +2,8 @@
   (:require [clojure.walk :as w]
             [camel-snake-kebab.core :as csk]
             [meta-merge.core :refer [meta-merge]]
-            [malli.core :as mc]))
+            [malli.core :as mc]
+            [malli.transform :as mt]))
 
 (defn- malli-schema->graphql-type-name
   [schema]
@@ -143,8 +144,7 @@
   [schema]
   (mc/walk (mc/deref-recursive schema) walk-malli-map->graphql-returns))
 
-(comment
-  (require '[app.models.core])
-  (require '[app.models.card])
-  (require '[app.registry])
-  (malli-schema->graphql-schema (app.models.core/schema :models/Card)))
+(def transformer
+  (mt/key-transformer
+   {:decode (fn [x] (prn x) ( csk/->kebab-case-keyword x))
+    :encode csk/->camelCaseKeyword}))

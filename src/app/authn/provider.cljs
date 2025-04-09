@@ -51,7 +51,7 @@
 
 (defui logout-button []
   (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
-        {:keys [data refetch]} (graphql.client/use-query get-me)]
+        {:keys [data refetch]} (graphql.client/use-query get-me :models/User :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when (-> data :me not-empty)
       ($ :button.logout {:type "button"
@@ -60,7 +60,7 @@
 
 (defui login-required [{:keys [show-prompt children]}]
   (let [{:keys [auth-status]} (uix/use-context auth-provider)
-        {:keys [loading error data refetch]} (graphql.client/use-query get-me)]
+        {:keys [loading error data refetch]} (graphql.client/use-query get-me :models/User :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when error
       (prn error))

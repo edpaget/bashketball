@@ -1,5 +1,6 @@
 (ns app.graphql
   (:require [app.authn.middleware :refer [current-user]]
+            [app.models.core :as mc]
             [app.models.graphql-schema-adapter :as models.graphql]
             [com.walmartlabs.lacinia :refer [execute]]
             [com.walmartlabs.lacinia.util :refer [inject-resolvers]]
@@ -39,7 +40,9 @@
 
 (defn- injectable-resolvers
   [resolvers-map]
-  (zipmap (keys resolvers-map) (->> resolvers-map vals (map second))))
+  (zipmap (keys resolvers-map) (->> resolvers-map
+                                    vals
+                                    (map #(comp (partial mc/encode-graphql (first %)) (second %))))))
 
 (defn make-schema-handler
   []
