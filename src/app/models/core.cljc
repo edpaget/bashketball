@@ -5,15 +5,7 @@
    #?(:clj
       [app.models.dynamo-adapter :as ddb.adapter])
    [app.models.graphql-schema-adapter :as gql.adapter]
-   [malli.core :as mc]
-   [app.registry]
-   [app.models.user]
-   [app.models.card]
-   [app.models.session]))
-
-(defn schema
-  [schema-ref]
-  (mc/deref-recursive schema-ref))
+   [malli.core :as mc]))
 
 (def ^:private -validator
   (memoize (fn [schema-ref]

@@ -1,2 +1,3 @@
-clojure 1.12.0.1479
-java temurin-21.0.4+7.0.LTS
+clojure 1.12.0.1530
+java openjdk24
+clj-kondo 2025.04.07
