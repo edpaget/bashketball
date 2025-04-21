@@ -27,5 +27,3 @@ clj -M:dev -m dev.migrate rollback
 ```shell
 npm run release # build production bundle
 ```
-
-
