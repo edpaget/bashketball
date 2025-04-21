@@ -17,9 +17,6 @@
    :password "password"
    :port     5432})
 
-;; Example getting a datasource (if you manage it elsewhere)
-;; (def datasource (get-your-datasource-somehow))
-
 (def ragtime-config
   {:datastore  (jdbc/sql-database db-spec) ; Or use (jdbc/sql-database datasource)
    :migrations (jdbc/load-resources "migrations")}) ; Looks in resources/migrations
@@ -47,13 +44,3 @@
       (= command "rollback") (rollback)
       :else (println "Unknown command. Use 'migrate' or 'rollback'."))))
 
-;; --- REPL Usage ---
-;; (Assuming dependencies are present)
-;; user=> (require 'dev.migrate)
-;; user=> (dev.migrate/migrate)
-;; user=> (dev.migrate/rollback)
-
-;; --- CLI Usage ---
-;; (Assuming dependencies are present)
-;; clj -M:dev -m dev.migrate migrate
-;; clj -M:dev -m dev.migrate rollback
