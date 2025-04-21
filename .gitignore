@@ -27,3 +27,4 @@ node_modules/
 /volume/
 /terraform/environments/localstack/terraform.tfstate
 .aider*
+/.clj-kondo/imports/com.github.seancorfield/

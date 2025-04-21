@@ -1,8 +1,6 @@
 (ns dev.migrate
   (:require [ragtime.jdbc :as jdbc]
-            [ragtime.repl :as repl]
-            ;; NOTE: Ensure next.jdbc is available if using it for db-spec
-            [next.jdbc :as next-jdbc])) ; Or your specific DB connection ns
+            [ragtime.repl :as repl]))
 
 ;; --- Ragtime Configuration ---
 ;; NOTE: Replace these placeholders with your actual database connection details.
@@ -13,10 +11,10 @@
 ;; Example using a db-spec map (requires next.jdbc and the driver)
 (def db-spec
   {:dbtype   "postgresql" ; Or "mysql", "h2", etc.
-   :dbname   "your_dev_db_name"
+   :dbname   "blood_basket"
    :host     "localhost"
-   :user     "your_dev_db_user"
-   :password "your_dev_db_password"
+   :user     "postgres"
+   :password "password"
    :port     5432})
 
 ;; Example getting a datasource (if you manage it elsewhere)
