@@ -1,2 +1,2 @@
 
-DROP TABLE authorization;
+DROP TABLE app_authorization;
