@@ -2,37 +2,44 @@
   (:require
    [app.registry :as registry]))
 
-(registry/defschema ::User
-  [:map {:pk [:id] :type "user"}
+(registry/defschema ::IdentityStrategy
+  [:enum "INVALID" "SIGN_IN_WITH_GOOGLE"])
+
+(registry/defschema ::Identity
+  [:map {::pk [:provider :provider_identity]}
+   [:provider ::IdentityStrategy]
+   [:provider_identity :string]
+   [:email :string]
+   [:created-at {:default-now true} :time/instant]
+   [:updated-at {:default-now true} :time/instant]
+   [:last-successful-at [:maybe :time/instant]]
+   [:last-failed-at [:maybe :time/instant]]])
+
+(registry/defschema ::Actor
+  [:map
    [:id :string]
    [:enrollment-state :string]
    [:username [:maybe :string]]
-   [:created-at {:optional true
-                 :dynamo/on-create true
-                 :default-now true} :time/instant]
-   [:updated-at {:optional true
-                 :default-now true} :time/instant]])
+   [:created-at {:default-now true} :time/instant]
+   [:updated-at {:default-now true} :time/instant]])
 
-(registry/defschema ::Session
-  [:map {:pk [:id] :type "session"}
+(registry/defschema ::AppAuthorization
+  [:map
    [:id :uuid]
-   [:user-id :string]
-   [:created-at {:optional true
-                 :dynamo/on-create true
-                 :default-now true} :time/instant]
+   [:actor-id :string]
+   [:provider ::IdentityStrategy]
+   [:provider_identity :string]
+   [:created-at {:default-now true} :time/instant]
    [:expires-at [:maybe :time/instant]]])
 
 (registry/defschema ::Card
-  [:map {:pk [:card-type] :sk [:name :version] :type "card"}
+  [:map {::pk [:name :version]}
    [:name :string]
    [:version {:default-value "0"} :string]
    [:img-url {:ui/input-type "file"} :string]
    [:card-type :string]
-   [:created-at {:optional true
-                 :dynamo/on-create true
-                 :default-now true} :time/instant]
-   [:updated-at {:optional true
-                 :default-now true} :time/instant]])
+   [:created-at {:default-now true} :time/instant]
+   [:updated-at {:default-now true} :time/instant]])
 
 (registry/defschema ::PlayerCard
   [:merge ::Card
