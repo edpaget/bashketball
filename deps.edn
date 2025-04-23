@@ -30,7 +30,9 @@
                               dev.weavejester/ragtime {:mvn/version "0.11.0"}
                               dev.weavejester/hashp {:mvn/version "0.3.0"}}}
            :test {:extra-paths ["test"] ; Add test directory to classpath
-                  :extra-deps {eftest/eftest {:mvn/version "0.6.0"}} ; Include eftest dependency
+                  :extra-deps {eftest/eftest {:mvn/version "0.6.0"} ; Include eftest dependency
+                               ;; Add ragtime for migrations in tests
+                               dev.weavejester/ragtime {:mvn/version "0.11.0"}}
                   :exec-fn     runner/find-and-run-tests}
            :server {:main-opts ["-m" "app.server"]}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.6" :git/sha "52cf7d6"}}

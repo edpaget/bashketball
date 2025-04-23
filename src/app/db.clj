@@ -3,7 +3,7 @@
    [app.db.connection-pool :as db.pool]
    [integrant.core :as ig]
    [next.jdbc :as jdbc]
-   [honeysql.core :as sql]))
+   [honey.sql :as sql]))
 
 (def ^:dynamic *datasource*
   "Dynamic var holding the application's datasource (connection pool).
@@ -24,20 +24,26 @@
     (sql/format sql-map-or-vec)
     sql-map-or-vec))
 
-(defn- do-with-connection
+(defn do-with-connection
   "Internal helper. Executes function `f` within a connection context.
    - If *current-connection* is bound and non-nil, executes `f` directly.
    - Otherwise, if *datasource* is bound and non-nil, obtains a connection,
      binds it to *current-connection*, executes `f`, and closes connection.
    - Throws if neither is available."
   [f]
-  (if (and (bound? #'*current-connection*) *current-connection*)
+  (cond
+    *current-connection*
+    ;; pass the current connection to the f explicitly to allow it to be used
+    ;; with other JBDC interfaces
     (f *current-connection*) ; Use existing connection
-    (if (and (bound? #'*datasource*) *datasource*)
-      (with-open [conn (jdbc/get-connection *datasource*)]
-        (binding [*current-connection* conn] ; Bind connection for f
-          (f *current-connection*))) ; Execute with new connection
-      (throw (IllegalStateException. "No active connection (*current-connection*) or datasource (*datasource*) available.")))))
+    *datasource*
+    (with-open [conn (jdbc/get-connection *datasource*)]
+      (binding [*current-connection* conn] ; Bind connection for f
+        ;; pass the current connection to the f explicitly to allow it to be used
+        ;; with other JBDC interfaces
+        (f *current-connection*))) ; Execute with new connection
+    :else
+    (throw (IllegalStateException. "No active connection (*current-connection*) or datasource (*datasource*) available."))))
 
 (defn- call-jdbc-fn
   "Helper to call the appropriate next.jdbc function, managing connections.
@@ -47,7 +53,6 @@
    `opts` is the third arg (optional options map)."
   [jdbc-fn connectable-or-sql sql-or-opts & [opts]]
   (if (instance? java.sql.Connection connectable-or-sql)
-    ;; Explicit connectable (DataSource or Connection) provided, use it directly
     (let [sql-vec (compile-honeysql sql-or-opts)]
       (if opts
         (jdbc-fn connectable-or-sql sql-vec opts)
@@ -62,7 +67,7 @@
           (jdbc-fn *current-connection* sql-vec))
         ;; No existing connection, use do-with-connection to get one
         (do-with-connection
-         (fn [] ; Function to run within the connection context
+         (fn [_]                  ; Function to run within the connection context
            (if effective-opts
              (jdbc-fn *current-connection* sql-vec effective-opts) ; *current-connection* is now bound
              (jdbc-fn *current-connection* sql-vec))))))))
@@ -76,6 +81,8 @@
    The SQL argument (`sql-or-opts` or `connectable-or-sql`) can be a HoneySQL map
    or a standard [sql params...] vector.
    Accepts optional `opts` map as per next.jdbc/plan."
+  ([sql]
+   (call-jdbc-fn jdbc/plan sql nil))
   ([connectable-or-sql sql-or-opts]
    (call-jdbc-fn jdbc/plan connectable-or-sql sql-or-opts))
   ([connectable-or-sql sql-or-opts opts]
@@ -88,6 +95,8 @@
    The SQL argument (`sql-or-opts` or `connectable-or-sql`) can be a HoneySQL map
    or a standard [sql params...] vector.
    Accepts optional `opts` map as per next.jdbc/execute!."
+  ([sql]
+   (call-jdbc-fn jdbc/execute! sql nil))
   ([connectable-or-sql sql-or-opts]
    (call-jdbc-fn jdbc/execute! connectable-or-sql sql-or-opts))
   ([connectable-or-sql sql-or-opts opts]
@@ -100,6 +109,8 @@
    The SQL argument (`sql-or-opts` or `connectable-or-sql`) can be a HoneySQL map
    or a standard [sql params...] vector.
    Accepts optional `opts` map as per next.jdbc/execute-one!."
+  ([sql]
+   (call-jdbc-fn jdbc/execute-one! sql nil))
   ([connectable-or-sql sql-or-opts]
    (call-jdbc-fn jdbc/execute-one! connectable-or-sql sql-or-opts))
   ([connectable-or-sql sql-or-opts opts]
@@ -110,7 +121,7 @@
    If *current-connection* is already bound, uses it. Otherwise, obtains a
    new connection from *datasource*, binds it to *current-connection*,
    and executes the body. The new connection is closed afterwards."
-  [conn & body]
+  [[conn] & body]
   `(do-with-connection (fn [~conn] ~@body)))
 
 (defmethod ig/init-key ::pool [_ {:keys [config]}]
