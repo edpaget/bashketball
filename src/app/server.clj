@@ -7,6 +7,7 @@
    [ring.middleware.reload :as ring.reload]
    [ring.util.response :as ring.response]
    [integrant.core :as ig]
+   [app.authn.middleware :as authn]
    [app.graphql :as graphql]))
 
 (defn ping-handler [_]
@@ -44,7 +45,6 @@
                   :middleware [ring.json/wrap-json-response
                                ring.json/wrap-json-body
                                ring.cookies/wrap-cookies
-
                                (authn/wrap-session-authn session-authenticator)]}]])
    (r/routes
     (r/create-file-handler {:path "/js" :root "public/js"})
