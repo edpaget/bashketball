@@ -1,16 +1,13 @@
 (ns app.server
-  (:require [reitit.ring :as r]
-            [ring.adapter.jetty :refer [run-jetty]]
-            [ring.middleware.json :as ring.json]
-            [ring.middleware.cookies :as ring.cookies]
-            [ring.middleware.reload :as ring.reload]
-            [ring.util.response :as ring.response]
-            [integrant.core :as ig]
-            [app.authn.middleware :as authn]
-            [app.dynamo :as ddb]
-            [app.graphql :as graphql]
-            [app.registry])
-  (:gen-class))
+  (:require
+   [reitit.ring :as r]
+   [ring.adapter.jetty :refer [run-jetty]]
+   [ring.middleware.json :as ring.json]
+   [ring.middleware.cookies :as ring.cookies]
+   [ring.middleware.reload :as ring.reload]
+   [ring.util.response :as ring.response]
+   [integrant.core :as ig]
+   [app.graphql :as graphql]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
@@ -55,29 +52,6 @@
     (create-index-handler)
     (r/create-default-handler))))
 
-(def config
-  {:adapter/jetty {:handler (ig/ref :handler/router)
-                   :reload? true
-                   :port 3000}
-   :handler/router {:session-authenticator (ig/ref :auth/session-authenticator)
-                    :session-creator (ig/ref :auth/session-creator)
-                    :schema-handler (ig/ref :graphql/schema-handler)}
-   :auth/token-authenticator {:dynamo (ig/ref :db/dynamo)}
-   :auth/session-authenticator {:dynamo (ig/ref :db/dynamo)}
-   :auth/session-creator {:dynamo (ig/ref :db/dynamo)
-                          :authenticator (ig/ref :auth/token-authenticator)}
-   :graphql/schema-handler {}
-   :db/dynamo {:is-localstack? true}})
-
-(defmethod ig/init-key :auth/session-authenticator [_ opts]
-  (authn/make-session-authenticator opts))
-
-(defmethod ig/init-key :auth/token-authenticator [_ opts]
-  (authn/make-token-authenticator opts))
-
-(defmethod ig/init-key :auth/session-creator [_ opts]
-  (authn/create-session opts))
-
 (defmethod ig/init-key :adapter/jetty [_ {:keys [handler reload] :as opts}]
   (run-jetty (cond-> handler
                reload ring.reload/wrap-reload)
@@ -86,14 +60,8 @@
 (defmethod ig/init-key :handler/router [_ opts]
   (make-handler opts))
 
-(defmethod ig/init-key :db/dynamo [_ opts]
-  (ddb/make-client opts))
-
 (defmethod ig/init-key :graphql/schema-handler [_ opts]
   (graphql/make-schema-handler))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
   (.stop server))
-
-(defn -main [& _]
-  (ig/init config))

@@ -1,0 +1,2 @@
+{:app.config/config {}
+ :app.db/db-pool    {:config #ig/ref :app.config/config}}

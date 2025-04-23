@@ -1,46 +1,55 @@
 (ns dev.migrate
-  (:require [ragtime.jdbc :as jdbc]
-            [ragtime.repl :as repl]))
+  (:require
+   [integrant.core :as ig]
+   [clojure.tools.logging :as log]
+   [clojure.java.io :as io]
+   [ragtime.next-jdbc :as next-jdbc]
+   [ragtime.repl :as repl]))
 
-;; --- Ragtime Configuration ---
-;; NOTE: Replace these placeholders with your actual database connection details.
-;; This assumes you have a way to get your database connection spec/datasource.
-;; If you use Integrant, you might fetch this from your system map.
-;; Ensure the necessary JDBC driver (e.g., org.postgresql/postgresql) is on the classpath.
+(def ^:dynamic *ragtime-config* nil)
 
-;; Example using a db-spec map (requires next.jdbc and the driver)
-(def db-spec
-  {:dbtype   "postgresql" ; Or "mysql", "h2", etc.
-   :dbname   "blood_basket"
-   :host     "localhost"
-   :user     "postgres"
-   :password "password"
-   :port     5432})
+(defn do-with-config
+  [thunk]
+  (let [{:keys [app.db/pool] :as system} (-> (io/resource "migrate.edn")
+                                             slurp
+                                             ig/read-string
+                                             ig/load-namespaces
+                                             (ig/expand (ig/deprofile [:dev]))
+                                             ig/init)]
+    (try
+      (binding [*ragtime-config* {:datastore  (next-jdbc/sql-database pool)
+                                  :migrations (next-jdbc/load-resources "migrations")}]
+        (thunk))
+      (catch Throwable e
+        (log/error e "Migration failed with error"))
+      (finally
+        (ig/halt! system)))))
 
-(def ragtime-config
-  {:datastore  (jdbc/sql-database db-spec) ; Or use (jdbc/sql-database datasource)
-   :migrations (jdbc/load-resources "migrations")}) ; Looks in resources/migrations
+(defmacro with-config
+  [& body]
+  `(do-with-config (fn [] ~@body)))
 
 ;; --- Migration Functions ---
 
 (defn migrate
   "Applies all pending migrations."
   []
-  (println "Applying migrations...")
-  (repl/migrate ragtime-config)
-  (println "Migrations applied."))
+  (log/info "Applying migrations...")
+  (with-config
+    (repl/migrate *ragtime-config*))
+  (log/info "Migrations applied."))
 
 (defn rollback
   "Rolls back the last applied migration."
   []
-  (println "Rolling back last migration...")
-  (repl/rollback ragtime-config)
-  (println "Rollback complete."))
+  (log/info "Rolling back last migration...")
+  (with-config
+    (repl/rollback *ragtime-config*))
+  (log/info "Rollback complete."))
 
 (defn -main [& args]
   (let [command (first args)]
     (cond
       (= command "migrate") (migrate)
       (= command "rollback") (rollback)
-      :else (println "Unknown command. Use 'migrate' or 'rollback'."))))
-
+      :else (log/info "Unknown command. Use 'migrate' or 'rollback'."))))
