@@ -8,14 +8,12 @@
 
 (def ^:dynamic *ragtime-config* nil)
 
+(def ^:private config (-> (io/resource "migrate.edn") slurp ig/read-string))
+
 (defn do-with-config
   [thunk]
-  (let [{:keys [app.db/pool] :as system} (-> (io/resource "migrate.edn")
-                                             slurp
-                                             ig/read-string
-                                             ig/load-namespaces
-                                             (ig/expand (ig/deprofile [:dev]))
-                                             ig/init)]
+  (ig/load-namespaces config)
+  (let [{:keys [app.db/pool] :as system} (ig/init config)]
     (try
       (binding [*ragtime-config* {:datastore  (next-jdbc/sql-database pool)
                                   :migrations (next-jdbc/load-resources "migrations")}]

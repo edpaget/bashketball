@@ -1,2 +1,2 @@
-{:app-port #long #or [#env APP_PORT] 3000
- :db-url #or [#env DATABASE_URL] "jdbc:postgres://postgres:password@localhost:5432/blood_basket"}
+{:app-port #or [#env APP_PORT "3000"]
+ :database-url #or [#env DATABASE_URL "jdbc:postgresql://localhost:5432/blood_basket?user=postgres&password=password"]}

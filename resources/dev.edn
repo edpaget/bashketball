@@ -8,6 +8,6 @@
  :app.authn/token-authenticator   {}
  :app.authn/session-authenticator {}
  :app.authn/session-creator       {:authenticator #ig/ref :auth/token-authenticator}
- :app.db/db-pool                  {:config #ig/ref :app.config/config}
+ :app.db/pool                     {:config #ig/ref :app.config/config}
  :app.graphql/schema-handler      {}
  :app.shadow/server               {}}
