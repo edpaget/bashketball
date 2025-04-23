@@ -1,4 +1,4 @@
-(ns app.models.graphql-schema-adapter
+(ns app.graphql.schema-transformer
   (:require [clojure.walk :as w]
             [camel-snake-kebab.core :as csk]
             [meta-merge.core :refer [meta-merge]]

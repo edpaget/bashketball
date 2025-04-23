@@ -1,1 +1,3 @@
-{:lint-as {uix.core/defui clojure.core/defn}}
+{:lint-as {uix.core/defui clojure.core/defn}
+ :linters {:require-sorted {:level :warning}
+           :import-sorted {:level :warning}}}

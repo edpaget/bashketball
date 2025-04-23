@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [integrant.core :as ig]
+   [hashp.preload]
    #_{:clj-kondo/ignore [:unused-referred-var]}
    [integrant.repl :refer [clear go halt prep init reset reset-all]]))
 

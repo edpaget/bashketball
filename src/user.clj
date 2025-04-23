@@ -1,5 +1,4 @@
-(ns user
-  (:require [hashp.preload]))
+(ns user)
 
 (defn dev
   []
