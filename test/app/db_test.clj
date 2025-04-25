@@ -1,54 +1,21 @@
 (ns app.db-test
   (:require
-   [app.config :as config]
    [app.db :as db]
-   [app.db.connection-pool :as db.pool]
+   [app.test-utils :as tu] ; Added require for test utilities
    [clojure.test :refer [deftest is testing use-fixtures]]
    [honey.sql.helpers :as h]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs]
-   [ragtime.next-jdbc :as ragtime.next-jdbc]
-   [ragtime.repl :as ragtime.repl]))
+   [next.jdbc.transaction]))
 
 (set! *warn-on-reflection* true)
 
 ;; --- Test Fixtures ---
 
-(def test-config (config/config {:profile :test})) ; Assuming :test profile or defaults are okay
-(def test-datasource (atom nil))
-
-(defn- ragtime-config []
-  {:datastore  (ragtime.next-jdbc/sql-database @test-datasource)
-   :migrations (ragtime.next-jdbc/load-resources "migrations")})
-
-(defn db-fixture [f]
-  (let [ds (db.pool/create-pool (:database-url test-config))]
-    (reset! test-datasource ds)
-    (binding [db/*datasource* ds] ; Bind dynamic var for tests using it
-      (println "Running migrations...")
-      (ragtime.repl/migrate (ragtime-config)) ; Apply migrations
-      (try
-        (f) ; Run tests
-        (finally
-          (println "Rolling back migrations...")
-          (try
-            ;;(ragtime.repl/rollback (ragtime-config) (-> (ragtime-config) :migrations count)) ; Rollback to first
-            (catch Exception e (println "Error rolling back migrations:" (ex-message e))))
-          (db.pool/close-pool! ds)
-          (reset! test-datasource nil))))))
-
-(defn rollback-fixture [f]
-  (if-let [ds @test-datasource]
-    (jdbc/with-transaction [tx ds {:rollback-only true}]
-      (prn (.getAutoCommit tx))
-      (binding [db/*current-connection* tx ; Bind connection for tests using it
-                db/*datasource*         ds] ; Also bind datasource for consistency
-        (f)))
-    (throw (IllegalStateException. "Test datasource is not initialized for transaction fixture."))))
-
 ;; Register fixtures: db-fixture runs once, rollback-fixture runs per-test
-(use-fixtures :once db-fixture)
-(use-fixtures :each rollback-fixture)
+;; Use fixtures from the test-utils namespace
+(use-fixtures :once tu/db-fixture)
+(use-fixtures :each tu/rollback-fixture)
 
 ;; --- Helper ---
 (defn- insert-actor! [conn-or-nil {:keys [id username enrollment_state]}]
@@ -77,7 +44,7 @@
              (get-actor-by-id nil actor-uuid)))))
 
   (testing "Insert using explicit connection"
-    (jdbc/with-transaction [tx @test-datasource {:rollback-only true}] ; Use a separate tx for explicit connection test
+    (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}] ; Use a separate tx for explicit connection test
       (let [actor-uuid (random-uuid)
             result (insert-actor! tx {:id actor-uuid :username "nickw" :enrollment_state "pending"})]
         (is (= [1] (mapv :next.jdbc/update-count result)) "Should return update count of 1")
@@ -92,7 +59,7 @@
         (is (= {:id actor-uuid :username "edc" :enrollment_state "enrolled"} actor)))))
 
   (testing "Select one using explicit connection"
-    (jdbc/with-transaction [tx @test-datasource {:rollback-only true}]
+    (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}]
       (let [actor-uuid (random-uuid)]
         (insert-actor! tx {:id actor-uuid :username "jend" :enrollment_state "invited"})
         (let [actor (get-actor-by-id tx actor-uuid)]
@@ -110,13 +77,12 @@
       (let [query (-> (h/select :username) ; Select username
                       (h/from :actor)
                       (h/where [:in :id [uuid5 uuid6]]))
-          actors (into #{} (map #(select-keys % [:username]))
-                       (db/plan query {:builder-fn rs/as-unqualified-maps}))]
-        (prn actors)
+            actors (into #{} (map #(select-keys % [:username]))
+                         (db/plan query {:builder-fn rs/as-unqualified-maps}))]
         (is (= #{{:username "johnnyl"} {:username "betten"}} actors))))) ; Use set comparison for unordered results
 
   (testing "Select multiple using explicit connection"
-    (jdbc/with-transaction [tx @test-datasource {:rollback-only true}]
+    (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}]
       (let [uuid7 (random-uuid)
             uuid8 (random-uuid)]
         (insert-actor! tx {:id uuid7 :username "gracem" :enrollment_state "invited"})

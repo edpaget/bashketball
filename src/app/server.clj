@@ -7,8 +7,7 @@
    [ring.middleware.reload :as ring.reload]
    [ring.util.response :as ring.response]
    [integrant.core :as ig]
-   [app.authn.middleware :as authn]
-   [app.graphql :as graphql]))
+   [app.authn.middleware :as authn]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
@@ -52,16 +51,16 @@
     (create-index-handler)
     (r/create-default-handler))))
 
-(defmethod ig/init-key :adapter/jetty [_ {:keys [handler reload] :as opts}]
-  (run-jetty (cond-> handler
-               reload ring.reload/wrap-reload)
-             (-> opts (dissoc :handler :reload) (assoc :join? false))))
+(defmethod ig/init-key ::jetty [_ {:keys [handler reload] :as opts}]
+  (let [thread-pool (java.util.concurrent.Executors/newVirtualThreadPerTaskExecutor)]
+    (run-jetty (cond-> handler
+                 reload ring.reload/wrap-reload)
+               (-> opts
+                   (dissoc :handler :reload)
+                   (assoc :join? false :thread-pool thread-pool)))))
 
-(defmethod ig/init-key :handler/router [_ opts]
+(defmethod ig/init-key ::router [_ opts]
   (make-handler opts))
 
-(defmethod ig/init-key :graphql/schema-handler [_ opts]
-  (graphql/make-schema-handler))
-
-(defmethod ig/halt-key! :adapter/jetty [_ server]
+(defmethod ig/halt-key! ::jetty [_ server]
   (.stop server))
