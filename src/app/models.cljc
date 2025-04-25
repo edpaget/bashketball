@@ -1,5 +1,6 @@
 (ns app.models
   (:require
+   [malli.core :as mc]
    [app.registry :as registry]))
 
 (registry/defschema ::IdentityStrategy
@@ -146,3 +147,10 @@
     [:asset-power
      :string]]])
 
+(def ^:private -validator
+  (memoize (fn [type-name]
+             (mc/validator type-name))))
+
+(defn validate
+  [type value]
+  ((-validator type) value))

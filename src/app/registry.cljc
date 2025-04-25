@@ -14,17 +14,9 @@
   "Define a new type and add it to the registry"
   {:clj-kondo/lint-as 'clojure.core/def}
   [type schema]
-  (register-type! ~type ~schema))
+  `(register-type! ~type ~schema))
 
 (mr/set-default-registry! (mr/composite-registry
                            (merge (m/default-schemas) (mu/schemas) (malli.time/schemas))
                            (mr/mutable-registry
                             type-registry)))
-
-(def ^:private -validator
-  (memoize (fn [type-name]
-             (m/validator type-name))))
-
-(defn validate
-  [type value]
-  ((-validator type) value))
