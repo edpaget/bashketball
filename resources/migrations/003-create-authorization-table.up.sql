@@ -5,8 +5,8 @@ CREATE TABLE app_authorization (
     actor_id UUID NOT NULL,                       -- Link to the actor
     provider identity_strategy NOT NULL,          -- Identity provider (e.g., 'SIGN_IN_WITH_GOOGLE', 'local')
     provider_identity TEXT NOT NULL,              -- User's ID from the provider
-    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP WITHOUT TIME ZONE,       -- Optional expiration for the session/authorization
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
+    expires_at TIMESTAMPTZ,                       -- Changed type
 
     -- Define the foreign key to the actor table
     CONSTRAINT fk_app_authorization_actor

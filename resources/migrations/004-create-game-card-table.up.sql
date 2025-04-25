@@ -37,7 +37,13 @@ CREATE TABLE game_card (
     coaching TEXT,
     fate INT,
     asset_power TEXT,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
     PRIMARY KEY (name, version)
 );
+
+-- Trigger to call the function before updating the game_card table
+CREATE TRIGGER trigger_set_updated_at_timestamp_on_game_card
+BEFORE UPDATE ON game_card
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at_timestamp();
