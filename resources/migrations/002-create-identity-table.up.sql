@@ -6,7 +6,6 @@ CREATE TYPE identity_strategy AS ENUM ('INVALID', 'SIGN_IN_WITH_GOOGLE');
 CREATE TABLE identity (
     provider identity_strategy NOT NULL,
     provider_identity TEXT NOT NULL,
-    email TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Changed type and default
     updated_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Changed type and default
     last_successful_at TIMESTAMPTZ,                -- Changed type
