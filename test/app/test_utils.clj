@@ -5,6 +5,7 @@
    [app.db.connection-pool :as db.pool]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [java-time.api :as t]
    [next.jdbc :as jdbc]
    [next.jdbc.transaction]
    [ragtime.next-jdbc :as ragtime.next-jdbc]
@@ -80,3 +81,24 @@
                 next.jdbc.transaction/*nested-tx* :ignore] ; Set nested transaction to ignore to allow silently nested transactions
         (f)))
     (throw (IllegalStateException. "Test datasource is not initialized for transaction fixture. Ensure db-fixture runs first."))))
+
+(defn do-global-frozen-time
+  "Internal helper for with-global-frozen-time."
+  [f]
+  (if-let [tx db/*current-connection*] ; Check if inside a transaction
+    (let [ts-str (t/format :iso-offset-date-time (t/with-offset (t/offset-date-time) 0))] ; Ensure UTC
+      (log/debug "Freezing transaction time to:" ts-str)
+      ;; Set the custom session variable used by get_current_timestamp()
+      (jdbc/execute! tx [(str "SET LOCAL vars.frozen_timestamp = '" ts-str "'")])
+      (f)
+      ;; Unset the custom session variable
+      (jdbc/execute! tx ["SET LOCAL vars.frozen_timestamp = ''"])
+      ) ; Run the test code
+   (throw (IllegalStateException. "freeze-time-fixture must run within a transaction (e.g., inside rollback-fixture)"))))
+
+(defmacro with-global-frozen-time
+  "Freezes the time via java-time.api/with-clock and also freezes time within the current postgresql transaction."
+  [time & body]
+  `(t/with-clock (t/mock-clock ~time)
+     (do-global-frozen-time
+      (fn [] ~@body))))
