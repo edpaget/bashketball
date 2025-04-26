@@ -5,17 +5,18 @@
    [app.models :as models]
    [app.db :as db]
    [clojure.test :refer :all]
-   [java-time.api :as t]))
+   [java-time.api :as t]
+   [camel-snake-kebab.core :as csk]))
 
 ;; --- Test Data ---
 
 (def test-jwks-url "http://fake-jwks.com/certs")
-(def test-strategy #pg_enum :identity-strategy/SIGN_IN_WITH_GOOGLE)
+(def test-strategy :identity-strategy/SIGN_IN_WITH_GOOGLE)
 (def test-token "fake-jwt-token")
 (def test-sub "user-subject-123")
 (def existing-identity
   {:provider           test-strategy
-   :provider_identity  test-sub
+   :provider-identity  test-sub
    :email              "test@example.com"})
 
 ;; --- Fixtures ---
@@ -36,16 +37,16 @@
 
       (db/with-debug
         (db/execute-one! {:insert-into [(models/->table-name ::models/Identity)]
-                          :columns     (keys existing-identity)
-                          :values      [(vals existing-identity)]}))
+                          :columns     (map csk/->snake_case_keyword  (keys existing-identity))
+                          :values      [(vals (update existing-identity :provider db/->pg_enum))]}))
 
       (testing "Successful authentication - existing identity"
         (let [result (authenticator {:token test-token})]
           (is (= (assoc existing-identity
-                        :created_at #inst "2023-01-23T09:11:00.000000000-00:00"
-                        :updated_at #inst "2023-01-23T09:11:00.000000000-00:00"
-                        :last_successful_at #inst "2023-01-23T09:11:00.000000000-00:00"
-                        :last_failed_at nil)
+                        :created-at #inst "2023-01-23T09:11:00.000-00:00"
+                        :updated-at #inst "2023-01-23T09:11:00.000-00:00"
+                        :last-successful-at #inst "2023-01-23T09:11:00.000-00:00"
+                        :last-failed-at nil)
                  result)
               "Should return the existing identity")))
       (comment

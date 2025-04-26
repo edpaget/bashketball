@@ -1,8 +1,11 @@
 (ns app.db
   (:require
    [app.db.connection-pool :as db.pool]
+   [app.db.jdbc-ext]
    [integrant.core :as ig]
    [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as rs]
+   [next.jdbc.date-time]
    [honey.sql :as sql]
    [clojure.tools.logging :as log]
    [camel-snake-kebab.core :as csk])
@@ -21,6 +24,11 @@
       (doto (PGobject.)
         (.setType pg-type)
         (.setValue pg-value)))))
+
+(extend-protocol ToPgEnum
+  clojure.lang.Symbol
+  (->pg_enum [v]
+    `(->pg_enum ~v)))
 
 (def ^:dynamic *debug*
   "Dynamic var for emitting debug information for database queries."
@@ -74,6 +82,8 @@
     :else
     (throw (IllegalStateException. "No active connection (*current-connection*) or datasource (*datasource*) available."))))
 
+(def ^:private default-next-jdbc-opts {:builder-fn rs/as-unqualified-kebab-maps})
+
 (defn- call-jdbc-fn
   "Helper to call the appropriate next.jdbc function, managing connections.
    `jdbc-fn` is the function like jdbc/execute!
@@ -82,24 +92,20 @@
    `opts` is the third arg (optional options map)."
   [jdbc-fn connectable-or-sql sql-or-opts & [opts]]
   (if (instance? java.sql.Connection connectable-or-sql)
-    (let [sql-vec (compile-honeysql sql-or-opts)]
-      (if opts
-        (jdbc-fn connectable-or-sql sql-vec opts)
-        (jdbc-fn connectable-or-sql sql-vec)))
+    (let [sql-vec (compile-honeysql sql-or-opts)
+          opts* (merge default-next-jdbc-opts opts)]
+      (jdbc-fn connectable-or-sql sql-vec opts*))
     ;; No explicit connectable, rely on dynamic vars
-    (let [sql-vec (compile-honeysql connectable-or-sql) ; First arg is SQL/HoneySQL
-          effective-opts (if-not (nil? sql-or-opts) sql-or-opts opts)] ; Second arg might be opts
-      (if (and (bound? #'*current-connection*) *current-connection*)
+    (let [sql-vec (compile-honeysql connectable-or-sql)
+          effective-opts (merge default-next-jdbc-opts
+                                (if-not (nil? sql-or-opts) sql-or-opts opts))]
+      (if *current-connection*
         ;; Use existing bound connection
-        (if effective-opts
-          (jdbc-fn *current-connection* sql-vec effective-opts)
-          (jdbc-fn *current-connection* sql-vec))
+        (jdbc-fn *current-connection* sql-vec effective-opts)
         ;; No existing connection, use do-with-connection to get one
         (do-with-connection
-         (fn [_]                  ; Function to run within the connection context
-           (if effective-opts
-             (jdbc-fn *current-connection* sql-vec effective-opts) ; *current-connection* is now bound
-             (jdbc-fn *current-connection* sql-vec))))))))
+         (fn [conn]
+           (jdbc-fn conn sql-vec effective-opts)))))))
 
 ;; Define the public query functions
 

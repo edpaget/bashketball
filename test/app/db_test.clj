@@ -78,7 +78,7 @@
                       (h/from :actor)
                       (h/where [:in :id [uuid5 uuid6]]))
             actors (into #{} (map #(select-keys % [:username]))
-                         (db/plan query {:builder-fn rs/as-unqualified-maps}))]
+                         (db/plan query))]
         (is (= #{{:username "johnnyl"} {:username "betten"}} actors))))) ; Use set comparison for unordered results
 
   (testing "Select multiple using explicit connection"
@@ -91,7 +91,7 @@
                         (h/from :actor)
                         (h/where [:in :id [uuid7 uuid8]]))
               actors (into #{} (map #(select-keys % [:username]))
-                           (db/plan tx query {:builder-fn rs/as-unqualified-maps}))]
+                           (db/plan tx query))]
           (is (= #{{:username "gracem"} {:username "mattj"}} actors))))))) ; Use set comparison
 
 (deftest with-connection-test

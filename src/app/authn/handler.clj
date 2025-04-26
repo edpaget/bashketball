@@ -26,17 +26,17 @@
        (if (db/execute-one! {:select [true]
                              :from   [(models/->table-name ::models/Identity)]
                              :where  [:and
-                                      [:= :provider strategy]
+                                      [:= :provider #pg_enum strategy]
                                       [:= :provider-identity sub]]})
          ; update the models so we know when the last successful authentication was
          (db/execute-one! {:update    [(models/->table-name ::models/Identity)]
                            :set       {:last_successful_at (t/with-offset (t/offset-date-time) 0)}
                            :where     [:and
-                                       [:= :provider strategy]
+                                       [:= :provider #pg_enum strategy]
                                        [:= :provider-identity sub]]
                            :returning [:*]})
 
          (db/execute-one! {:insert-into [(models/->table-name ::models/Identity)]
                            :columns     [:provider :provider_identity :last_successful_at]
-                           :values      [[strategy sub (t/with-offset (t/offset-date-time) 0)]]
+                           :values      [[#pg_enum strategy sub (t/with-offset (t/offset-date-time) 0)]]
                            :returning   [:*]}))))))
