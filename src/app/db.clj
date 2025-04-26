@@ -3,7 +3,35 @@
    [app.db.connection-pool :as db.pool]
    [integrant.core :as ig]
    [next.jdbc :as jdbc]
-   [honey.sql :as sql]))
+   [honey.sql :as sql]
+   [clojure.tools.logging :as log]
+   [camel-snake-kebab.core :as csk])
+  (:import
+   [org.postgresql.util PGobject]))
+
+(defprotocol ToPgEnum
+  (->pg_enum [this]
+    "Coerce an object into a postgresql enum type."))
+
+(extend-protocol ToPgEnum
+  clojure.lang.Keyword
+  (->pg_enum [v]
+    (let [pg-type (csk/->snake_case (namespace v))
+          pg-value (name v)]
+      (doto (PGobject.)
+        (.setType pg-type)
+        (.setValue pg-value)))))
+
+(def ^:dynamic *debug*
+  "Dynamic var for emitting debug information for database queries."
+  false)
+
+(defmacro debug
+  [& body]
+  `(let [result# ((fn [] ~@body))]
+     (when *debug*
+       (log/debug result#))
+     result#))
 
 (def ^:dynamic *datasource*
   "Dynamic var holding the application's datasource (connection pool).
@@ -20,9 +48,10 @@
   "Compiles a HoneySQL map into a JDBC-compatible vector [sql-string params...].
    If the input is not a map, returns it unchanged."
   [sql-map-or-vec]
-  (if (map? sql-map-or-vec)
-    (sql/format sql-map-or-vec)
-    sql-map-or-vec))
+  (debug
+   (if (map? sql-map-or-vec)
+     (sql/format sql-map-or-vec)
+     sql-map-or-vec)))
 
 (defn do-with-connection
   "Internal helper. Executes function `f` within a connection context.
@@ -129,3 +158,9 @@
 
 (defmethod ig/halt-key! ::pool [_ datasource]
   (db.pool/close-pool! datasource))
+
+(defmacro with-debug
+  "Set the debug dynamic var for any queries executed within the macro body"
+  [& body]
+  `(binding [*debug* true]
+     ~@body))

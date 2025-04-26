@@ -7,8 +7,8 @@ CREATE TABLE identity (
     provider identity_strategy NOT NULL,
     provider_identity TEXT NOT NULL,
     email TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
+    created_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Changed type and default
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Changed type and default
     last_successful_at TIMESTAMPTZ,                -- Changed type
     last_failed_at TIMESTAMPTZ,                   -- Changed type
     PRIMARY KEY (provider, provider_identity)

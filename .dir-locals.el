@@ -1,3 +1,2 @@
-((nil
-  (cider-clojure-cli-parameters . "-A:dev")
-  (cider-clojure-cli-global-options . "-A:dev")))
+((clojure-mode
+  (cider-clojure-cli-aliases . ":dev:test")))

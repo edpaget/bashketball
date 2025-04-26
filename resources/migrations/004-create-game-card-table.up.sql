@@ -37,8 +37,8 @@ CREATE TABLE game_card (
     coaching TEXT,
     fate INT,
     asset_power TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
+    created_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(),
     PRIMARY KEY (name, version)
 );
 

@@ -1,7 +1,8 @@
 (ns app.models
   (:require
    [malli.core :as mc]
-   [app.registry :as registry]))
+   [app.registry :as registry]
+   [camel-snake-kebab.core :as csk]))
 
 (registry/defschema ::IdentityStrategy
   [:enum "INVALID" "SIGN_IN_WITH_GOOGLE"])
@@ -154,3 +155,8 @@
 (defn validate
   [type value]
   ((-validator type) value))
+
+(defn ->table-name
+  [type]
+  (or (-> type mc/deref mc/properties ::table_name)
+      (-> type name csk/->snake_case_keyword)))
