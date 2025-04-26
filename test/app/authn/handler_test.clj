@@ -5,8 +5,7 @@
    [app.models :as models]
    [app.db :as db]
    [clojure.test :refer :all]
-   [java-time.api :as t]
-   [camel-snake-kebab.core :as csk]))
+   [java-time.api :as t]))
 
 ;; --- Test Data ---
 
@@ -37,7 +36,7 @@
 
       (db/with-debug
         (db/execute-one! {:insert-into [(models/->table-name ::models/Identity)]
-                          :columns     (map csk/->snake_case_keyword  (keys existing-identity))
+                          :columns     (keys existing-identity)
                           :values      [(vals (update existing-identity :provider db/->pg_enum))]}))
 
       (testing "Successful authentication - existing identity"
