@@ -170,3 +170,19 @@
   [& body]
   `(binding [*debug* true]
      ~@body))
+
+(defn do-with-transaction
+  "impl for with-transaction"
+  [connectable-or-nil thunk]
+  (if connectable-or-nil
+    (next.jdbc/with-transaction [tx connectable-or-nil]
+      (thunk tx))
+    (do-with-connection (fn [conn]
+                          (next.jdbc/with-transaction [tx conn]
+                            (thunk tx))))))
+
+(defmacro with-transaction
+  "Open a transaction from the supplied connection, *current-connection*, or a
+  new connection from *datasource*."
+  [[bind & [maybe-connectable]] & body]
+  `(do-with-transaction ~maybe-connectable (fn [~bind] ~@body)))

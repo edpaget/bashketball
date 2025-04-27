@@ -2,10 +2,10 @@
 -- Create the combined app_authorization table
 CREATE TABLE app_authorization (
     id UUID PRIMARY KEY,                          -- Session/Authorization ID
-    actor_id UUID NOT NULL,                       -- Link to the actor
+    actor_id TEXT NOT NULL,                       -- Link to the actor
     provider identity_strategy NOT NULL,          -- Identity provider (e.g., 'SIGN_IN_WITH_GOOGLE', 'local')
     provider_identity TEXT NOT NULL,              -- User's ID from the provider
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- Changed type and default
+    created_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Changed type and default
     expires_at TIMESTAMPTZ,                       -- Changed type
 
     -- Define the foreign key to the actor table

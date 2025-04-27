@@ -35,8 +35,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TABLE actor (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username TEXT UNIQUE NOT NULL,
+    id TEXT PRIMARY KEY,
+    use_name TEXT,
     enrollment_state TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp(), -- Use custom timestamp function
     updated_at TIMESTAMPTZ NOT NULL DEFAULT get_current_timestamp()  -- Use custom timestamp function
