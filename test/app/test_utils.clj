@@ -3,6 +3,7 @@
    [app.config :as config]
    [app.db :as db]
    [app.db.connection-pool :as db.pool]
+   [app.models :as models] ; Add models namespace
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [java-time.api :as t]
@@ -92,9 +93,8 @@
       (jdbc/execute! tx [(str "SET LOCAL vars.frozen_timestamp = '" ts-str "'")])
       (f)
       ;; Unset the custom session variable
-      (jdbc/execute! tx ["SET LOCAL vars.frozen_timestamp = ''"])
-      ) ; Run the test code
-   (throw (IllegalStateException. "freeze-time-fixture must run within a transaction (e.g., inside rollback-fixture)"))))
+      (jdbc/execute! tx ["SET LOCAL vars.frozen_timestamp = ''"])) ; Run the test code
+    (throw (IllegalStateException. "freeze-time-fixture must run within a transaction (e.g., inside rollback-fixture)"))))
 
 (defmacro with-global-frozen-time
   "Freezes the time via java-time.api/with-clock and also freezes time within the current postgresql transaction."
@@ -102,3 +102,49 @@
   `(t/with-clock (t/mock-clock ~time)
      (do-global-frozen-time
       (fn [] ~@body))))
+
+(defmacro with-inserted-data
+  "Inserts data into specified tables before executing the body,
+   then deletes the inserted rows afterwards. Ensures cleanup even if body throws.
+
+   Bindings should be a vector: [model-keyword data-map ...]
+   e.g., [::models/Actor {:id \"actor1\"} ::models/Identity {:provider :identity-strategy/SIGN_IN_WITH_GOOGLE :provider-identity \"actor1\"}]
+
+   Requires an active transaction (e.g., within rollback-fixture)."
+  [bindings & body]
+  (when-not (vector? bindings)
+    (throw (IllegalArgumentException. "Bindings must be a vector.")))
+  (when-not (even? (count bindings))
+    (throw (IllegalArgumentException. "Bindings must have an even number of elements (model-keyword data-map pairs).")))
+
+  (let [pairs (partition 2 bindings)
+        ;; Generate symbols for storing insert results (IDs)
+        id-syms (mapv (fn [_] (gensym "inserted-id-")) pairs)
+        ;; Generate let bindings for insertion
+        let-bindings (mapcat (fn [[model-kw data-map] id-sym]
+                               `[~id-sym (let [table# (models/->table-name ~model-kw)
+                                               cols# (vec (keys ~data-map))
+                                               vals# (vec (vals ~data-map))]
+                                           (db/execute-one! {:insert-into table#
+                                                             :columns     cols#
+                                                             :values      [vals#]
+                                                             :returning   (models/->pk ~model-kw)}))])
+                             pairs id-syms)
+        ;; Generate cleanup forms (delete in reverse order)
+        cleanup-forms (map (fn [[model-kw _] id-sym]
+                             `(let [table# (models/->table-name ~model-kw)
+                                    id# (vals ~id-sym)] ; Extract ID from the insert result
+                                (when id# ; Only delete if insert succeeded and returned an ID
+                                  (db/execute! {:delete-from table#
+                                                :where       (into [:and]
+                                                                   (map (fn [[k# v#]]
+                                                                          (if (keyword? v#)
+                                                                            [:= k# (db/->pg_enum v#)]
+                                                                            [:= k# v#])))
+                                                                   (zipmap (models/->pk ~model-kw) id#))}))))
+                           (reverse pairs) (reverse id-syms))]
+    `(let [~@let-bindings]
+       (try
+         ~@body
+         (finally
+           ~@cleanup-forms)))))

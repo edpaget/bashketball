@@ -176,10 +176,12 @@
   [connectable-or-nil thunk]
   (if connectable-or-nil
     (next.jdbc/with-transaction [tx connectable-or-nil]
-      (thunk tx))
+      (binding [*current-connection* tx]
+        (thunk tx)))
     (do-with-connection (fn [conn]
-                          (next.jdbc/with-transaction [tx conn]
-                            (thunk tx))))))
+                          (binding [*current-connection* conn]
+                            (next.jdbc/with-transaction [tx conn]
+                              (thunk tx)))))))
 
 (defmacro with-transaction
   "Open a transaction from the supplied connection, *current-connection*, or a

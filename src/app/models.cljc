@@ -160,3 +160,8 @@
   [type]
   (or (-> type mc/deref mc/properties ::table_name)
       (-> type name csk/->snake_case_keyword)))
+
+(defn ->pk
+  "Return the primary key of the model as a vector"
+  [type]
+  (or (-> type mc/deref mc/properties ::pk) :id))

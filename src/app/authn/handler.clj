@@ -77,13 +77,13 @@
                                         :from [(models/->table-name ::models/Actor)]
                                         :where [:= :id provider-identity]})
               (db/execute-one! {:insert-into [(models/->table-name ::models/Actor)]
-                                :columns [:id :enrollment-state]
-                                :values [provider-identity "incomplete"]}))
+                                :columns     [:id :enrollment-state]
+                                :values      [[provider-identity "incomplete"]]}))
             [(:id
               (db/execute-one! {:insert-into [(models/->table-name ::models/AppAuthorization)]
-                                :columns [:actor_id :provider :provider-identity]
-                                :values [provider-identity provider provider-identity]
-                                :returning [:id]}))
+                                :columns     [:actor_id :provider :provider-identity]
+                                :values      [[provider-identity #pg_enum provider provider-identity]]
+                                :returning   [:id]}))
              204]))))))
 
 (me/defn make-authn-handler :- [:map [:status :int] [:cookies :map] [:body :map]]

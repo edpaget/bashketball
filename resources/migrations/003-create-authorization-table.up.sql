@@ -1,7 +1,7 @@
 
 -- Create the combined app_authorization table
 CREATE TABLE app_authorization (
-    id UUID PRIMARY KEY,                          -- Session/Authorization ID
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(), -- Session/Authorization ID
     actor_id TEXT NOT NULL,                       -- Link to the actor
     provider identity_strategy NOT NULL,          -- Identity provider (e.g., 'SIGN_IN_WITH_GOOGLE', 'local')
     provider_identity TEXT NOT NULL,              -- User's ID from the provider
