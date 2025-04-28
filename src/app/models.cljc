@@ -21,7 +21,7 @@
   [:map
    [:id :string]
    [:enrollment-state :string]
-   [:username [:maybe :string]]
+   [:use-name [:maybe :string]]
    [:created-at {:default-now true} :time/instant]
    [:updated-at {:default-now true} :time/instant]])
 
@@ -164,4 +164,4 @@
 (defn ->pk
   "Return the primary key of the model as a vector"
   [type]
-  (or (-> type mc/deref mc/properties ::pk) :id))
+  (or (-> type mc/deref mc/properties ::pk) [:id]))

@@ -5,7 +5,8 @@
    [app.models :as models]
    [app.db :as db]
    [clojure.test :refer :all]
-   [java-time.api :as t]))
+   [java-time.api :as t]
+   [ring.util.response :as response])) ; Added for response checks
 
 ;; --- Test Data ---
 
@@ -39,6 +40,20 @@
   "Mock authenticator that always fails."
   [_] ; Accepts the token directly
   nil)
+
+;; --- Mocks for make-authn-handler ---
+(def test-session-id (java.util.UUID/randomUUID))
+(def test-cookie-name "test-session")
+
+(defn mock-auth-creator-success
+  "Mock authorization creator that always succeeds."
+  [_request _] ; Takes the request map
+  [test-session-id 204])
+
+(defn mock-auth-creator-failure
+  "Mock authorization creator that always fails."
+  [_request _] ; Takes the request map
+  ["Auth failed!" 401])
 
 ;; --- Tests ---
 
@@ -178,3 +193,49 @@
             [message status] (creator {:token test-token :role "admin"})]
         (is (= 401 status))
         (is (= "Unable to assume role admin" message))))))
+
+
+(deftest make-authn-handler-test
+  (testing "Successful authentication"
+    (let [handler (authn.handler/make-authn-handler
+                   {:authorization-creator mock-auth-creator-success
+                    :cookie-name           test-cookie-name})
+          request {:body {:token "some-token" :action "login"}} ; Example request
+          response (handler request)]
+      (is (= 204 (:status response)))
+      (is (= {test-cookie-name {:value test-session-id}}
+             (get-in response [:cookies]))
+          "Should set the session cookie")))
+
+  (testing "Failed authentication"
+    (let [handler (authn.handler/make-authn-handler
+                   {:authorization-creator mock-auth-creator-failure
+                    :cookie-name           test-cookie-name})
+          request {:body {:token "bad-token" :action "login"}} ; Example request
+          response (handler request)]
+      (is (= 401 (:status response)))
+      (is (= {:errors ["Auth failed!"]} (:body response)))
+      (is (not (contains? (:headers response) "Set-Cookie"))
+          "Should not set a cookie on failure")))
+
+ (testing "Logout action"
+   (let [logout-session-id (java.util.UUID/randomUUID)]
+     ;; Ensure the actor exists for the foreign key constraint
+     (tu/with-inserted-data [::models/Identity (update existing-identity :provider db/->pg_enum)
+                             ::models/Actor {:id test-actor-id :enrollment-state "incomplete"}
+                             ::models/AppAuthorization
+                             {:id                logout-session-id
+                              :actor-id          test-actor-id ; Assuming test-actor-id exists or is created elsewhere
+                              :provider          #pg_enum test-strategy
+                              :provider-identity test-email
+                              :created-at        (t/instant)}]
+       (let [handler (authn.handler/make-authn-handler
+                      {:authorization-creator mock-auth-creator-success ; Not called for logout
+                       :cookie-name           test-cookie-name})
+             request {:cookies {test-cookie-name logout-session-id} ; Add cookie header
+                      :body    {:action "logout"}} ; Logout request
+             response (handler request)]
+         (is (= 204 (:status response)))
+         (is (= {test-cookie-name {:value logout-session-id :max-age 1}} ; Correct max-age for expired cookie
+                (:cookies response)) ; Use :cookies directly as ring sets it this way
+             "Should set an expired session cookie"))))))

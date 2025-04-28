@@ -7,7 +7,7 @@
    [ring.middleware.reload :as ring.reload]
    [ring.util.response :as ring.response]
    [integrant.core :as ig]
-   [app.authn.middleware :as authn]))
+   [app.authz.middleware :as authz]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
@@ -31,32 +31,33 @@
         (respond (index-handler-fn request)))))))
 
 (defn make-handler
-  [{:keys [session-authenticator
-           session-creator
-           schema-handler]}]
+  [{:keys [authn-handler config graphql-handler]
+    :or {graphql-handler (fn [req] {:status 200})}}]
   (r/ring-handler
    (r/router
     [["/ping" {:get ping-handler}]
-     ["/authn" {:post session-creator
-                :middleware [ring.json/wrap-json-body
+     ["/authn" {:post authn-handler
+                :middleware [[ring.json/wrap-json-body {:keywords? true}]
                              ring.cookies/wrap-cookies]}]
-     ["/graphql" {:post schema-handler
+     ["/graphql" {:post graphql-handler
                   :middleware [ring.json/wrap-json-response
-                               ring.json/wrap-json-body
+                               [ring.json/wrap-json-body {:keywords? true}]
                                ring.cookies/wrap-cookies
-                               (authn/wrap-session-authn session-authenticator)]}]])
+                               [authz/wrap-current-actor (-> config :authn :cookie-name)]]}]])
    (r/routes
     (r/create-file-handler {:path "/js" :root "public/js"})
     (r/create-file-handler {:path "/main.css" :root "public/main.css"})
     (create-index-handler)
     (r/create-default-handler))))
 
-(defmethod ig/init-key ::jetty [_ {:keys [handler reload] :as opts}]
-  (let [thread-pool (java.util.concurrent.Executors/newVirtualThreadPerTaskExecutor)]
+(defmethod ig/init-key ::jetty [_ {:keys [handler reload? config] :as opts}]
+  (let [thread-pool (doto (org.eclipse.jetty.util.thread.VirtualThreadPool.)
+                      (.setTracking true))]
     (run-jetty (cond-> handler
-                 reload ring.reload/wrap-reload)
+                 reload? ring.reload/wrap-reload)
                (-> opts
-                   (dissoc :handler :reload)
+                   (assoc :port (:app-port config))
+                   (dissoc :handler :reload :config)
                    (assoc :join? false :thread-pool thread-pool)))))
 
 (defmethod ig/init-key ::router [_ opts]

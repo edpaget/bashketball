@@ -1,4 +1,4 @@
-{:app-port #or [#env APP_PORT "3000"]
+{:app-port #long #or [#env APP_PORT "3000"]
  :database-url #profile {:default #or [#env DATABASE_URL "jdbc:postgresql://localhost:5432/blood_basket?user=postgres&password=password"]
                          :test  "jdbc:postgresql://localhost:5432/blood_basket_test?user=postgres&password=password"}
  :auth {:cookie-name "BB_COOKIE"

@@ -91,9 +91,9 @@
                                                    [:authorization-creator ::authorization-creator]
                                                    [:cookie-name :string]]]
   (fn [{:keys [body cookies]}]
-    (condp = (get body "action")
-      "login" (let [[result status] (authorization-creator (get body "id-token")
-                                                           (get body "role" "-self"))]
+    (condp = (get body :action)
+      "login" (let [[result status] (authorization-creator (get body :id-token)
+                                                           (get body :role "-self"))]
                 (condp = status
                   204 (-> {:status status}
                           (ring.response/set-cookie cookie-name result))
@@ -101,12 +101,13 @@
                        :body {:errors [result]}}))
       "logout" (if-let [session-id (get cookies cookie-name)]
                  (do
-                   (db/execute-one! {:update [(models/->table-name ::models/AppAuthorizationk)]
+                   (db/execute-one! {:update [(models/->table-name ::models/AppAuthorization)]
                                      :set    {:expires-at (t/with-offset (t/offset-date-time) 0)}
                                      :where  [:= :id session-id]})
-                   (-> {:stauts 204}
+                   (-> {:status 204}
                        (ring.response/set-cookie cookie-name session-id {:max-age 1})))
-                 {:status 400}))))
+                 {:status 400
+                  :body {:errors ["No session to logout"]}}))))
 
 (defmethod ig/init-key ::auth-handler [_ {:keys [config]}]
   (let [{:keys [cookie-name google-jwks]} (:auth config)]
