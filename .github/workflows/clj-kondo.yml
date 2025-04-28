@@ -16,7 +16,7 @@ jobs:
       - name: Set up clj-kondo
         uses: DeLaGuardo/setup-clj-kondo@v1
         with:
-          version: 'latest' # Or pin to a specific version
+          version: '2025.04.07'
 
       - name: Run clj-kondo
         run: clj-kondo --lint src test
