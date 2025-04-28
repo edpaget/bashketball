@@ -1,0 +1,22 @@
+name: clj-kondo Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up clj-kondo
+        uses: clj-kondo/setup-clj-kondo@v1
+        with:
+          version: 'latest' # Or pin to a specific version
+
+      - name: Run clj-kondo
+        run: clj-kondo --lint src test
