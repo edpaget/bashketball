@@ -1,6 +1,6 @@
 (ns app.graphql.client
   (:require
-   [app.models.core :as mc]
+   [app.models :as mc]
    [camel-snake-kebab.core :as csk]
    ["@apollo/client" :as apollo.client]))
 
