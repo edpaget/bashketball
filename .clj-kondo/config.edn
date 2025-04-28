@@ -1,3 +1,2 @@
 {:lint-as {uix.core/defui clojure.core/defn}
- :linters {:require-sorted {:level :error}
-           :import-sorted {:level :warning}}}
+ :hooks {:analyze-call {app.db/with-transaction hooks.app.db/with-transaction}}}

@@ -4,14 +4,13 @@
    [app.models :as models]
    [app.registry :as registry]
    [com.github.sikt-no.clj-jwt :as clj-jwt]
+   [integrant.core :as tg]
    [java-time.api :as t]
    [malli.experimental :as me]
    [ring.util.response :as ring.response]
    [clojure.tools.logging :as log]
-   [clojure.string :as str]))
-
-(def jwks "https://www.googleapis.com/oauth2/v3/certs")
-(def cookie-name "BB_COOKIE")
+   [clojure.string :as str]
+   [integrant.core :as ig]))
 
 (registry/defschema ::authenticator
   [:=> [:cat :map] [:maybe ::models/Identity]])
@@ -88,7 +87,9 @@
 
 (me/defn make-authn-handler :- [:map [:status :int] [:cookies :map] [:body :map]]
   "Ring handler for the authn-endpoint"
-  [{:keys [authorization-creator]} :- [:map [:authorization-creator ::authorization-creator]]]
+  [{:keys [authorization-creator cookie-name]} :- [:map
+                                                   [:authorization-creator ::authorization-creator]
+                                                   [:cookie-name :string]]]
   (fn [{:keys [body cookies]}]
     (condp = (get body "action")
       "login" (let [[result status] (authorization-creator (get body "id-token")
@@ -106,3 +107,12 @@
                    (-> {:stauts 204}
                        (ring.response/set-cookie cookie-name session-id {:max-age 1})))
                  {:status 400}))))
+
+(defmethod ig/init-key ::auth-handler [_ {:keys [config]}]
+  (let [{:keys [cookie-name google-jwks]} (:auth config)]
+    (make-authn-handler
+     {:cookie-name cookie-name
+      :authorization-creator (make-token-authorization-creator
+                              {:authenticator (make-id-token-authenticator
+                                               {:jwks-url google-jwks
+                                                :strategy :identity-stragety/SIGN_IN_WITH_GOOGLE})})})))

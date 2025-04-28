@@ -5,7 +5,7 @@
    [camel-snake-kebab.core :as csk]))
 
 (registry/defschema ::IdentityStrategy
-  [:enum "INVALID" "SIGN_IN_WITH_GOOGLE"])
+  [:enum :identity-strategy/SIGN_IN_WITH_GOOGLE :identity-strategy/INVALID])
 
 (registry/defschema ::Identity
   [:map {::pk [:provider :provider_identity]}
