@@ -3,9 +3,15 @@
                                    :config #ig/ref :app.config/config
                                    :reload? true}
  :app.server/router               {:authn-handler #ig/ref :app.authn.handler/auth-handler
-                                   :config #ig/ref :app.config/config}
+                                   :config #ig/ref :app.config/config
+                                   :db-pool #ig/ref :app.db/pool}
  :app.authn.handler/auth-handler  {:config #ig/ref :app.config/config}
  :app.db/pool                     {:config #ig/ref :app.config/config}
+ :duct.compiler.cljs.shadow/server {:build
+                                    {:target :browser
+                                     :modules {:main {:entries [app.core]
+                                                      :init-fn app.core/init}}
+                                     :devtools {:preloads [uix.preload devtools.preload]}}}
  ;; :app.graphql/schema-handler      {}
  ;; :app.shadow/server               {}
  }

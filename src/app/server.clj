@@ -7,7 +7,8 @@
    [ring.middleware.reload :as ring.reload]
    [ring.util.response :as ring.response]
    [integrant.core :as ig]
-   [app.authz.middleware :as authz]))
+   [app.authz.middleware :as authz]
+   [app.db :as db]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
@@ -31,24 +32,25 @@
         (respond (index-handler-fn request)))))))
 
 (defn make-handler
-  [{:keys [authn-handler config graphql-handler]
+  [{:keys [authn-handler config db-pool graphql-handler]
     :or {graphql-handler (fn [req] {:status 200})}}]
-  (r/ring-handler
-   (r/router
-    [["/ping" {:get ping-handler}]
-     ["/authn" {:post authn-handler
-                :middleware [[ring.json/wrap-json-body {:keywords? true}]
-                             ring.cookies/wrap-cookies]}]
-     ["/graphql" {:post graphql-handler
-                  :middleware [ring.json/wrap-json-response
-                               [ring.json/wrap-json-body {:keywords? true}]
-                               ring.cookies/wrap-cookies
-                               [authz/wrap-current-actor (-> config :authn :cookie-name)]]}]])
-   (r/routes
-    (r/create-file-handler {:path "/js" :root "public/js"})
-    (r/create-file-handler {:path "/main.css" :root "public/main.css"})
-    (create-index-handler)
-    (r/create-default-handler))))
+  (binding [db/*datasource* db-pool]
+    (r/ring-handler
+     (r/router
+      [["/ping" {:get ping-handler}]
+       ["/authn" {:post authn-handler
+                  :middleware [[ring.json/wrap-json-body {:keywords? true}]
+                               ring.cookies/wrap-cookies]}]
+       ["/graphql" {:post graphql-handler
+                    :middleware [ring.json/wrap-json-response
+                                 [ring.json/wrap-json-body {:keywords? true}]
+                                 ring.cookies/wrap-cookies
+                                 [authz/wrap-current-actor (-> config :authn :cookie-name)]]}]])
+     (r/routes
+      (r/create-file-handler {:path "/js" :root "public/js"})
+      (r/create-file-handler {:path "/main.css" :root "public/main.css"})
+      (create-index-handler)
+      (r/create-default-handler)))))
 
 (defmethod ig/init-key ::jetty [_ {:keys [handler reload? config] :as opts}]
   (let [thread-pool (doto (org.eclipse.jetty.util.thread.VirtualThreadPool.)
