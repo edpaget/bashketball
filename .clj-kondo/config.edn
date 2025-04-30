@@ -1,2 +1,3 @@
 {:lint-as {uix.core/defui clojure.core/defn}
- :hooks {:analyze-call {app.db/with-transaction hooks.app.db/with-transaction}}}
+ :hooks {:analyze-call {app.db/with-transaction hooks.app.db/with-transaction
+                        app.db/with-connection  hooks.app.db/with-connection}}}

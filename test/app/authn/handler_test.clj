@@ -4,9 +4,8 @@
    [app.test-utils :as tu]
    [app.models :as models]
    [app.db :as db]
-   [clojure.test :refer :all]
-   [java-time.api :as t]
-   [ring.util.response :as response])) ; Added for response checks
+   [clojure.test :refer [deftest is use-fixtures testing]]
+   [java-time.api :as t]))
 
 ;; --- Test Data ---
 

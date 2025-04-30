@@ -31,3 +31,26 @@
       (api/reg-finding! (assoc (meta node)
                                :message "app.db/with-transaction expects a vector of [symbol] or [symbol expression] and a body."
                                :type :kondo.lint/invalid-arity)))))
+
+(defn with-connection
+  "Hook for app.db/with-connection macro.
+  Treats (with-connection [conn] body ...) like (let [conn nil] body ...)"
+  [{:keys [node]}]
+  (let [[_ bindings & body] (:children node)
+        bindings-children (when (api/vector-node? bindings)
+                            (:children bindings))
+        bindings-count (count bindings-children)]
+    (cond
+      (and (= 1 bindings-count) (seq body))
+      (let [[binding-sym] bindings-children]
+        ;; Treat the single binding like `(let [conn nil] ...)`
+        ;; The actual value doesn't matter for linting the binding itself.
+        {:node (api/list-node
+                (list* (api/token-node 'let)
+                       (api/vector-node [binding-sym nil])
+                       body))})
+
+      :else
+      (api/reg-finding! (assoc (meta node)
+                               :message "app.db/with-connection expects a vector of [symbol] and a body."
+                               :type :kondo.lint/invalid-arity)))))
