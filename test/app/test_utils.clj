@@ -10,7 +10,9 @@
    [next.jdbc :as jdbc]
    [next.jdbc.transaction]
    [ragtime.next-jdbc :as ragtime.next-jdbc]
-   [ragtime.repl :as ragtime.repl]))
+   [ragtime.repl :as ragtime.repl])
+  (:import
+   [java.util.concurrent.locks ReentrantLock]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,56 +26,71 @@
 
 ;; --- Test Fixtures ---
 
+(defonce ^:private ^ReentrantLock db-fixture-lock (ReentrantLock.))
+(defonce ^:private initialized (atom {:db 0}))
+
 (defn db-fixture [f]
   (let [db-url (:database-url test-config)]
-    (log/info "Ensuring test database exists for URL:" db-url)
-    (try
-      (let [uri (java.net.URI. (str/replace-first db-url #"^jdbc:" ""))
-            scheme (.getScheme uri)
-            host (.getHost uri)
-            port (let [p (.getPort uri)] (if (pos? p) p 5432)) ; Default PG port 5432
-            path (.getPath uri)
-            db-name (when (and path (> (count path) 1)) (subs path 1)) ; Remove leading '/'
-            query-params (.getQuery uri)
-            ;; Construct server URL (connect to 'postgres' db)
-            server-base (str "jdbc:" scheme "://"  host ":" port "/")
-            server-url (str server-base "postgres" (when query-params (str "?" query-params)))]
+    (.lock db-fixture-lock)
+    (when (= 0 (:db @initialized))
+      (log/info "Ensuring test database exists for URL:" db-url)
+      (try
+        (let [uri (java.net.URI. (str/replace-first db-url #"^jdbc:" ""))
+              scheme (.getScheme uri)
+              host (.getHost uri)
+              port (let [p (.getPort uri)] (if (pos? p) p 5432)) ; Default PG port 5432
+              path (.getPath uri)
+              db-name (when (and path (> (count path) 1)) (subs path 1)) ; Remove leading '/'
+              query-params (.getQuery uri)
+              ;; Construct server URL (connect to 'postgres' db)
+              server-base (str "jdbc:" scheme "://"  host ":" port "/")
+              server-url (str server-base "postgres" (when query-params (str "?" query-params)))]
 
-        (when-not db-name
-          (throw (ex-info "Could not parse database name from JDBC URL" {:url db-url})))
+          (when-not db-name
+            (throw (ex-info "Could not parse database name from JDBC URL" {:url db-url})))
 
-        (log/info "Connecting to" server-url "to check/create database" db-name)
-        (with-open [conn (jdbc/get-connection server-url)]
-          (try
-            ;; Use quoting for the database name in case it needs it
-            (let [sql (format "CREATE DATABASE \"%s\"" db-name)]
-              (log/info "Executing:" sql)
-              (jdbc/execute! conn [sql]))
-            (log/info "Database" db-name "created successfully.")
-            (catch java.sql.SQLException e
-              ;; Check if the error is "database already exists" (PostgreSQL specific SQLState 42P04)
-              (if (= "42P04" (.getSQLState e))
-                (log/info "Database" db-name "already exists.")
-                (do
-                  (log/error e "SQL error during database creation check")
-                  (throw e)))))         ; Rethrow other SQL errors
-          (log/info "Database" db-name "is ready.")))
-      (catch Exception e ; Catch parsing errors or rethrown errors from inner blocks
-        (log/error e "Failed to ensure database existence for" db-url)
-        ;; Throw a more informative error to the user
-        (throw (ex-info (str "Failed to ensure test database exists. Check URL, permissions, server status. Original error: " (ex-message e))
-                        {:url db-url} e))))
-    (log/info "Creating connection pool for" db-url)
+          (log/info "Connecting to" server-url "to check/create database" db-name)
+          (with-open [conn (jdbc/get-connection server-url)]
+            (try
+              ;; Use quoting for the database name in case it needs it
+              (let [sql (format "CREATE DATABASE \"%s\"" db-name)]
+                (log/info "Executing:" sql)
+                (jdbc/execute! conn [sql]))
+              (log/info "Database" db-name "created successfully.")
+              (catch java.sql.SQLException e
+                ;; Check if the error is "database already exists" (PostgreSQL specific SQLState 42P04)
+                (if (= "42P04" (.getSQLState e))
+                  (log/info "Database" db-name "already exists.")
+                  (do
+                    (log/error e "SQL error during database creation check")
+                    (throw e)))))     ; Rethrow other SQL errors
+            (log/info "Database" db-name "is ready.")))
+        (catch Exception e ; Catch parsing errors or rethrown errors from inner blocks
+          (.unlock db-fixture-lock)
+          (log/error e "Failed to ensure database existence for" db-url)
+          ;; Throw a more informative error to the user
+          (throw (ex-info (str "Failed to ensure test database exists. Check URL, permissions, server status. Original error: " (ex-message e))
+                          {:url db-url} e))))
+      (log/info "Creating connection pool for" db-url))
     (let [ds (db.pool/create-pool db-url)] ; Create pool using the original URL
-      (binding [db/*datasource* ds]     ; Bind dynamic var for tests using it
+      (when (= 0 (:db @initialized))
         (log/info "Running migrations...")
-        (ragtime.repl/migrate (ragtime-config ds)) ; Apply migrations
-        (try
-          (f)                           ; Run tests
-          (finally
-            (log/info "Rolling back migrations...")
-            (ragtime.repl/rollback (ragtime-config ds) Integer/MAX_VALUE)
-            (db.pool/close-pool! ds)))))))
+        (ragtime.repl/migrate (ragtime-config ds))) ; Apply migrations
+      (swap! initialized update :db inc)
+      (.unlock db-fixture-lock)
+      (try
+        (binding [db/*datasource* ds] ; Bind dynamic var for tests using it
+          (f))                       ; Run tests
+        (finally
+          (try
+            (.lock db-fixture-lock)
+            (when (= 1 (:db @initialized))
+              (log/info "Rolling back migrations...")
+              (ragtime.repl/rollback (ragtime-config ds) Integer/MAX_VALUE))
+            (swap! initialized update :db dec)
+            (finally
+              (.unlock db-fixture-lock)))
+          (db.pool/close-pool! ds))))))
 
 (defn rollback-fixture [f]
   (if-let [ds db/*datasource*] ; Relies on db/*datasource* being bound by db-fixture

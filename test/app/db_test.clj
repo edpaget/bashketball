@@ -5,7 +5,6 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [honey.sql.helpers :as h]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as rs]
    [next.jdbc.transaction]))
 
 (set! *warn-on-reflection* true)
@@ -18,99 +17,103 @@
 (use-fixtures :each tu/rollback-fixture)
 
 ;; --- Helper ---
-(defn- insert-actor! [conn-or-nil {:keys [id username enrollment_state]}]
+(defn- random-email []
+  (str (gensym "test-user-") "@example.com"))
+
+(defn- insert-actor! [conn-or-nil {:keys [id use-name]}]
   (let [query (-> (h/insert-into :actor)
-                  (h/values [{:id id :username username :enrollment_state enrollment_state}]))]
+                  (h/values [{:id id :use-name use-name :enrollment-state "complete"}]))] ; Insert :use-name, ID is already string
     (if conn-or-nil
       (db/execute! conn-or-nil query)
       (db/execute! query))))
 
-(defn- get-actor-by-id [conn-or-nil actor-uuid]
-  (let [query (-> (h/select :id :username :enrollment_state) ; Select specific columns
+(defn- get-actor-by-id [conn-or-nil actor-id] ; Renamed actor-uuid to actor-id
+  (let [query (-> (h/select :id :use-name) ; Select :use-name, remove enrollment_state
                   (h/from :actor)
-                  (h/where [:= :id actor-uuid]))]
+                  (h/where [:= :id actor-id]))]
     (if conn-or-nil
-      (db/execute-one! conn-or-nil query {:builder-fn rs/as-unqualified-maps})
-      (db/execute-one! query {:builder-fn rs/as-unqualified-maps}))))
+      (db/execute-one! conn-or-nil query)
+      (db/execute-one! query))))
 
 ;; --- Tests ---
 
 (deftest execute!-test
   (testing "Insert using dynamic datasource"
-    (let [actor-uuid (random-uuid)
-          result (insert-actor! nil {:id actor-uuid :username "pennyg" :enrollment_state "enrolled"})]
+    (let [actor-id (random-email) ; Use random-email
+          result (insert-actor! nil {:id actor-id :use-name "pennyg"})]
       (is (= [1] (mapv :next.jdbc/update-count result)) "Should return update count of 1")
-      (is (= {:id actor-uuid :username "pennyg" :enrollment_state "enrolled"}
-             (get-actor-by-id nil actor-uuid)))))
+      (is (= {:id actor-id :use-name "pennyg"} ; Check :use-name
+             (get-actor-by-id nil actor-id)))))
 
   (testing "Insert using explicit connection"
     (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}] ; Use a separate tx for explicit connection test
-      (let [actor-uuid (random-uuid)
-            result (insert-actor! tx {:id actor-uuid :username "nickw" :enrollment_state "pending"})]
+      (let [actor-id (random-email) ; Use random-email
+            result (insert-actor! tx {:id actor-id :use-name "nickw"})]
         (is (= [1] (mapv :next.jdbc/update-count result)) "Should return update count of 1")
-        (is (= {:id actor-uuid :username "nickw" :enrollment_state "pending"}
-               (get-actor-by-id tx actor-uuid))))))) ; Read within same explicit tx
+        (is (= {:id actor-id :use-name "nickw"} ; Check :use-name
+               (get-actor-by-id tx actor-id))))))) ; Read within same explicit tx
 
 (deftest execute-one!-test
   (testing "Select one using dynamic datasource"
-    (let [actor-uuid (random-uuid)]
-      (insert-actor! nil {:id actor-uuid :username "edc" :enrollment_state "enrolled"})
-      (let [actor (get-actor-by-id nil actor-uuid)]
-        (is (= {:id actor-uuid :username "edc" :enrollment_state "enrolled"} actor)))))
+    (let [actor-id (random-email)] ; Use random-email
+      (insert-actor! nil {:id actor-id :use-name "edc"})
+      (let [actor (get-actor-by-id nil actor-id)]
+        (is (= {:id actor-id :use-name "edc"} actor))))) ; Check :use-name
 
   (testing "Select one using explicit connection"
     (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}]
-      (let [actor-uuid (random-uuid)]
-        (insert-actor! tx {:id actor-uuid :username "jend" :enrollment_state "invited"})
-        (let [actor (get-actor-by-id tx actor-uuid)]
-          (is (= {:id actor-uuid :username "jend" :enrollment_state "invited"} actor))))))
+      (let [actor-id (random-email)] ; Use random-email
+        (insert-actor! tx {:id actor-id :use-name "jend"})
+        (let [actor (get-actor-by-id tx actor-id)]
+          (is (= {:id actor-id :use-name "jend"} actor)))))) ; Check :use-name
 
   (testing "Select non-existent returns nil"
-    (is (nil? (get-actor-by-id nil (random-uuid))))))
+    (is (nil? (get-actor-by-id nil (random-email)))))) ; Use random-email
 
 (deftest plan-test
   (testing "Select multiple using dynamic datasource"
-    (let [uuid5 (random-uuid)
-          uuid6 (random-uuid)]
-      (insert-actor! nil {:id uuid5 :username "johnnyl" :enrollment_state "enrolled"})
-      (insert-actor! nil {:id uuid6 :username "betten" :enrollment_state "pending"})
-      (let [query (-> (h/select :username) ; Select username
+    (let [id5 (random-email) ; Use random-email
+          id6 (random-email)] ; Use random-email
+      (insert-actor! nil {:id id5 :use-name "johnnyl"})
+      (insert-actor! nil {:id id6 :use-name "betten"})
+      (let [query (-> (h/select :use-name) ; Select :use-name
                       (h/from :actor)
-                      (h/where [:in :id [uuid5 uuid6]]))
-            actors (into #{} (map #(select-keys % [:username]))
+                      (h/where [:in :id [id5 id6]]))
+            actors (into #{} (map #(select-keys % [:use_name])) ; Select :use-name
                          (db/plan query))]
-        (is (= #{{:username "johnnyl"} {:username "betten"}} actors))))) ; Use set comparison for unordered results
+        (prn actors)
+        (is (= #{{:use_name "johnnyl"} {:use_name "betten"}} actors))))) ; Check :use-name
 
   (testing "Select multiple using explicit connection"
     (jdbc/with-transaction [tx db/*current-connection* {:rollback-only true}]
-      (let [uuid7 (random-uuid)
-            uuid8 (random-uuid)]
-        (insert-actor! tx {:id uuid7 :username "gracem" :enrollment_state "invited"})
-        (insert-actor! tx {:id uuid8 :username "mattj" :enrollment_state "enrolled"})
-        (let [query (-> (h/select :username) ; Select username
+      (let [id7 (random-email) ; Use random-email
+            id8 (random-email)] ; Use random-email
+        (insert-actor! tx {:id id7 :use-name "gracem"})
+        (insert-actor! tx {:id id8 :use-name "mattj"})
+        (let [query (-> (h/select :use-name) ; Select :use-name
                         (h/from :actor)
-                        (h/where [:in :id [uuid7 uuid8]]))
-              actors (into #{} (map #(select-keys % [:username]))
+                        (h/where [:in :id [id7 id8]]))
+              actors (into #{} (map #(do (prn %) (select-keys % [:use_name]))) ; Select :use-name
                            (db/plan tx query))]
-          (is (= #{{:username "gracem"} {:username "mattj"}} actors))))))) ; Use set comparison
+          (is (= #{{:use_name "gracem"} {:use_name "mattj"}} actors))))))) ; Check :use-name
 
 (deftest with-connection-test
   (testing "Operations within with-connection use the same connection"
-    (let [uuid9 (random-uuid)
-          uuid10 (random-uuid)]
+    (let [id9 (random-email) ; Use random-email
+          id10 (random-email)] ; Use random-email
       (db/with-connection [_conn]; Uses *datasource* implicitly to get a connection
       ;; *current-connection* is now bound within this block
-        (let [result1 (insert-actor! nil {:id uuid9 :username "joes" :enrollment_state "enrolled"}) ; Uses bound *current-connection*
-              actor1 (get-actor-by-id nil uuid9) ; Uses bound *current-connection*
-              result2 (insert-actor! nil {:id uuid10 :username "chrisg" :enrollment_state "pending"}) ; Uses bound *current-connection*
-              actor2 (get-actor-by-id nil uuid10)] ; Uses bound *current-connection*
+        (let [result1 (insert-actor! nil {:id id9 :use-name "joes"})
+              actor1 (get-actor-by-id nil id9) ; Uses bound *current-connection*
+              result2 (insert-actor! nil {:id id10 :use-name "chrisg"})
+              actor2 (get-actor-by-id nil id10)] ; Uses bound *current-connection*
           (is (= [1] (mapv :next.jdbc/update-count result1)))
-          (is (= {:id uuid9 :username "joes" :enrollment_state "enrolled"} actor1))
+          (is (= {:id id9 :use-name "joes"} actor1)) ; Check :use-name
           (is (= [1] (mapv :next.jdbc/update-count result2)))
-          (is (= {:id uuid10 :username "chrisg" :enrollment_state "pending"} actor2))))
+          (is (= {:id id10 :use-name "chrisg"} actor2)))) ; Check :use-name
       ;; Verify outside the macro (but within the test's transaction)
-      (is (= {:id uuid9 :username "joes" :enrollment_state "enrolled"} (get-actor-by-id nil uuid9)))
-      (is (= {:id uuid10 :username "chrisg" :enrollment_state "pending"} (get-actor-by-id nil uuid10))))))
+      (is (= {:id id9 :use-name "joes"} (get-actor-by-id nil id9))) ; Check :use-name
+      (is (= {:id id10 :use-name "chrisg"} (get-actor-by-id nil id10)))))) ; Check :use-name
 
 (deftest dynamic-binding-test
   (testing "Throws exception if *datasource* is not bound and no connection given"
