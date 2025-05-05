@@ -12,11 +12,11 @@
                           :created-at (t/instant)
                           :updated-at (t/instant)}
           context {:request {:current-actor expected-actor}}]
-      (is (= expected-actor (actor/current-actor nil nil context nil)))))
+      (is (= expected-actor (actor/current-actor context nil nil)))))
 
   (testing "when current-actor does not exist in request context"
     (let [context {:request {}}]
-      (is (nil? (actor/current-actor nil nil context nil))))
+      (is (nil? (actor/current-actor context nil nil))))
 
     (let [context {:request {:current-actor nil}}]
-      (is (nil? (actor/current-actor nil nil context nil))))))
+      (is (nil? (actor/current-actor context nil nil))))))

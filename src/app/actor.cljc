@@ -5,10 +5,9 @@
 
 (me/defn current-actor :- [:maybe ::models/Actor]
   "Graphql query to "
-  [_ :- :any
-   _ :- :any
-   {:keys [request]} :- [:map
+  [{:keys [request]} :- [:map
                          [:request [:map
                                     [:current-actor ::models/Actor]]]]
+   _ :- :any
    _ :- :any]
   (:current-actor request))
