@@ -14,7 +14,7 @@
 (defn- new-object!
   [object-name compiled-object]
   (when-let [collector *type-collector*]
-    (swap! collector assoc-in [:objects object-name] compiled-object))
+    (swap! collector assoc-in [:objects object-name :fields] compiled-object))
   object-name)
 
 (defn- ->graphql-type-name
@@ -38,7 +38,9 @@
       (list 'non-null
             (cond-> graphql-name
               (not (contains? @*type-collector*
-                              graphql-name)) (new-object! (mc/walk (mc/deref-recursive schema) ->graphql-type)))))))
+                              graphql-name)) (new-object! (-> (mc/deref-recursive schema)
+                                                              (mc/walk ->graphql-type)
+                                                              second)))))))
 
 (defmethod ->graphql-type :default
   [schema _ _ _]

@@ -62,8 +62,8 @@
               {:Query {:fields {:getSimpleObject {:type :SimpleObject ; Return type name
                                                   :fields {:id {:type '(non-null Int)}}}}} ; Argument type
                ;; The SimpleObject type definition should also be collected
-               :SimpleObject {:id {:type '(non-null Int)}
-                              :name {:type '(non-null String)}}}}
+               :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                       :name {:type '(non-null String)}}}}}
              result)
           "Should compile query with args, object return type, and collect the object type")))
 
@@ -80,12 +80,12 @@
       (is (= {:objects
               {:Query {:fields {:getComplexObject {:type :ComplexObject}}} ; Return type name
                ;; Both ComplexObject and its nested SimpleObject should be collected
-               :SimpleObject {:id {:type '(non-null Int)}
-                              :name {:type '(non-null String)}}
-               :ComplexObject {:id {:type '(non-null Int)}
-                               :simple {:type :SimpleObject} ; Optional field type
-                               :simples {:type '(list (non-null :SimpleObject))} ; List of objects
-                               :createdAt {:type '(non-null Date)}}}} ; :time/instant -> Date
+               :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                       :name {:type '(non-null String)}}}
+               :ComplexObject {:fields {:id {:type '(non-null Int)}
+                                        :simple {:type :SimpleObject} ; Optional field type
+                                        :simples {:type '(list (non-null :SimpleObject))} ; List of objects
+                                        :createdAt {:type '(non-null Date)}}}}} ; :time/instant -> Date
              result)
           "Should compile query with complex object return type and collect all nested types")))
 
@@ -101,7 +101,7 @@
                :Mutation {:fields {:createSimpleObject {:type '(non-null String)
                                                         :fields {:name {:type '(non-null String)}}}}}
                ;; SimpleObject type collected once
-               :SimpleObject {:id {:type '(non-null Int)}
-                              :name {:type '(non-null String)}}}}
+               :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                       :name {:type '(non-null String)}}}}}
              result)
           "Should correctly compile multiple queries and mutations, collecting types"))))
