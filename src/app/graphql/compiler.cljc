@@ -7,7 +7,7 @@
 
 (def ^:dynamic *type-collector* "atom that is bound to collect new types" nil)
 
-(defn dispatch-mc-type
+(defn- dispatch-mc-type
   [schema _ _ _]
   (mc/type schema))
 
@@ -28,14 +28,17 @@
   [[field-name _opts field-type]]
   [(csk/->camelCaseKeyword field-name) {:type field-type}])
 
-(defmulti ->graphql-type dispatch-mc-type)
+(defmulti ^:Private ->graphql-type dispatch-mc-type)
 
 (defmethod ->graphql-type ::mc/schema
   [schema _ _ _]
-  (let [graphql-name (->graphql-type-name schema)]
-    (cond-> graphql-name
-      (not (contains? @*type-collector*
-                      graphql-name)) (new-object! (mc/walk (mc/deref-recursive schema) ->graphql-type)))))
+  (if (contains? #{:time/instant} (mc/form schema))
+    (mc/walk (mc/deref schema) ->graphql-type)
+    (let [graphql-name (->graphql-type-name schema)]
+      (list 'non-null
+            (cond-> graphql-name
+              (not (contains? @*type-collector*
+                              graphql-name)) (new-object! (mc/walk (mc/deref-recursive schema) ->graphql-type)))))))
 
 (defmethod ->graphql-type :default
   [schema _ _ _]
@@ -58,19 +61,24 @@
   (list 'non-null 'Date))
 
 (defmethod ->graphql-type :maybe
-  [_ _ [type] _]
+  [_ _ [[_ type]] _]
   type)
 
 (defmethod ->graphql-type :vector
-  [_ _ [[_ type]] _]
+  [_ _ [type] _]
   (list 'list type))
 
 (defmethod ->graphql-type :map
   [schema _ fields _]
   (let [fields (into {} (map ->graphql-field) fields)]
-    (if-let [graphql-type (->graphql-type-name schema)]
-      (new-object! graphql-type fields)
-      fields)))
+    (list 'non-null
+          (if-let [graphql-type (->graphql-type-name schema)]
+            (new-object! graphql-type fields)
+            fields))))
+
+(defmethod ->graphql-type :any
+  [_ _ _ _]
+  nil)
 
 (defmethod ->graphql-type :cat
   [_ _ children _]
@@ -81,7 +89,7 @@
 (defmethod ->graphql-type :=>
   [_ _ [field-args return-type] _]
   (cond-> {:type return-type}
-    field-args (assoc :fields field-args)))
+    field-args (assoc :fields (second field-args))))
 
 (defn name->var->graphql-schema
   "Convert a map of graphql action name -> resolver or mutation var to a graphql schema"

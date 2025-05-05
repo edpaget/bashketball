@@ -42,7 +42,7 @@
   [resolvers-map]
   (zipmap (keys resolvers-map) (->> resolvers-map
                                     vals
-                                    (map #(comp (partial mc/encode-graphql (first %)) (second %))))))
+                                    (map #(comp (partial) mc/encode-graphql (second %))))))
 
 (defn make-schema-handler
   []
