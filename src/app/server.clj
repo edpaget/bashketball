@@ -33,7 +33,6 @@
 
 (defn make-handler
   [{:keys [authn-handler config db-pool graphql-handler]}]
-  (prn db-pool)
   (letfn [(wrap-db-pool-binding [handler]
             (fn [req]
               (binding [db/*datasource* db-pool]

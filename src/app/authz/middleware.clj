@@ -5,7 +5,6 @@
 
 (defn get-actor
   [app-authorization-id]
-  (prn app-authorization-id)
   (db/execute-one! {:select [:a.*]
                     :from   [[(models/->table-name ::models/Actor) :a]]
                     :join   [[(models/->table-name ::models/AppAuthorization) :aa] [:= :a.id :aa.actor_id]]
@@ -15,9 +14,6 @@
   "Ring middleware that gets the current actor from the session."
   [handler {:keys [cookie-name]}]
   (fn [{:keys [cookies] :as req}]
-    (prn cookie-name)
-    (prn cookies)
-    (prn (get cookies cookie-name))
     (if-let [actor (some-> (get cookies cookie-name)
                            :value
                            parse-uuid
