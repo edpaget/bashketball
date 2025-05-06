@@ -20,7 +20,7 @@
                   :name name
                   :on-change #(on-change field (.. % -target -value))}))))
 
-(defui multi-text [{:keys [name label field card on-change] :as args}]
+(defui multi-text [{:keys [name label field card on-change]}]
   (let [for-value (str name "-input")
         [widget-state set-widget-state!] (uix/use-state (field card [""]))]
     (uix/use-effect
