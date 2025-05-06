@@ -1,7 +1,10 @@
 (ns app.authn.provider
-  (:require [uix.core :as uix :refer [defui $]]
-            [app.graphql.client :as graphql.client]
-            ["@react-oauth/google" :as gauth]))
+  (:require
+   [app.models :as models]
+   [app.graphql.client :as gql.client]
+   [uix.core :as uix :refer [defui $]]
+   ;; npm
+   ["@react-oauth/google" :as gauth]))
 
 (def client-id
   "964961527303-t0l0f6a8oa42p8c15928b4f4vavvbj9v.apps.googleusercontent.com")
@@ -51,7 +54,7 @@
 
 (defui logout-button []
   (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
-        {:keys [data refetch]} (graphql.client/use-query get-me :models/User :me)]
+        {:keys [data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when (-> data :me not-empty)
       ($ :button.logout {:type "button"
@@ -60,7 +63,7 @@
 
 (defui login-required [{:keys [show-prompt children]}]
   (let [{:keys [auth-status]} (uix/use-context auth-provider)
-        {:keys [loading error data refetch]} (graphql.client/use-query get-me :models/User :me)]
+        {:keys [loading error data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when error
       (prn error))
