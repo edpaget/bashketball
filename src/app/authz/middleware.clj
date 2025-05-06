@@ -15,7 +15,11 @@
   "Ring middleware that gets the current actor from the session."
   [handler {:keys [cookie-name]}]
   (fn [{:keys [cookies] :as req}]
+    (prn cookie-name)
+    (prn cookies)
+    (prn (get cookies cookie-name))
     (if-let [actor (some-> (get cookies cookie-name)
+                           :value
                            parse-uuid
                            get-actor)]
       (handler (assoc req :current-actor actor))

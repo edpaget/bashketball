@@ -59,7 +59,7 @@
 (me/defn make-token-authorization-creator :- ::authorization-creator
   [{:keys [authenticator]}]
   (fn [{:keys [token role]}]
-    (let [identity (authenticator token)]
+    (let [identity (authenticator {:token token})]
       (cond
         (nil? identity)
         ["Unable to authenticate token" 401]
@@ -91,8 +91,8 @@
                                                    [:cookie-name :string]]]
   (fn [{:keys [body cookies]}]
     (condp = (get body :action)
-      "login" (let [[result status] (authorization-creator (get body :id-token)
-                                                           (get body :role "-self"))]
+      "login" (let [[result status] (authorization-creator {:token (get body :id-token)
+                                                            :role (get body :role "-self")})]
                 (condp = status
                   204 (-> {:status status}
                           (ring.response/set-cookie cookie-name result))
@@ -115,4 +115,4 @@
       :authorization-creator (make-token-authorization-creator
                               {:authenticator (make-id-token-authenticator
                                                {:jwks-url google-jwks
-                                                :strategy :identity-stragety/SIGN_IN_WITH_GOOGLE})})})))
+                                                :strategy :identity-strategy/SIGN_IN_WITH_GOOGLE})})})))

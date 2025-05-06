@@ -81,7 +81,6 @@
                       (h/where [:in :id [id5 id6]]))
             actors (into #{} (map #(select-keys % [:use_name])) ; Select :use-name
                          (db/plan query))]
-        (prn actors)
         (is (= #{{:use_name "johnnyl"} {:use_name "betten"}} actors))))) ; Check :use-name
 
   (testing "Select multiple using explicit connection"

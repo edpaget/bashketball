@@ -8,7 +8,7 @@
 
 (def auth-provider (uix/create-context {}))
 
-(def ^:private get-me "query { me { id username } }")
+(def ^:private get-me "query { me { id useName } }")
 
 (defn login
   [oidc-token set-auth-status!]

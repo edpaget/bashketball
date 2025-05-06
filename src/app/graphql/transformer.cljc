@@ -1,9 +1,15 @@
 (ns app.graphql.transformer
   (:require
-   [malli.transform :as mt]
-   [camel-snake-kebab.core :as csk]))
+   [app.models]
+   [camel-snake-kebab.core :as csk]
+   [malli.core :as mc]
+   [malli.transform :as mt]))
 
-(def transformer
+(def ^:private transformer
   (mt/key-transformer
    {:decode csk/->kebab-case-keyword
     :encode csk/->camelCaseKeyword}))
+
+(defn decode
+  [model encoded]
+  (mc/decode model encoded transformer))

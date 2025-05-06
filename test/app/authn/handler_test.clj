@@ -28,7 +28,7 @@
 ;; --- Mocks ---
 (defn mock-authenticator-success
   "Mock authenticator that succeeds for test-token."
-  [token] ; Accepts the token directly as per make-token-authorization-creator usage
+  [{:keys [token]}] ; Accepts the token directly as per make-token-authorization-creator usage
   (when (= token test-token)
     (db/execute-one! {:select [:*]
                       :from   [(models/->table-name ::models/Identity)]
@@ -46,12 +46,12 @@
 
 (defn mock-auth-creator-success
   "Mock authorization creator that always succeeds."
-  [_request _] ; Takes the request map
+  [_] ; Takes the request map
   [test-session-id 204])
 
 (defn mock-auth-creator-failure
   "Mock authorization creator that always fails."
-  [_request _] ; Takes the request map
+  [_] ; Takes the request map
   ["Auth failed!" 401])
 
 ;; --- Tests ---

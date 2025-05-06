@@ -33,18 +33,25 @@
 
 (defn make-handler
   [{:keys [authn-handler config db-pool graphql-handler]}]
-  (binding [db/*datasource* db-pool]
+  (prn db-pool)
+  (letfn [(wrap-db-pool-binding [handler]
+            (fn [req]
+              (binding [db/*datasource* db-pool]
+                (handler req))))]
     (r/ring-handler
      (r/router
       [["/ping" {:get ping-handler}]
        ["/authn" {:post authn-handler
                   :middleware [[ring.json/wrap-json-body {:keywords? true}]
-                               ring.cookies/wrap-cookies]}]
+                               ring.json/wrap-json-response
+                               ring.cookies/wrap-cookies
+                               wrap-db-pool-binding]}]
        ["/graphql" {:post graphql-handler
                     :middleware [ring.json/wrap-json-response
                                  [ring.json/wrap-json-body {:keywords? true}]
                                  ring.cookies/wrap-cookies
-                                 [authz/wrap-current-actor (-> config :authn :cookie-name)]]}]])
+                                 wrap-db-pool-binding
+                                 [authz/wrap-current-actor {:cookie-name (-> config :auth :cookie-name)}]]}]])
      (r/routes
       (r/create-file-handler {:path "/js" :root "public/js"})
       (r/create-file-handler {:path "/main.css" :root "public/main.css"})

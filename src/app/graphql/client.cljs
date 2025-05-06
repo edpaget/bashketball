@@ -1,6 +1,7 @@
 (ns app.graphql.client
   (:require
    [app.models :as mc]
+   [app.graphql.transformer :as gql.transformer]
    [camel-snake-kebab.core :as csk]
    ["@apollo/client" :as apollo.client]))
 
@@ -15,6 +16,6 @@
       (update-in [:data key] #(do (prn "HERE" %) (when %
                                        (prn "VALUE" %)
                                        (try
-                                         (mc/decode-graphql schema (dissoc % :__typename))
+                                         (gql.transformer/decode schema (dissoc % :__typename))
                                          (catch :default e
                                            (prn e))))))))

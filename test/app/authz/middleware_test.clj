@@ -21,7 +21,7 @@
     (tu/with-inserted-data [::models/Actor test-actor-data
                             ::models/Identity test-identity-data
                             ::models/AppAuthorization test-authz-data]
-      (let [request {:cookies {test-cookie-name (str test-authz-id)}} ; Cookie value must be string
+      (let [request {:cookies {test-cookie-name {:value (str test-authz-id)}}} ; Cookie value must be string
             handler-called? (atom false)
             handler (fn [req]
                       (reset! handler-called? true)
@@ -37,7 +37,7 @@
         (is @handler-called? "Handler should be called"))))
 
   (testing "when cookie exists but actor is not found (no matching AppAuthorization)"
-    (let [request {:cookies {test-cookie-name (str test-authz-id)}} ; Use the ID, but don't insert it
+    (let [request {:cookies {test-cookie-name {:value (str test-authz-id)}}} ; Use the ID, but don't insert it
           handler-called? (atom false)
           handler (fn [req]
                     (reset! handler-called? true)
@@ -48,7 +48,7 @@
       (is @handler-called? "Handler should be called")))
 
   (testing "when cookie exists but actor is not found "
-    (let [request {:cookies {test-cookie-name (str test-authz-id)}}
+    (let [request {:cookies {test-cookie-name {:value (str test-authz-id)}}}
           handler-called? (atom false)
           handler (fn [req]
                     (reset! handler-called? true)
