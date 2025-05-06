@@ -32,8 +32,7 @@
         (respond (index-handler-fn request)))))))
 
 (defn make-handler
-  [{:keys [authn-handler config db-pool graphql-handler]
-    :or {graphql-handler (fn [req] {:status 200})}}]
+  [{:keys [authn-handler config db-pool graphql-handler]}]
   (binding [db/*datasource* db-pool]
     (r/ring-handler
      (r/router
