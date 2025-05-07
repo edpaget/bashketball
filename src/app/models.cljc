@@ -15,8 +15,8 @@
    [:provider ::IdentityStrategy]
    [:provider_identity :string]
    [:email :string]
-   [:created-at {:default-now true} :time/instant]
-   [:updated-at {:default-now true} :time/instant]
+   [:created-at :time/instant]
+   [:updated-at :time/instant]
    [:last-successful-at [:maybe :time/instant]]
    [:last-failed-at [:maybe :time/instant]]])
 
@@ -25,8 +25,8 @@
    [:id :string]
    [:enrollment-state :string]
    [:use-name [:maybe :string]]
-   [:created-at {:default-now true} :time/instant]
-   [:updated-at {:default-now true} :time/instant]])
+   [:created-at :time/instant]
+   [:updated-at :time/instant]])
 
 (registry/defschema ::AppAuthorization
   [:map
@@ -34,7 +34,7 @@
    [:actor-id :string]
    [:provider ::IdentityStrategy]
    [:provider_identity :string]
-   [:created-at {:default-now true} :time/instant]
+   [:created-at :time/instant]
    [:expires-at [:maybe :time/instant]]])
 
 (registry/defschema ::Card
@@ -43,8 +43,8 @@
    [:version {:default-value "0"} :string]
    [:img-url {:ui/input-type "file"} :string]
    [:card-type :string]
-   [:created-at {:default-now true} :time/instant]
-   [:updated-at {:default-now true} :time/instant]])
+   [:created-at :time/instant]
+   [:updated-at :time/instant]])
 
 (registry/defschema ::PlayerCard
   [:merge ::Card

@@ -9,6 +9,7 @@
 
 (defn use-query
   [query schema key & [variables]]
+  (prn schema)
   (-> (apollo.client/gql query)
       (apollo.client/useQuery (clj->js {:variables (update-keys variables csk/->camelCase)}))
       (js->clj :keywordize-keys true)

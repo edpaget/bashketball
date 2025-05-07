@@ -1,14 +1,16 @@
 (ns app.card.pages
-  (:require [uix.core :as uix :refer [defui $]]
-            [app.router :as router]
-            [app.graphql.client :as graphql.client]
-            [app.authn.provider :as authn]
-            [app.card.edit :refer [edit-card]]
-            [app.card.reducer :as card-reducer]
-            [app.card.show :refer [show-card]]))
+  (:require
+   [uix.core :as uix :refer [defui $]]
+   [app.router :as router]
+   [app.graphql.client :as graphql.client]
+   [app.authn.provider :as authn]
+   [app.card.edit :refer [edit-card]]
+   [app.card.reducer :as card-reducer]
+   [app.card.show :refer [show-card]]
+   [app.models :as models]))
 
 (defui cards-index []
-  (let [{:keys [loading data]} (graphql.client/use-query "query { cards { ... on PlayerCard { name cardType } } }" :models/Card :cards)]
+  (let [{:keys [loading data]} (graphql.client/use-query "query { cards { ... on PlayerCard { name cardType } } }" ::models/Card :cards)]
     ($ :div {:className "card-index"}
        (cond
          loading ($ :p "loading cards...")
@@ -21,11 +23,11 @@
           "New Card"))))
 
 (def ^:private get-card
-   "query GetCard($cardName: String!) { card(cardName: $cardName) { ... on PlayerCard { name cardType } } }")
+  "query GetCard($cardName: String!) { card(cardName: $cardName) { ... on PlayerCard { name cardType } } }")
 
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
-        {:keys [loading data]} (graphql.client/use-query get-card :models/Card :card {:card-name card-id})
+        {:keys [loading data]} (graphql.client/use-query get-card ::models/Card :card {:card-name card-id})
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer (:card data))]
     ($ :<>
        ($ authn/login-required {:show-prompt false}
