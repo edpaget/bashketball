@@ -1,0 +1,5 @@
+ {:duct.compiler.cljs.shadow/release {:build
+                                      {:target :browser
+                                       :modules {:main {:entries [app.core]
+                                                        :init-fn app.core/init}}
+                                       :devtools {:preloads [uix.preload devtools.preload]}}}}

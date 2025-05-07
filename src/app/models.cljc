@@ -1,4 +1,7 @@
 (ns app.models
+  #?(:cljs
+     (:require-macros
+      [app.registry :as registry]))
   (:require
    [malli.core :as mc]
    [app.registry :as registry]

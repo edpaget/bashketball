@@ -36,21 +36,21 @@
 (def ^:private identity-fields-ga {:provider #pg_enum :identity-strategy/INVALID
                                    :provider-identity (str "ga-provider-id-" (java.util.UUID/randomUUID))})
 
-(def ^:private valid-authz-id-ga (java.util.UUID/randomUUID))
+(def ^:private valid-authz-id-ga (random-uuid))
 (def ^:private valid-authz-data-ga
   (merge {:id valid-authz-id-ga
           :actor-id actor-id-ga
           :expires-at (->timestamp-in-future {:amount 1 :unit :hours})}
          identity-fields-ga))
 
-(def ^:private expired-authz-id-ga (java.util.UUID/randomUUID))
+(def ^:private expired-authz-id-ga (random-uuid))
 (def ^:private expired-authz-data-ga
   (merge {:id expired-authz-id-ga
           :actor-id actor-id-ga
           :expires-at (->timestamp-in-past {:amount 1 :unit :hours})}
          identity-fields-ga))
 
-(def ^:private non-existent-authz-id-ga (java.util.UUID/randomUUID))
+(def ^:private non-existent-authz-id-ga (random-uuid))
 
 (deftest wrap-current-actor-test
   (testing "when cookie exists and actor is found"
