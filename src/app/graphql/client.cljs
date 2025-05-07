@@ -12,5 +12,4 @@
   (-> (apollo.client/gql query)
       (apollo.client/useQuery (clj->js {:variables (update-keys variables csk/->camelCase)}))
       (js->clj :keywordize-keys true)
-      (update-in [:data key] #(do (when %
-                                    (gql.transformer/decode schema (dissoc % :__typename)))))))
+      (update-in [:data key] gql.transformer/decode schema)))

@@ -218,7 +218,7 @@
           "Should not set a cookie on failure")))
 
  (testing "Logout action"
-   (let [logout-session-id (java.util.UUID/randomUUID)]
+   (let [logout-session-id (random-uuid)]
      ;; Ensure the actor exists for the foreign key constraint
      (tu/with-inserted-data [::models/Identity (update existing-identity :provider db/->pg_enum)
                              ::models/Actor {:id test-actor-id :enrollment-state "incomplete"}
@@ -231,7 +231,7 @@
        (let [handler (authn.handler/make-authn-handler
                       {:authorization-creator mock-auth-creator-success ; Not called for logout
                        :cookie-name           test-cookie-name})
-             request {:cookies {test-cookie-name logout-session-id} ; Add cookie header
+             request {:cookies {test-cookie-name {:value (str logout-session-id)}} ; Add cookie header
                       :body    {:action "logout"}} ; Logout request
              response (handler request)]
          (is (= 204 (:status response)))

@@ -98,7 +98,9 @@
                           (ring.response/set-cookie cookie-name result))
                   401 {:status status
                        :body {:errors [result]}}))
-      "logout" (if-let [session-id (get cookies cookie-name)]
+      "logout" (if-let [session-id (some-> (get cookies cookie-name)
+                                           :value
+                                           parse-uuid)]
                  (do
                    (db/execute-one! {:update [(models/->table-name ::models/AppAuthorization)]
                                      :set    {:expires-at (t/with-offset (t/offset-date-time) 0)}

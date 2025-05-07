@@ -11,5 +11,5 @@
     :encode csk/->camelCaseKeyword}))
 
 (defn decode
-  [model encoded]
+  [encoded model]
   (mc/decode model encoded transformer))
