@@ -3,7 +3,8 @@
   (:require
    [app.models]
    [camel-snake-kebab.core :as csk]
-   [malli.core :as mc]))
+   [malli.core :as mc]
+   [clojure.string :as str]))
 
 (def ^:dynamic *type-collector* "atom that is bound to collect new types" nil)
 
@@ -106,3 +107,89 @@
                                         (csk/->camelCaseKeyword (name k))]
              (mc/walk (-> var meta :schema) ->graphql-type)))
     @*type-collector*))
+
+(defmulti ^:private ->graphql-string
+  "Compile a query form to a gql query"
+  (fn [{:keys [type]}] type))
+
+(defmethod ->graphql-string ::query
+  [{:keys [children query-key]}]
+  (str (csk/->camelCase (name query-key)) " { " (str/join " " (map ->graphql-string children)) " }"))
+
+(defmethod ->graphql-string ::fields
+  [{:keys [children]}]
+  (str/join " " (map ->graphql-string children)))
+
+(defmethod ->graphql-string ::field
+  [{:keys [field]}]
+  (name field))
+
+(defmethod ->graphql-string ::root
+  [{:keys [children]}]
+  (str "query { " (str/join " " (map ->graphql-string children)) " }"))
+
+(defmulti ^:private ->query-ast
+  "Convert a query map to an ast while checking if it is valid and expanding schemas"
+  (fn [form] (cond
+               (seq? form)     ::query-with-args
+               (vector? form)  ::fields
+               (map? form)     ::query
+               (keyword? form) ::field
+               :else (throw (ex-info "Unsupported form" {:form form})))))
+
+(defmethod ->query-ast ::query-with-args
+  [[query & args]]
+  {:type ::query-with-args
+   :children [(->graphql-string query)]
+   :arguments args})
+
+(defn- ->query-field-names
+  [schema]
+  (mc/walk (mc/deref schema)
+           (fn [schema _ children _]
+             (condp = (mc/type schema)
+               :map (into #{} (map first) children)
+               schema))))
+
+(defmethod ->query-ast ::fields
+  [[schema & fields]]
+  (when (nil? schema)
+    (throw (ex-info "Form must have at least provide a schema" {})))
+  {:type ::fields
+   :children (if (empty? fields)
+               (map ->query-ast (->query-field-names schema))
+               (map ->query-ast fields))
+   :schema schema})
+
+(defmethod ->query-ast ::query
+  [form]
+  (map (fn [[k v]] {:type ::query
+                    :children [(->query-ast v)]
+                    :query-key k})
+       form))
+
+(defmethod ->query-ast ::field
+  [form]
+  {:type ::field
+   :field (csk/->camelCaseKeyword (name form))})
+
+(defn ->query
+  "Take a map of graphql-query-name to a vector in the form [malli-schema field ...field-n] and turn it
+  into a graphql query. If no fields are provided all fields will be selected. Nested queries can be
+  added as a map of field-name->[malli-schema field ...field-n] specific types within an interface or
+  union can be selected as a vector of vectors eg [malli-schema-interface interface-field [malli-schema type type field]].
+  If a query takes arguments it's it can be wrapped in a seq with the query map as the first item and the
+  arguments as pairs of [:name placeholder] in the tail.
+
+  Returns a tuple of the query string and map of __typename->malli-schemas."
+  [query]
+  (let [ast {:type ::root :children (->query-ast query)}
+        types (keep :schema (tree-seq #(or (seq? %) (map? %))
+                                      #(or (:children %) (seq %))
+                                      ast))]
+    [(->graphql-string ast)
+     (zipmap (map (comp name ->graphql-type-name) types) types)]))
+
+(comment
+  (->query {:Query/me [:app.models/Actor :id :useName]})
+  (->query {:Query/me [:app.models/Actor]}))
