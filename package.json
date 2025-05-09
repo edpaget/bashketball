@@ -1,6 +1,7 @@
 {
   "name": "blood-basket",
   "scripts": {
+    "test:cljs": "shadow-cljs compile test && node target/cljs-tests.js",
     "release": "clojure -M:dev -m dev.build-cljs && npm run styles-release",
     "styles-dev": "onchange -o '> public/main.css && lightningcss --bundle public/main.css -o public/main.css' -i src/**/*.css -- find src/ -name *.css -exec cat {} +",
     "styles-release": "find src/ -name *.css -exec cat {} + > public/main.css && lightningcss --minify --bundle public/main.css -o public/main.css"

@@ -99,6 +99,8 @@
   [map]
   (binding [*type-collector* (atom {})]
     (doseq [[k var] map]
+      (prn (meta var))
+             (prn (-> var meta :schema))
       (swap! *type-collector* assoc-in [:objects
                                         (case (namespace k)
                                           "Query" :Query

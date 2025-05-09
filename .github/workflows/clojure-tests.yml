@@ -39,6 +39,11 @@ jobs:
         with:
           cli: 'latest'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or your preferred LTS version
+
       - name: Cache Clojure dependencies
         uses: actions/cache@v4
         with:
@@ -46,14 +51,21 @@ jobs:
             ~/.m2/repository
             ~/.gitlibs
             .cpcache
-          key: ${{ runner.os }}-clojure-${{ hashFiles('deps.edn') }}
+            node_modules # Cache npm dependencies
+          key: ${{ runner.os }}-clojure-${{ hashFiles('deps.edn') }}-${{ hashFiles('package-lock.json') }} # Include package-lock.json in cache key
           restore-keys: |
             ${{ runner.os }}-clojure-
- 
-      - name: Run Clojure tests
+
+      - name: Install NPM dependencies
+        run: npm ci # Use ci for faster, more reliable installs in CI
+
+      - name: Run Clojure JVM tests
         # Set the DATABASE_URL env var for the tests to connect to the service container
         # Set CLJ_OPTS to configure JVM timezone for tests
         env:
           DATABASE_URL: jdbc:postgresql://localhost:${{ job.services.postgres.ports[5432] }}/testdb?user=testuser&password=testpassword
           CLJ_OPTS: -Duser.timezone=UTC
         run: clojure -X:test
+
+      - name: Run ClojureScript tests
+        run: npm run test:cljs

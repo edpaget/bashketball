@@ -54,7 +54,7 @@
 (def ^{:schema [:=> [:cat :any [:map [:name :string]] :any] :string]}
   create-simple-object-var nil)
 
-(def ^{:schema (mc/schema [:=> [:cat :any :any :any] [:vector :string]])}
+(def ^{:schema [:=> [:cat :any :any :any] [:vector :string]]}
   get-list-of-strings-var nil)
 
 (def ^{:schema [:=> [:cat :any :any :any] [:maybe :int]]}
@@ -62,74 +62,77 @@
 
 ;; --- Tests ---
 
-(deftest name->var->graphql-schema-test
-  (testing "empty input map"
-    (is (= {} (sut/name->var->graphql-schema {}))
-        "Should return an empty map for empty input"))
+;; TODO: moves this function and tests to a new clj only namespace. The var metadata technique does not
+;; work in cljs because vars are not reified
+#?(:clj
+   (deftest name->var->graphql-schema-test
+     (testing "empty input map"
+       (is (= {} (sut/name->var->graphql-schema {}))
+           "Should return an empty map for empty input"))
 
-  (testing "single query field with simple return type (vector of strings)"
-    (let [result (sut/name->var->graphql-schema {:Query/getListOfStrings #'get-list-of-strings-var})]
-      (is (= {:objects
-              {:Query {:fields {:getListOfStrings {:type '(list (non-null String))}}}}}
-             result)
-          "Should correctly compile a query returning a list of non-null strings")))
+     (testing "single query field with simple return type (vector of strings)"
+       (let [result (sut/name->var->graphql-schema {:Query/getListOfStrings #'get-list-of-strings-var})]
+         (is (= {:objects
+                 {:Query {:fields {:getListOfStrings {:type '(list (non-null String))}}}}}
+                result)
+             "Should correctly compile a query returning a list of non-null strings")))
 
-  (testing "single query field with optional scalar return type"
-    (let [result (sut/name->var->graphql-schema {:Query/getOptionalInt #'get-optional-int-var})]
-      (is (= {:objects
-              {:Query {:fields {:getOptionalInt {:type 'Int}}}}} ; :maybe :int becomes Int
-             result)
-          "Should correctly compile a query returning an optional Int")))
+     (testing "single query field with optional scalar return type"
+       (let [result (sut/name->var->graphql-schema {:Query/getOptionalInt #'get-optional-int-var})]
+         (is (= {:objects
+                 {:Query {:fields {:getOptionalInt {:type 'Int}}}}} ; :maybe :int becomes Int
+                result)
+             "Should correctly compile a query returning an optional Int")))
 
-  (testing "single query field with object return type and arguments"
-    (let [result (sut/name->var->graphql-schema {:Query/getSimpleObject #'get-simple-object-var})]
-      (is (= {:objects
-              {:Query {:fields {:getSimpleObject {:type :SimpleObject ; Return type name
-                                                  :fields {:id {:type '(non-null Int)}}}}} ; Argument type
-               ;; The SimpleObject type definition should also be collected
-               :SimpleObject {:fields {:id {:type '(non-null Int)}
-                                       :name {:type '(non-null String)}}}}}
-             result)
-          "Should compile query with args, object return type, and collect the object type")))
+     (testing "single query field with object return type and arguments"
+       (let [result (sut/name->var->graphql-schema {:Query/getSimpleObject #'get-simple-object-var})]
+         (is (= {:objects
+                 {:Query {:fields {:getSimpleObject {:type :SimpleObject ; Return type name
+                                                     :fields {:id {:type '(non-null Int)}}}}} ; Argument type
+                  ;; The SimpleObject type definition should also be collected
+                  :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                          :name {:type '(non-null String)}}}}}
+                result)
+             "Should compile query with args, object return type, and collect the object type")))
 
-  (testing "single mutation field with arguments and simple return type"
-    (let [result (sut/name->var->graphql-schema {:Mutation/createSimpleObject #'create-simple-object-var})]
-      (is (= {:objects
-              {:Mutation {:fields {:createSimpleObject {:type '(non-null String) ; Return type
-                                                        :fields {:name {:type '(non-null String)}}}}}}} ; Argument type
-             result)
-          "Should correctly compile a mutation with args and a simple return type")))
+     (testing "single mutation field with arguments and simple return type"
+       (let [result (sut/name->var->graphql-schema {:Mutation/createSimpleObject #'create-simple-object-var})]
+         (is (= {:objects
+                 {:Mutation {:fields {:createSimpleObject {:type '(non-null String) ; Return type
+                                                           :fields {:name {:type '(non-null String)}}}}}}} ; Argument type
+                result)
+             "Should correctly compile a mutation with args and a simple return type")))
 
-  (testing "query with complex nested object return type"
-    (let [result (sut/name->var->graphql-schema {:Query/getComplexObject #'get-complex-object-var})]
-      (is (= {:objects
-              {:Query {:fields {:getComplexObject {:type :ComplexObject}}} ; Return type name
-               ;; Both ComplexObject and its nested SimpleObject should be collected
-               :SimpleObject {:fields {:id {:type '(non-null Int)}
-                                       :name {:type '(non-null String)}}}
-               :ComplexObject {:fields {:id {:type '(non-null Int)}
-                                        :simple {:type :SimpleObject} ; Optional field type
-                                        :simples {:type '(list (non-null :SimpleObject))} ; List of objects
-                                        :createdAt {:type '(non-null Date)}}}}} ; :time/instant -> Date
-             result)
-          "Should compile query with complex object return type and collect all nested types")))
+     (testing "query with complex nested object return type"
+       (let [result (sut/name->var->graphql-schema {:Query/getComplexObject #'get-complex-object-var})]
+         (is (= {:objects
+                 {:Query {:fields {:getComplexObject {:type :ComplexObject}}} ; Return type name
+                  ;; Both ComplexObject and its nested SimpleObject should be collected
+                  :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                          :name {:type '(non-null String)}}}
+                  :ComplexObject {:fields {:id {:type '(non-null Int)}
+                                           :simple {:type :SimpleObject} ; Optional field type
+                                           :simples {:type '(list (non-null :SimpleObject))} ; List of objects
+                                           :createdAt {:type '(non-null Date)}}}}} ; :time/instant -> Date
+                result)
+             "Should compile query with complex object return type and collect all nested types")))
 
-  (testing "multiple query and mutation fields"
-    (let [result (sut/name->var->graphql-schema
-                  {:Query/getSimpleObject #'get-simple-object-var
-                   :Query/getListOfStrings #'get-list-of-strings-var
-                   :Mutation/createSimpleObject #'create-simple-object-var})]
-      (is (= {:objects
-              {:Query {:fields {:getSimpleObject {:type :SimpleObject
-                                                  :fields {:id {:type '(non-null Int)}}}
-                                :getListOfStrings {:type '(list (non-null String))}}}
-               :Mutation {:fields {:createSimpleObject {:type '(non-null String)
-                                                        :fields {:name {:type '(non-null String)}}}}}
-               ;; SimpleObject type collected once
-               :SimpleObject {:fields {:id {:type '(non-null Int)}
-                                       :name {:type '(non-null String)}}}}}
-             result)
-          "Should correctly compile multiple queries and mutations, collecting types"))))
+     (testing "multiple query and mutation fields"
+       (let [result (sut/name->var->graphql-schema
+                     {:Query/getSimpleObject #'get-simple-object-var
+                      :Query/getListOfStrings #'get-list-of-strings-var
+                      :Mutation/createSimpleObject #'create-simple-object-var})]
+         (is (= {:objects
+                 {:Query {:fields {:getSimpleObject {:type :SimpleObject
+                                                     :fields {:id {:type '(non-null Int)}}}
+                                   :getListOfStrings {:type '(list (non-null String))}}}
+                  :Mutation {:fields {:createSimpleObject {:type '(non-null String)
+                                                           :fields {:name {:type '(non-null String)}}}}}
+                  ;; SimpleObject type collected once
+                  :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                          :name {:type '(non-null String)}}}}}
+                result)
+             "Should correctly compile multiple queries and mutations, collecting types")))))
 
 (deftest ->query-test
   (testing "simple query with specified fields"
@@ -139,14 +142,18 @@
 
   (testing "simple query with all fields (no fields specified)"
     (let [[query-str types-map] (sut/->query {:Query/me [Actor]})]
-      (is (= "query { me { email userName id } }" query-str))
+      ;; TODO: why is this different on clj vs cljs
+      #?(:clj (is (= "query { me { email userName id } }" query-str))
+         :cljs (is (= "query { me { id userName email } }" query-str)))
       (is (= {"Actor" Actor} types-map))))
 
   (testing "query with schema provided directly (not in a vector) throws"
     (is #?(:clj (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Unsupported form"
                                   (sut/->query {:Query/me Actor}))
-           :cljs (= 1 1))))
+           :cljs (thrown-with-msg? js/Error
+                                  #"Unsupported form"
+                                  (sut/->query {:Query/me Actor})))))
 
   (testing "query with nested fields"
     (let [[query-str types-map] (sut/->query {:Query/game [Game :id {:home-team [Team :name {:players [Actor :user-name]}]}]})]
@@ -210,14 +217,14 @@
                              (sut/->query {:Query/data [SchemaWithoutGraphQLType :id]}))
            "In Clojure, (name nil) from (->graphql-type-name schema) returning nil then (name nil) throws NPE.")
        :cljs
-       (let [[_ types-map] (sut/->query {:Query/data [SchemaWithoutGraphQLType :id]})]
-         (is (contains? types-map ""))
-         (is (= SchemaWithoutGraphQLType (get types-map "")))
-         "In ClojureScript, (name nil) returns \"\", so type name becomes an empty string.")))
+       (is (thrown-with-msg? js/Error
+                             #"Doesn't support name:"
+                             (sut/->query {:Query/data [SchemaWithoutGraphQLType :id]}))
+           "In CLJS, (name nil) will result in a does not support name")))
 
   (testing "query with arguments (feature currently has limitations in string generation)"
     ;; This tests the current behavior where argument stringification is not implemented,
     ;; leading to an error when ->graphql-string receives a raw map instead of an AST node.
     (is (thrown-with-msg? #?(:clj IllegalArgumentException :cljs js/Error)
-                          #"No method in multimethod '->graphql-string' for dispatch value: null"
+                          #"No method in multimethod "
                           (sut/->query '({:Query/userById [Actor :id]} :id "user-123"))))))

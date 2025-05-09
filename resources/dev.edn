@@ -13,8 +13,8 @@
  :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
  :app.graphql.server/resolvers    {}
 
- :duct.compiler.cljs.shadow/server {:build
-                                    {:target :browser
-                                     :modules {:main {:entries [app.core]
-                                                      :init-fn app.core/init}}
-                                     :devtools {:preloads [uix.preload devtools.preload]}}}}
+ :dev/fe-app                      {:build
+                                   {:target :browser
+                                    :modules {:main {:entries [app.core]
+                                                     :init-fn app.core/init}}
+                                    :devtools {:preloads [uix.preload devtools.preload]}}}}
