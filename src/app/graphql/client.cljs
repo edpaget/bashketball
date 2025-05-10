@@ -1,7 +1,6 @@
 (ns app.graphql.client
   (:require
    [app.graphql.transformer :as gql.transformer]
-   [app.graphql.compiler :as gql.compiler]
    [camel-snake-kebab.core :as csk]
    ["@apollo/client" :as apollo.client]))
 
