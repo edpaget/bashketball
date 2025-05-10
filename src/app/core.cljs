@@ -1,11 +1,13 @@
 (ns app.core
-  (:require [uix.core :as uix :refer [defui $]]
-            [uix.dom]
-            [app.router :as router]
-            [app.authn.provider :as authn]
-            [app.graphql.client :as graphql]
-            [app.card.pages :as card.pages]
-            ["@apollo/client" :as apollo.client]))
+  (:require
+   [uix.core :as uix :refer [defui $]]
+   [uix.dom]
+   [app.router :as router]
+   [app.authn.provider :as authn]
+   [app.graphql.client :as graphql]
+   [app.card.pages :as card.pages]
+   [app.navbar :as navbar]
+   ["@apollo/client" :as apollo.client]))
 
 (defui home-page []
   ($ :a {:href (router/href :cards-index)}
@@ -16,9 +18,7 @@
      ($ apollo.client/ApolloProvider {:client graphql/client}
         ($ authn/authn
            ($ :div.app-container
-              ($ :div.navbar
-                 ($ :h1 "Blood Basket")
-                 ($ authn/login-required ($ authn/logout-button)))
+              ($ navbar/navbar)
               ($ :div.content
                  ($ :<>
                     ($ router/route {:route-name :home-page}

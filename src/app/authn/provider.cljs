@@ -4,6 +4,7 @@
    [app.graphql.client :as gql.client]
    [uix.core :as uix :refer [defui $]]
    ;; npm
+   ["@headlessui/react" :as headless]
    ["@react-oauth/google" :as gauth]))
 
 (def client-id
@@ -48,28 +49,28 @@
 
 (defui login-button []
   (let [{:keys [set-token!]} (uix/use-context auth-provider)]
-    ($ gauth/GoogleLogin
-       {:on-success #(set-token! (aget % "credential"))
-        :on-error #(prn %)})))
+    ($ :div {:class "inline-flex items-center"}
+       ($ gauth/GoogleLogin
+          {:on-success #(set-token! (aget % "credential"))
+           :on-error #(prn %)}))))
 
 (defui logout-button []
   (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
         {:keys [data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
     (when (-> data :me not-empty)
-      ($ :button.logout {:type "button"
-                         :on-click #(logout set-auth-status! set-token!)}
+      ($ headless/Button {:type "button"
+                          :class "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                          :on-click #(logout set-auth-status! set-token!)}
          "Logout"))))
 
 (defui login-required [{:keys [show-prompt children]}]
   (let [{:keys [auth-status]} (uix/use-context auth-provider)
         {:keys [loading error data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
     (uix/use-effect (fn [] (refetch)) [auth-status refetch])
-    (when error
-      (prn error))
     (cond
-      loading ($ :p "Loading...")
-      (not-empty error) ($ :p "Something went wrong...")
+      loading ($ :p {:class "text-sm text-gray-500"} "Loading...")
+      (not-empty error) ($ :p {:class "text-sm text-red-600"} "Something went wrong...")
       (not-empty (:me data)) children
       show-prompt ($ login-button)
       :else nil)))

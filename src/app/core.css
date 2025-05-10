@@ -1,45 +1,4 @@
-html {
-    box-sizing: border-box;
-}
+@import "tailwindcss";
 
-html * {
-    box-sizing: inherit;
-}
-
-body {
-    margin: 0;
-    font: 400 14px 'Inter', sans-serif;
-    letter-spacing: 0;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -moz-font-feature-settings: "liga" on;
-    line-height: 1.4;
-    text-rendering: optimizeLegibility;
-    width: 100vw;
-    min-height: 100vh;
-}
-
-.app-container .content {
-    margin: 1em;
-    display: flex;
-    grid-gap: 2em;
-    justify-content: center;
-}
-
-.navbar {
-    width: 100%;
-    height: 4em;
-    border-bottom: 3px solid #333;
-    display: flex;
-    flex-direction: row;
-    padding: 0 2em;
-    align-items: center;
-}
-
-.navbar h1 {
-    margin: 0;
-}
-
-.navbar .logout {
-    margin-left: auto;
-}
+@import "./card/edit.css";
+@import "./card/show.css";
