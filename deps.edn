@@ -39,4 +39,13 @@
                   :exec-fn     runner/find-and-run-tests}
            :server {:main-opts ["-m" "app.server"]}
            :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.6" :git/sha "52cf7d6"}}
-                   :ns-default build}}}
+                   :ns-default build}
+           :test-e2e {:extra-paths ["test_e2e"]
+                      :extra-deps {etaoin/etaoin {:mvn/version "1.1.43"}
+                                   clj-test-containers/clj-test-containers {:mvn/version "0.7.4"
+                                                                            :exclusions [org.testcontainers/testcontainers]}
+                                   org.testcontainers/testcontainers {:mvn/version "1.21.0"}
+                                   eftest/eftest {:mvn/version "0.6.0"}} ; For the test runner
+                      :jvm-opts    ["-Duser.timezone=UTC"]
+                      :exec-fn     e2e.runner/find-and-run-tests
+                      :exec-args   {:test-dir "test_e2e"}}}}

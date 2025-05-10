@@ -1,5 +1,5 @@
 ((clojure-mode
-  (cider-clojure-cli-aliases        . ":dev:test")
+  (cider-clojure-cli-aliases        . ":dev:test:test-e2e")
   (cider-preferred-build-tool       . clojure-cli)
   (cider-default-cljs-repl          . custom)
   (cider-custom-cljs-repl-init-form . "(do (user/dev) (dev/cljs-repl))")

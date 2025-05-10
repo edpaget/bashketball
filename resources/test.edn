@@ -1,0 +1,20 @@
+{:app.config/config               {:profile :test}
+ :app.db/pool                     {:config #ig/ref :app.config/config}
+
+ :app.server/jetty                {:handler #ig/ref :app.server/router
+                                   :config #ig/ref :app.config/config
+                                   :reload? true}
+ :app.server/router               {:authn-handler #ig/ref :app.authn.handler/auth-handler
+                                   :config #ig/ref :app.config/config
+                                   :graphql-handler #ig/ref :app.graphql.server/handler
+                                   :db-pool #ig/ref :app.db/pool}
+
+ :app.authn.handler/auth-handler  {:config #ig/ref :app.config/config}
+ :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
+ :app.graphql.server/resolvers    {}
+
+ :dev/fe-app                      {:build
+                                   {:target :browser
+                                    :modules {:main {:entries [app.core]
+                                                     :init-fn app.core/init}}
+                                    :devtools {:preloads [uix.preload devtools.preload]}}}}
