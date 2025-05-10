@@ -3,7 +3,6 @@
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
    [app.graphql.compiler :as sut]
-   [malli.core :as mc]
    [clojure.string :as str]
    [app.registry :as registry]))
 

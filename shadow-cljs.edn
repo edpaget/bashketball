@@ -1,8 +1,0 @@
-{:source-paths ["src" "test"]
-
- :builds
- {:test ;; Configuration for the ClojureScript test build
-  {:target     :node-test
-   :output-to  "target/cljs-tests.js"    ;; Single output file for Node.js execution
-   :compiler-options {:source-map true}
-   :devtools   {:ns-regexp "-test$"}}}}     ;; Regex to find test namespaces

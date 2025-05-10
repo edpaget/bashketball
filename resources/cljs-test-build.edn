@@ -1,0 +1,5 @@
+{:duct.compiler.cljs.shadow/release {:build
+                                     {:target     :node-test
+                                      :output-to  "target/cljs-tests.js"    ;; Single output file for Node.js execution
+                                      :compiler-options {:source-map true}
+                                      :devtools   {:ns-regexp "-test$"}}}}
