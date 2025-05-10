@@ -29,3 +29,5 @@ node_modules/
 .aider*
 /.clj-kondo/imports/com.github.seancorfield/
 /.clj-kondo/.lock
+/.env
+/.envrc

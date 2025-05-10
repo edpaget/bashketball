@@ -69,3 +69,6 @@ jobs:
 
       - name: Run ClojureScript tests
         run: npm run test:cljs
+
+      - name: Run Clojure e2e tests
+        run: clojure -X:dev:test:test-e2e

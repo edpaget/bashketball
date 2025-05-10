@@ -1,12 +1,12 @@
 (ns e2e.fixtures
   (:require
-   [clojure.test :refer [compose-fixtures]]
    [app.test-utils :as test-utils]
-   [etaoin.api :as e]
    [clj-test-containers.core :as tc]
    [clojure.java.io :as io]
-   [integrant.core :as ig]
-   [clojure.tools.logging :as log])
+   [clojure.test :refer [compose-fixtures]]
+   [clojure.tools.logging :as log]
+   [etaoin.api :as e]
+   [integrant.core :as ig])
   (:import
    [org.testcontainers Testcontainers]))
 
@@ -21,6 +21,7 @@
                        (-> (tc/create {:image-name    "selenium/standalone-chromium:latest"
                                        :exposed-ports [4444 7900]})
                            (update :container #(doto %
+                                                 (.withReuse true)
                                                  (.setShmSize 2147483648)
                                                  (.withAccessToHost true))))))
 
