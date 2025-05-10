@@ -1,7 +1,8 @@
 (ns app.card.edit
-  (:require [app.card.types :as card-types]
-            [uix.core :as uix :refer [defui $]]
-            [uix.dom]))
+  (:require
+   [app.card.types :as card-types]
+   [uix.core :as uix :refer [defui $]]
+   [uix.dom]))
 
 (defn convert-to-blob
   [event update-field]
@@ -55,11 +56,11 @@
                         (for [[option-value option-label] (:options field)]
                           ($ :option {:key option-value :value option-value} option-label))))
          "textarea" ($ :div.widget {:key (:field field)}
-                     ($ :label {:for (str (:name field) "-textarea")} (:label field))
-                     ($ :textarea {:value (get card (:field field) "")
-                                   :id (str (:name field) "-textarea")
-                                   :name (:name name)
-                                   :on-change #(update-card-field (:field field) (.. % -target -value))}))
+                       ($ :label {:for (str (:name field) "-textarea")} (:label field))
+                       ($ :textarea {:value (get card (:field field) "")
+                                     :id (str (:name field) "-textarea")
+                                     :name (:name name)
+                                     :on-change #(update-card-field (:field field) (.. % -target -value))}))
          "multitext" ($ multi-text (merge {:key (:name field)
                                            :card card
                                            :on-change update-card-field}
@@ -81,17 +82,17 @@
                        :value (name (get card :type ""))}
               ($ :option {:value ""} "Select Card Type")
               (for [[type {:keys [type-label]}] card-types/types]
-               ($ :option {:key (name type) :value (name type)} type-label))))
+                ($ :option {:key (name type) :value (name type)} type-label))))
         ($ text-widget {:name "card-name"
                         :label "Card Name"
                         :field :name
                         :card card
                         :on-change update-card-field})
         ($ :div.widget
-            ($ :label {:for "card-img-input"} "Card Image")
-            ($ :input {:type "file"
-                       :accept "image/*"
-                       :id "card-img-input"
-                       :name "card-img"
-                       :on-change #(convert-to-blob % update-card-field)}))
-          ($ card-fields {:card card :update-card-field update-card-field}))))
+           ($ :label {:for "card-img-input"} "Card Image")
+           ($ :input {:type "file"
+                      :accept "image/*"
+                      :id "card-img-input"
+                      :name "card-img"
+                      :on-change #(convert-to-blob % update-card-field)}))
+        ($ card-fields {:card card :update-card-field update-card-field}))))

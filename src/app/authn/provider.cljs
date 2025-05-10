@@ -38,7 +38,11 @@
 
 (defui authn [{:keys [children]}]
   (let [[oidc-token set-oidc-token!] (uix/use-state "")
+        {:keys [data refetch]} (gql.client/use-query get-me ::models/Actor :me)
         [auth-status set-auth-status!] (uix/use-state :logged-out)]
+    (uix/use-effect (fn [] (refetch)) [auth-status refetch])
+    (uix/use-effect (fn [] (set-auth-status! (if (-> data :me :id) :logged-in :logged-out)))
+                    [data])
     (uix/use-effect (fn [] (login oidc-token set-auth-status!)) [oidc-token])
     ($ gauth/GoogleOAuthProvider {:client-id client-id}
        ($ auth-provider {:value {:id-token oidc-token
@@ -56,8 +60,7 @@
 
 (defui logout-button []
   (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
-        {:keys [data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
-    (uix/use-effect (fn [] (refetch)) [auth-status refetch])
+        {:keys [data]} (gql.client/use-query get-me ::models/Actor :me)]
     (when (-> data :me not-empty)
       ($ headless/Button {:type "button"
                           :class "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -65,9 +68,7 @@
          "Logout"))))
 
 (defui login-required [{:keys [show-prompt children]}]
-  (let [{:keys [auth-status]} (uix/use-context auth-provider)
-        {:keys [loading error data refetch]} (gql.client/use-query get-me ::models/Actor :me)]
-    (uix/use-effect (fn [] (refetch)) [auth-status refetch])
+  (let [{:keys [loading error data]} (gql.client/use-query get-me ::models/Actor :me)]
     (cond
       loading ($ :p {:class "text-sm text-gray-500"} "Loading...")
       (not-empty error) ($ :p {:class "text-sm text-red-600"} "Something went wrong...")
