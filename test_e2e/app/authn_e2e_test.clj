@@ -18,6 +18,7 @@
       (is (e/wait-visible fx/*driver* login-prompt-selector) "Login prompt should be visible")
       (is (not (e/visible? fx/*driver* logout-button-selector)) "Logout button should not be visible"))
 
+    ;; TODO: test the actual login at some point
     (testing "Perform login"
       (e/js-execute fx/*driver*
                     "fetch('/authn', {
