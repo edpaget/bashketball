@@ -10,7 +10,7 @@
   (:import
    [org.testcontainers Testcontainers]))
 
-(derive ::fe-app :duct.compiler.cljs.shadow/server)
+(derive :e2e/fe-app :duct.compiler.cljs.shadow/server)
 
 (def config (-> (io/resource "test.edn") slurp ig/read-string))
 
@@ -26,7 +26,7 @@
                                                  (.withAccessToHost true))))))
 
 (def ^:dynamic *driver* nil)
-
+(def ^:dynamic *app-url* "http://host.testcontainers.internal:9000/")
 ;; Fixture to manage the WebDriver lifecycle
 (defn webdriver-fixture [f]
   (let [container @chrome-container

@@ -10,6 +10,6 @@
 
 (deftest ^:e2e homepage-loads-test
   (testing "Example.com loads"
-    (e/go fx/*driver* "http://host.testcontainers.internal:9000/")
+    (e/go fx/*driver* fx/*app-url*)
     (e/wait-visible fx/*driver* {:tag :h1})
     (is (e/has-text? fx/*driver* "Blood Basket"))))

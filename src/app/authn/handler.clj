@@ -15,7 +15,8 @@
   [:=> [:cat :map] [:maybe ::models/Identity]])
 
 (registry/defschema ::jwt-unsign
-  [:=> [:cat :string] [:map [:email :string]]])
+  [:=> [:cat :string :string] [:map [:email :string]]])
+
 
 (me/defn make-id-token-authenticator :- ::authenticator
   ([opts :- [:map
@@ -90,8 +91,9 @@
                                                    [:authorization-creator ::authorization-creator]
                                                    [:cookie-name :string]]]
   (fn [{:keys [body cookies]}]
-    (condp = (get body :action)
-      "login" (let [[result status] (authorization-creator {:token (get body :id-token)
+    (log/infof "Taking auth action %s" (:action body))
+    (condp = (:action body)
+      "login" (let [[result status] (authorization-creator {:token (:id-token body)
                                                             :role (get body :role "-self")})]
                 (condp = status
                   204 (-> {:status status}

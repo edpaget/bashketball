@@ -59,7 +59,7 @@
            :on-error #(prn %)}))))
 
 (defui logout-button []
-  (let [{:keys [auth-status set-auth-status! set-token!]} (uix/use-context auth-provider)
+  (let [{:keys [set-auth-status! set-token!]} (uix/use-context auth-provider)
         {:keys [data]} (gql.client/use-query get-me ::models/Actor :me)]
     (when (-> data :me not-empty)
       ($ headless/Button {:type "button"

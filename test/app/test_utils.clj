@@ -1,11 +1,13 @@
 (ns app.test-utils
   (:require
+   [app.authn.handler :as authn.handler]
    [app.config :as config]
    [app.db :as db]
    [app.db.connection-pool :as db.pool]
    [app.models :as models] ; Add models namespace
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [integrant.core :as ig]
    [java-time.api :as t]
    [next.jdbc :as jdbc]
    [next.jdbc.transaction]
@@ -165,3 +167,17 @@
          ~@body
          (finally
            ~@cleanup-forms)))))
+
+;; Mock auth handler that does accepts a token with a constant value
+(defmethod ig/init-key ::auth-handler [_ {:keys [config]}]
+  (let [{:keys [cookie-name]} (:auth config)]
+    (authn.handler/make-authn-handler
+     {:cookie-name cookie-name
+      :authorization-creator
+      (authn.handler/make-token-authorization-creator
+       {:authenticator (authn.handler/make-id-token-authenticator
+                        {:jwks-url ""
+                         :strategy :identity-strategy/INVALID}
+                        (fn [_jwks-url token]
+                          (when (= "test-user-token" token)
+                            {:email "test-user@gmail.com"})))})})))
