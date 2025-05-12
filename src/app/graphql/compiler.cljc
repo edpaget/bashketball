@@ -192,4 +192,5 @@
 
 (comment
   (->query {:Query/me [:app.models/Actor :id :useName]})
+  (->query {:Query/me [:app.models/GameCard]})
   (->query {:Query/me [:app.models/Actor]}))

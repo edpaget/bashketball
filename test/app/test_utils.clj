@@ -144,6 +144,7 @@
                                `[~id-sym (let [table# (models/->table-name ~model-kw)
                                                cols# (vec (keys ~data-map))
                                                vals# (vec (vals ~data-map))]
+                                           (log/debug "Inserting into" table# "with data:" ~data-map)
                                            (db/execute-one! {:insert-into table#
                                                              :columns     cols#
                                                              :values      [vals#]
@@ -152,15 +153,17 @@
         ;; Generate cleanup forms (delete in reverse order)
         cleanup-forms (map (fn [[model-kw _] id-sym]
                              `(let [table# (models/->table-name ~model-kw)
-                                    id# (vals ~id-sym)] ; Extract ID from the insert result
-                                (when id# ; Only delete if insert succeeded and returned an ID
+                                    pk-keys# (models/->pk ~model-kw)
+                                    pk-vals# (map #(get ~id-sym %) pk-keys#)] ; Get PK values from result map
+                                (when (every? some? pk-vals#) ; Only delete if insert succeeded and returned a full PK
+                                  (log/debug "Deleting from" table# "where PK" pk-keys# "=" pk-vals#)
                                   (db/execute! {:delete-from table#
                                                 :where       (into [:and]
-                                                                   (map (fn [[k# v#]]
-                                                                          (if (keyword? v#)
+                                                                   (map (fn [k# v#]
+                                                                          (if (keyword? v#) ; Handle potential enums in PK
                                                                             [:= k# (db/->pg_enum v#)]
-                                                                            [:= k# v#])))
-                                                                   (zipmap (models/->pk ~model-kw) id#))}))))
+                                                                            [:= k# v#]))
+                                                                        pk-keys# pk-vals#))}))))
                            (reverse pairs) (reverse id-syms))]
     `(let [~@let-bindings]
        (try

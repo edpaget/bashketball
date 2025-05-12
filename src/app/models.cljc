@@ -151,12 +151,26 @@
     [:asset-power
      :string]]])
 
+(registry/defschema ::GameCard
+  [:multi {:dispatch :card-type
+           ;; this could be derived from all members being 'card', but
+           ;; let's just be explicit
+           ::pk [:name :version]}
+   [1 ::PlayerCard]
+   [2 ::AbilityCard]
+   [3 ::SplitPlayCard]
+   [4 ::PlayCard]
+   [5 ::CoachingCard]
+   [6 ::StandardActionCard]
+   [7 ::TeamAssetCard]])
+
 (def ^:private -validator
   (memoize (fn [type-name]
              (mc/validator type-name))))
 
 (defn validate
   [type value]
+  (prn type)
   ((-validator type) value))
 
 (defn ->table-name
@@ -167,4 +181,4 @@
 (defn ->pk
   "Return the primary key of the model as a vector"
   [type]
-  (or (-> type mc/deref mc/properties ::pk) [:id]))
+  (or (-> type mc/deref-recursive mc/properties ::pk) [:id]))
