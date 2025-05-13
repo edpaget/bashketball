@@ -43,6 +43,31 @@
   [:map
    [:id :int]])
 
+;; --- Local Schemas for Inline Fragment Test ---
+
+(def TestInterfaceBase
+  [:map {:graphql/type "TestInterfaceBase"}
+   [:commonField :string]])
+
+(def TestConcreteTypeA
+  [:merge TestInterfaceBase
+   [:map {:graphql/type "TestConcreteTypeA"}
+    [:fieldA :int]]])
+
+(def TestConcreteTypeB
+  [:merge TestInterfaceBase
+   [:map {:graphql/type "TestConcreteTypeB"}
+    [:fieldB :boolean]]])
+
+;; Define a multi-schema to act as the interface/union
+(def TestInterfaceMulti
+  [:multi {:dispatch (fn [m] (cond (:fieldA m) ::TestConcreteTypeA
+                                   (:fieldB m) ::TestConcreteTypeB
+                                   :else ::TestInterfaceBase)) ; Dispatch logic example
+           :graphql/type "TestInterfaceMulti"} ; Explicit GraphQL type name for the interface/union
+   [::TestConcreteTypeA TestConcreteTypeA]
+   [::TestConcreteTypeB TestConcreteTypeB]])
+
 ;; Define vars with schemas in metadata for testing
 (def ^{:schema [:=> [:cat :any [:map [:id :int]] :any] [:maybe SimpleObject]]}
   get-simple-object-var nil)
@@ -151,8 +176,8 @@
                                   #"Unsupported form"
                                   (sut/->query {:Query/me Actor}))
            :cljs (thrown-with-msg? js/Error
-                                  #"Unsupported form"
-                                  (sut/->query {:Query/me Actor})))))
+                                   #"Unsupported form"
+                                   (sut/->query {:Query/me Actor})))))
 
   (testing "query with nested fields"
     (let [[query-str types-map] (sut/->query {:Query/game [Game :id {:home-team [Team :name {:players [Actor :user-name]}]}]})]
@@ -226,4 +251,56 @@
     ;; leading to an error when ->graphql-string receives a raw map instead of an AST node.
     (is (thrown-with-msg? #?(:clj IllegalArgumentException :cljs js/Error)
                           #"No method in multimethod "
-                          (sut/->query '({:Query/userById [Actor :id]} :id "user-123"))))))
+                          (sut/->query '({:Query/userById [Actor :id]} :id "user-123")))))
+
+  (testing "query with inline fragments for different types (multi-schema using local test schemas)"
+    (let [type-registry-value @registry/type-registry]
+      (try
+        ;; Register the local test schemas
+        (registry/register-type! ::TestInterfaceMulti TestInterfaceMulti)
+        (registry/register-type! ::TestConcreteTypeA TestConcreteTypeA)
+        (registry/register-type! ::TestConcreteTypeB TestConcreteTypeB)
+        ;; Note: TestInterfaceBase doesn't need explicit registration if only used via :merge
+
+        (testing "selecting common fields and specific fields via nested vectors"
+          (let [[query-str types-map] (sut/->query
+                                       {:Query/interfaceQuery [::TestInterfaceMulti ; Use the multi-schema
+                                                               :commonField ; Common field
+                                                               ;; Specific fields per type
+                                                               [::TestConcreteTypeA :fieldA]
+                                                               [::TestConcreteTypeB :fieldB]]})]
+            ;; Check query structure
+            (is (str/starts-with? query-str "query { interfaceQuery { commonField "))
+            (is (str/includes? query-str "... on TestConcreteTypeA { fieldA }"))
+            (is (str/includes? query-str "... on TestConcreteTypeB { fieldB }"))
+            (is (str/ends-with? query-str " } }"))
+            ;; Check collected types
+            (is (= {"TestInterfaceMulti" ::TestInterfaceMulti
+                    "TestConcreteTypeA" ::TestConcreteTypeA
+                    "TestConcreteTypeB" ::TestConcreteTypeB}
+                   types-map)
+                "Should collect the interface/union type and the specific concrete types")))
+
+        (testing "selecting only specific fields via nested vectors"
+          (let [[query-str types-map] (sut/->query
+                                       {:Query/interfaceQuery [::TestInterfaceMulti
+                                                               ;; No common fields selected directly
+                                                               [::TestConcreteTypeA :commonField :fieldA] ; Common selected within type
+                                                               [::TestConcreteTypeB :fieldB]]})]
+            (is (str/starts-with? query-str "query { interfaceQuery { "))
+            (is (str/includes? query-str "... on TestConcreteTypeA { commonField fieldA }"))
+            (is (str/includes? query-str "... on TestConcreteTypeB { fieldB }"))
+            (is (str/ends-with? query-str " } }"))
+            (is (= {"TestInterfaceMulti" ::TestInterfaceMulti
+                    "TestConcreteTypeA" ::TestConcreteTypeA
+                    "TestConcreteTypeB" ::TestConcreteTypeB}
+                   types-map))))
+
+        (testing "selecting only common fields (no inline fragments needed)"
+          (let [[query-str types-map] (sut/->query {:Query/interfaceQuery [::TestInterfaceMulti :commonField]})]
+            (is (= "query { interfaceQuery { commonField } }" query-str))
+            (is (= {"TestInterfaceMulti" ::TestInterfaceMulti} types-map))))
+
+        (finally
+          ;; Restore original registry state
+          (reset! registry/type-registry type-registry-value))))))

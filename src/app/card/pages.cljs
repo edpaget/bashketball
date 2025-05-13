@@ -10,8 +10,7 @@
    [app.models :as models]))
 
 (defui cards-index []
-  (let [{:keys [loading data]} {} ;;(graphql.client/use-query "query { cards { ... on PlayerCard { name cardType } } }" ::models/Card :cards)
-        ]
+  (let [{:keys [loading data]} (graphql.client/use-query {:Query/get-all-cards [::models/GameCard]})]
     ($ :div {:className "card-index"}
        (cond
          loading ($ :p "loading cards...")
@@ -23,12 +22,11 @@
        ($ :a {:href (router/href :cards-new)}
           "New Card"))))
 
-(def ^:private get-card
-  "query GetCard($cardName: String!) { card(cardName: $cardName) { ... on PlayerCard { name cardType } } }")
-
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
-        {:keys [loading data]} {} ;; (graphql.client/use-query get-card ::models/Card :card {:card-name card-id})
+        {:keys [loading data]} (graphql.client/use-query
+                                '({:Query/get-card-by-name [::models/GameCard]} [:card-name])
+                                {:card-name card-id})
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer (:card data))]
     ($ :<>
        ($ authn/login-required {:show-prompt false}

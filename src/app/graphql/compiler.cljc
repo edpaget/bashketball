@@ -23,7 +23,7 @@
   (case (mc/type schema)
     (:multi :map) (when-let [type-name (get (mc/properties schema) :graphql/type)]
                     (csk/->PascalCaseKeyword type-name))
-    ::mc/schema (-> schema mc/form name  csk/->PascalCaseKeyword)))
+    ::mc/schema (-> schema mc/form name csk/->PascalCaseKeyword)))
 
 (defn- ->graphql-field
   [[field-name _opts field-type]]
@@ -110,23 +110,31 @@
 
 (defmulti ^:private ->graphql-string
   "Compile a query form to a gql query"
-  (fn [{:keys [type]}] type))
+  (fn [{:keys [type]} _ctx] type))
 
 (defmethod ->graphql-string ::query
-  [{:keys [children query-key]}]
-  (str (csk/->camelCase (name query-key)) " { " (str/join " " (map ->graphql-string children)) " }"))
+  [{:keys [children query-key]} ctx]
+  (str (csk/->camelCase (name query-key))
+       " { "
+       (str/join " " (map ->graphql-string children (repeat (dissoc ctx ::in-field))))
+       " }"))
 
 (defmethod ->graphql-string ::fields
-  [{:keys [children]}]
-  (str/join " " (map ->graphql-string children)))
+  [{:keys [schema children]} {:keys [app.graphql.compiler/in-field] :as ctx}]
+  (str
+   (when in-field
+     (str "... on " (name (->graphql-type-name schema)) " { "))
+   (str/join " " (map ->graphql-string children (repeat (assoc ctx ::in-field true))))
+   (when in-field
+     " }")))
 
 (defmethod ->graphql-string ::field
-  [{:keys [field]}]
+  [{:keys [field]} _ctx]
   (name field))
 
 (defmethod ->graphql-string ::root
-  [{:keys [children]}]
-  (str "query { " (str/join " " (map ->graphql-string children)) " }"))
+  [{:keys [children]} ctx]
+  (str "query { " (str/join " " (map ->graphql-string children (repeat ctx))) " }"))
 
 (defmulti ^:private ->query-ast
   "Convert a query map to an ast while checking if it is valid and expanding schemas"
@@ -140,7 +148,7 @@
 (defmethod ->query-ast ::query-with-args
   [[query & args]]
   {:type ::query-with-args
-   :children [(->graphql-string query)]
+   :children [(->query-ast query)]
    :arguments args})
 
 (defn- ->query-field-names
@@ -148,7 +156,13 @@
   (mc/walk (mc/deref schema)
            (fn [schema _ children _]
              (condp = (mc/type schema)
+               :merge (->query-field-names schema)
                :map (into #{} (map first) children)
+               :multi (into #{}
+                            (comp
+                             (map #(nth % 2))
+                             (map #(vector %)))
+                            children)
                schema))))
 
 (defmethod ->query-ast ::fields
@@ -187,10 +201,11 @@
         types (keep :schema (tree-seq #(or (seq? %) (map? %))
                                       #(or (:children %) (seq %))
                                       ast))]
-    [(->graphql-string ast)
+    [(->graphql-string ast {})
      (zipmap (map (comp name ->graphql-type-name) types) types)]))
 
 (comment
   (->query {:Query/me [:app.models/Actor :id :useName]})
+  (->query {:Query/me [:app.models/GameCard]})
   (->query {:Query/me [:app.models/GameCard]})
   (->query {:Query/me [:app.models/Actor]}))
