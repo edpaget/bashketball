@@ -37,19 +37,37 @@
    [:created-at :time/instant]
    [:expires-at [:maybe :time/instant]]])
 
+(registry/defschema ::CardType
+  [:enum
+   :card-type-enum/INVALID
+   :card-type-enum/PLAYER_CARD
+   :card-type-enum/ABILITY_CARD
+   :card-type-enum/SPLIT_PLAY_CARD
+   :card-type-enum/PLAY_CARD
+   :card-type-enum/COACHING_CARD
+   :card-type-enum/STANDARD_ACTION_CARD
+   :card-type-enum/TEAM_ASSET_CARD])
+
 (registry/defschema ::Card
   [:map {::pk [:name :version]}
    [:name :string]
    [:version {:default-value "0"} :string]
-   [:img-url {:ui/input-type "file"} :string]
-   [:card-type :string]
+   [:asset-id {:ui/input-type "file"} :string]
+   [:card-type ::CardType]
    [:created-at :time/instant]
    [:updated-at :time/instant]])
+
+(registry/defschema ::PlayerSize
+  [:enum
+   :size-enum/INVALID
+   :size-enum/SM
+   :size-enum/MD
+   :size-enum/LG])
 
 (registry/defschema ::PlayerCard
   [:merge ::Card
    [:map
-    [:card-type [:= "player"]]
+    [:card-type [:= :card-type-enum/PLAYER_CARD]]
     [:deck-size {:ui/label "Deck Size"
                  :ui/auto-widget true
                  :default-value 5}
@@ -73,11 +91,11 @@
     [:size {:ui/label "Size"
             :ui/select-label "Select Player Size"
             :ui/auto-widget true
-            :ui/options {"sm" "Small"
-                         "md" "Medium"
-                         "lg" "Large"}
-            :default-value "sm"}
-     [:enum "sm" "md" "lg"]]
+            :ui/options {"SM" "Small"
+                         "MD" "Medium"
+                         "LG" "Large"}
+            :default-value "SM"}
+     ::PlayerSize]
     [:abilities {:ui/label "Abilities"
                  :ui/auto-widget true
                  :default-value [""]}
@@ -86,7 +104,7 @@
 (registry/defschema ::AbilityCard
   [:merge ::Card
    [:map
-    [:card-type [:= "ability"]]
+    [:card-type [:= :card-type-enum/ABILITY_CARD]]
     [:abilities {:ui/label "Abilities"
                  :ui/auto-widget true
                  :default-value [""]}
@@ -103,7 +121,7 @@
 (registry/defschema ::SplitPlayCard
   [:merge ::CardWithFate
    [:map
-    [:card-type [:= "split-play"]]
+    [:card-type [:= :card-type-enum/SPLIT_PLAY_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
                :default-value ""}
@@ -116,8 +134,8 @@
 (registry/defschema ::PlayCard
   [:merge ::CardWithFate
    [:map
-    [:card-type [:= "play"]]
-    [:play {:ui/label "Defense"
+    [:card-type [:= :card-type-enum/PLAY_CARD]]
+    [:play {:ui/label "Play"
             :ui/auto-widget true
             :default-value ""}
      :string]]])
@@ -125,7 +143,7 @@
 (registry/defschema ::CoachingCard
   [:merge ::CardWithFate
    [:map
-    [:card-type [:= "coaching"]]
+    [:card-type [:= :card-type-enum/COACHING_CARD]]
     [:coaching {:ui/label "Defense"
                 :ui/auto-widget true
                 :default-value ""}
@@ -134,7 +152,7 @@
 (registry/defschema ::StandardActionCard
   [:merge ::CardWithFate
    [:map
-    [:card-type [:= "standard-action"]]
+    [:card-type [:= :card-type-enum/STANDARD_ACTION_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
                :default-value ""}
@@ -147,7 +165,7 @@
 (registry/defschema ::TeamAssetCard
   [:merge ::CardWithFate
    [:map
-    [:card-type [:= "team-asset"]]
+    [:card-type [:= :card-type-enum/TEAM_ASSET_CARD]]
     [:asset-power
      :string]]])
 
@@ -163,6 +181,21 @@
    [5 ::CoachingCard]
    [6 ::StandardActionCard]
    [7 ::TeamAssetCard]])
+
+(registry/defschema ::GameAssetStatus
+  [:enum
+   :game-asset-status/PENDING
+   :game-asset-status/UPLOADED
+   :game-asset-status/ERROR])
+
+(registry/defschema ::GameAsset
+  [:map
+   [:id :uuid]
+   [:img-url :string]
+   [:status ::GameAssetStatus]
+   [:error-message [:maybe :string]]
+   [:updated-at :time/instant]
+   [:created-at :time/instant]])
 
 (def ^:private -validator
   (memoize (fn [type-name]

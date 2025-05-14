@@ -22,7 +22,7 @@ CREATE TYPE size_enum AS ENUM (
 CREATE TABLE game_card (
     name TEXT NOT NULL,
     version TEXT NOT NULL,
-    img_url TEXT,
+    game_asset_id UUID, -- Replaces img_url, FK constraint to be added in a later migration
     card_type card_type_enum NOT NULL,
     deck_size INT,
     sht INT,
