@@ -214,12 +214,12 @@
                                :play nil
                                :coaching "Strategic Timeout"
                                :fate nil
-                               :asset-power nil}]
-      (let [created-card (card/create input-card)]
-        (is (some? created-card))
-        (is (= all-expected-fields (select-keys created-card (keys all-expected-fields))))
+                               :asset-power nil}
+          created-card (card/create input-card)]
+      (is (some? created-card))
+      (is (= all-expected-fields (select-keys created-card (keys all-expected-fields))))
 
-        ;; Verify by retrieving
-        (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
-          (is (some? retrieved-card))
-          (is (= all-expected-fields (select-keys retrieved-card (keys all-expected-fields)))))))))
+      ;; Verify by retrieving
+      (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
+        (is (some? retrieved-card))
+        (is (= all-expected-fields (select-keys retrieved-card (keys all-expected-fields))))))))
