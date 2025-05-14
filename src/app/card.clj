@@ -16,7 +16,7 @@
     name :- :string
     version :- :string]
    (db/execute-one! {:select cols
-                     :from   [:game_card]
+                     :from   [(models/->table-name ::models/GameCard)]
                      :where  [:and [:= :name name]
                               [:= :version version]]})))
 
@@ -32,7 +32,18 @@
   ([cols :- [:vector :keyword]
     {:keys [limit offset] :or {limit 100 offset 0}} :- ::pagination-opts]
    (db/execute! {:select    cols
-                 :from     [:game_card]
+                 :from     [(models/->table-name ::models/GameCard)]
                  :order-by [:name :version]
                  :limit    limit
                  :offset   offset})))
+
+(me/defn create :- ::models/GameCard
+  "Save a GameCard model to the database"
+  [input :- ::models/GameCard]
+  (db/execute-one! {:insert-into [(models/->table-name ::models/GameCard)]
+                    :columns     (keys input)
+                    :values      [(cond-> (update input :card-type db/->pg_enum)
+                                    (:size input) (update :size db/->pg_enum)
+                                    (:abilities input) (update :abilities #(conj [:lift] %))
+                                    :alway vals)]
+                    :returning   [:*]}))

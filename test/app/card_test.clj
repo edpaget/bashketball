@@ -146,3 +146,80 @@
       ;; No with-inserted-data needed here
       (let [result (into [] (card/list {}))]
         (is (empty? result))))))
+
+(deftest create-test
+  (testing "Creating a new player card with all fields"
+    (let [input-card {:name "Creator Player" ; Unique name for this test
+                      :version "0"
+                      :card-type :card-type-enum/PLAYER_CARD
+                      :deck-size 1
+                      :sht 3
+                      :pss 2
+                      :def 1
+                      :speed 4
+                      :size :size-enum/LG ; Using a different size for variety
+                      :abilities ["Power Hitter"]}
+          created-card (card/create input-card)]
+      (is (some? created-card) "Card should be created and returned")
+      (is (some? (:created-at created-card)) "created_at should be set")
+      (is (some? (:updated-at created-card)) "updated_at should be set")
+      (is (= input-card (select-keys created-card (keys input-card))))
+
+      (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
+        (is (some? retrieved-card) "Card should be retrievable from DB")
+        (is (= input-card (select-keys retrieved-card (keys input-card))))
+        (is (some? (:created-at retrieved-card)))
+        (is (some? (:updated-at retrieved-card))))))
+
+  (testing "Creating a new ability card (without size and other player-specific fields)"
+    (let [input-card {:name "New Ability Card Create"
+                      :version "1"
+                      :card-type :card-type-enum/ABILITY_CARD
+                      :abilities ["Versatile"]}
+          created-card (card/create input-card)]
+      (is (some? created-card) "Card should be created and returned")
+      (is (some? (:created-at created-card)) "created_at should be set")
+      (is (some? (:updated-at created-card)) "updated_at should be set")
+      (is (= input-card (select-keys created-card (keys input-card))))
+
+      (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
+        (is (some? retrieved-card) "Card should be retrievable from DB")
+        (is (= input-card (select-keys retrieved-card (keys input-card))))
+        (is (some? (:created-at retrieved-card)))
+        (is (some? (:updated-at retrieved-card))))))
+
+  (testing "Creating a card and ensuring all fields are present in returning *"
+    ;; This test is to ensure that all columns defined in the schema are returned,
+    ;; even if they are nil, and match their expected nil/default values.
+    (let [input-card {:name "Minimal Coaching Card"
+                      :version "c2"
+                      :card-type :card-type-enum/COACHING_CARD
+                      :deck-size 0
+                      :coaching "Strategic Timeout"}
+          ;; Define all fields expected in ::models/GameCard, setting to nil if not in input
+          ;; This relies on knowing the full schema of GameCard.
+          ;; For this example, I'll list the fields from the first test's input-card.
+          all-expected-fields {:name "Minimal Coaching Card"
+                               :version "c2"
+                               :card-type :card-type-enum/COACHING_CARD
+                               :deck-size 0
+                               :sht nil
+                               :pss nil
+                               :def nil
+                               :speed nil
+                               :size nil
+                               :abilities nil
+                               :offense nil
+                               :defense nil
+                               :play nil
+                               :coaching "Strategic Timeout"
+                               :fate nil
+                               :asset-power nil}]
+      (let [created-card (card/create input-card)]
+        (is (some? created-card))
+        (is (= all-expected-fields (select-keys created-card (keys all-expected-fields))))
+
+        ;; Verify by retrieving
+        (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
+          (is (some? retrieved-card))
+          (is (= all-expected-fields (select-keys retrieved-card (keys all-expected-fields)))))))))
