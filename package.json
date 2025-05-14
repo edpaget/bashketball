@@ -1,5 +1,5 @@
 {
-  "name": "blood-basket",
+  "name": "bashketball",
   "scripts": {
     "test:cljs": "clojure -M:dev:test -m dev.build-cljs test && node target/cljs-tests.js",
     "release": "clojure -M:dev -m dev.build-cljs release && npm run styles-release",
