@@ -1,20 +1,18 @@
 (ns app.s3-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is use-fixtures]]
    [app.s3 :as s3]
    [cognitect.aws.client.api :as aws]
    [clojure.java.io :as io]
    [cognitect.aws.credentials :as creds]))
 
 ;; --- LocalStack Configuration ---
-(def ^:private localstack-endpoint "http://localhost:4566")
 (def ^:private test-region "us-east-1")
 
 ;; --- Dynamic Vars for Test State ---
 ;; These will be bound by the fixture for use in tests
 (def ^:dynamic ^:private *test-bucket-name* nil)
 (def ^:dynamic ^:private *localstack-client* nil)
-
 
 ;; --- Helper Functions for S3 Operations against LocalStack ---
 (defn- localstack-creds-provider []
@@ -90,54 +88,54 @@
   (testing "putting an object using dynamic *s3-client* with ContentType"
     (let [test-key (str "test-object-dynamic-" (random-uuid) ".txt")
           test-body "Hello from dynamic client with ContentType!"
-          opts {:ContentType "text/plain; charset=utf-8"}]
-      (let [response (s3/put-object test-key test-body opts)]
-        (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
-        (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
-        (is (some? (:ETag response)) "Response should contain ETag")
+          opts {:ContentType "text/plain; charset=utf-8"}
+          response (s3/put-object test-key test-body opts)]
+      (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
+      (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
+      (is (some? (:ETag response)) "Response should contain ETag")
 
-        (let [retrieved-obj-response (s3/get-object test-key)]
-          (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
-          (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
-          (is (= test-body (slurp (:Body retrieved-obj-response))))
-          (is (= "text/plain; charset=utf-8" (:ContentType retrieved-obj-response)))))))
+      (let [retrieved-obj-response (s3/get-object test-key)]
+        (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
+        (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
+        (is (= test-body (slurp (:Body retrieved-obj-response))))
+        (is (= "text/plain; charset=utf-8" (:ContentType retrieved-obj-response))))))
 
   (testing "putting an object using explicit client map with Tagging"
     (let [client-map {:client *localstack-client* :bucket-name *test-bucket-name*}
           test-key (str "test-object-explicit-" (random-uuid) ".txt")
           test-body "Hello from explicit client with Tagging!"
-          opts {:Tagging "app=test&env=dev"}]
-      (let [response (s3/put-object client-map test-key test-body opts)]
-        (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
-        (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
-        (is (some? (:ETag response)) "Response should contain ETag")
+          opts {:Tagging "app=test&env=dev"}
+          response (s3/put-object client-map test-key test-body opts)]
+      (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
+      (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
+      (is (some? (:ETag response)) "Response should contain ETag")
 
-        (let [retrieved-obj-response (s3/get-object client-map test-key)
-              retrieved-body (slurp (:Body retrieved-obj-response))]
-          (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
-          (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
-          (is (= test-body retrieved-body)))
+      (let [retrieved-obj-response (s3/get-object client-map test-key)
+            retrieved-body (slurp (:Body retrieved-obj-response))]
+        (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
+        (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
+        (is (= test-body retrieved-body)))
 
-        (let [tagging-response (aws/invoke *localstack-client*
-                                           {:op :GetObjectTagging
-                                            :request {:Bucket *test-bucket-name* :Key test-key}})]
-          (is (nil? (:ErrorResponse tagging-response)) (str "GetObjectTagging failed: " tagging-response))
-          (is (nil? (:cognitect.anomalies/category tagging-response)) (str "GetObjectTagging failed with anomaly: " tagging-response))
-          (is (= [{:Key "app" :Value "test"} {:Key "env" :Value "dev"}]
-                 (sort-by :Key (:TagSet tagging-response))))))))
+      (let [tagging-response (aws/invoke *localstack-client*
+                                         {:op :GetObjectTagging
+                                          :request {:Bucket *test-bucket-name* :Key test-key}})]
+        (is (nil? (:ErrorResponse tagging-response)) (str "GetObjectTagging failed: " tagging-response))
+        (is (nil? (:cognitect.anomalies/category tagging-response)) (str "GetObjectTagging failed with anomaly: " tagging-response))
+        (is (= [{:Key "app" :Value "test"} {:Key "env" :Value "dev"}]
+               (sort-by :Key (:TagSet tagging-response)))))))
 
   (testing "putting an object with InputStream body and no extra opts"
     (let [test-key (str "test-object-inputstream-" (random-uuid) ".dat")
           test-string "Hello from InputStream!"
           test-body (io/input-stream (.getBytes test-string "UTF-8"))
-          opts {}]
-      (let [response (s3/put-object test-key test-body opts)]
-        (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
-        (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
-        (is (some? (:ETag response)) "Response should contain ETag")
+          opts {}
+          response (s3/put-object test-key test-body opts)]
+      (is (nil? (:ErrorResponse response)) (str "PutObject failed: " response))
+      (is (nil? (:cognitect.anomalies/category response)) (str "PutObject failed with anomaly: " response))
+      (is (some? (:ETag response)) "Response should contain ETag")
 
-        (let [retrieved-obj-response (s3/get-object test-key)
-              retrieved-body (slurp (:Body retrieved-obj-response))]
-          (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
-          (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
-          (is (= test-string retrieved-body)))))))
+      (let [retrieved-obj-response (s3/get-object test-key)
+            retrieved-body (slurp (:Body retrieved-obj-response))]
+        (is (nil? (:ErrorResponse retrieved-obj-response)) (str "GetObject failed: " retrieved-obj-response))
+        (is (nil? (:cognitect.anomalies/category retrieved-obj-response)) (str "GetObject failed with anomaly: " retrieved-obj-response))
+        (is (= test-string retrieved-body))))))
