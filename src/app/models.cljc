@@ -191,6 +191,7 @@
 (registry/defschema ::GameAsset
   [:map
    [:id :uuid]
+   [:mime-type :string]
    [:img-url :string]
    [:status ::GameAssetStatus]
    [:error-message [:maybe :string]]

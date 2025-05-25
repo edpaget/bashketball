@@ -1,13 +1,15 @@
 (ns app.actor
   (:require
    [app.models :as models]
-   [malli.experimental :as me]))
+   [app.graphql.resolvers :as gql]))
 
-(me/defn current-actor :- [:maybe ::models/Actor]
-  "Graphql query to "
-  [{:keys [request]} :- [:map
-                         [:request [:map
-                                    [:current-actor ::models/Actor]]]]
-   _ :- :any
-   _ :- :any]
+(gql/defresolver :Query/me
+  "Graphql query to get the current actor of a request"
+  [:=> [:cat [:map
+              [:request [:map
+                         [:current-actor {:optional true} ::models/Actor]]]]
+        :any
+        :any]
+   [:maybe ::models/Actor]]
+  [{:keys [request]} _ _]
   (:current-actor request))

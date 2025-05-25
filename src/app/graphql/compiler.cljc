@@ -94,18 +94,19 @@
   (cond-> {:type return-type}
     field-args (assoc :fields (second field-args))))
 
-(defn name->var->graphql-schema
-  "Convert a map of graphql action name -> resolver or mutation var to a graphql schema"
+(defn name->tuple->graphql-schema
+  "Convert a map of graphql action name -> tuple of schema and fn of a graphql query or mutation
+  to a graphql schema"
   [map]
   (binding [*type-collector* (atom {})]
-    (doseq [[k var] map]
+    (doseq [[k tuple] map]
       (swap! *type-collector* assoc-in [:objects
                                         (case (namespace k)
                                           "Query" :Query
                                           "Mutation" :Mutation)
                                         :fields
                                         (csk/->camelCaseKeyword (name k))]
-             (mc/walk (-> var meta :schema) ->graphql-type)))
+             (mc/walk (first tuple) ->graphql-type)))
     @*type-collector*))
 
 (defmulti ^:private ->graphql-string

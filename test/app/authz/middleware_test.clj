@@ -34,7 +34,7 @@
 
 ;; Mimic structure from test-identity-data for provider fields in AppAuthorization
 (def ^:private identity-fields-ga {:provider #pg_enum :identity-strategy/INVALID
-                                   :provider-identity (str "ga-provider-id-" (java.util.UUID/randomUUID))})
+                                   :provider-identity (str "ga-provider-id-" (random-uuid))})
 
 (def ^:private valid-authz-id-ga (random-uuid))
 (def ^:private valid-authz-data-ga
@@ -116,7 +116,7 @@
       (wrapped-handler request)
       (is @handler-called? "Handler should be called"))))
 
-(deftest get-actor!-test
+(deftest get-actor!-auth-exists-test
   (testing "when authorization is valid and actor exists"
     (tu/with-inserted-data [::models/Actor actor-data-ga
                             ::models/Identity identity-fields-ga
@@ -126,13 +126,15 @@
         (is (= actor-id-ga (:id actor)))
         (is (= (:use-name actor-data-ga) (:use-name actor)))
         (is (some? (:created-at actor)))
-        (is (some? (:updated-at actor))))))
+        (is (some? (:updated-at actor)))))))
 
-  (testing "when authorization does not exist"
-    (tu/with-inserted-data [::models/Actor actor-data-ga] ; Actor exists, but no matching authz
-      (let [actor (get-actor! non-existent-authz-id-ga)]
-        (is (nil? actor) "Actor should not be found for a non-existent authorization ID"))))
+(deftest get-actor!-auth-not-exists-test
+ (testing "when authorization does not exist"
+   (tu/with-inserted-data [::models/Actor actor-data-ga] ; Actor exists, but no matching authz
+     (let [actor (get-actor! non-existent-authz-id-ga)]
+       (is (nil? actor) "Actor should not be found for a non-existent authorization ID")))))
 
+(deftest get-actor!-auth-expired-test
   (testing "when authorization is expired"
     (tu/with-inserted-data [::models/Actor actor-data-ga
                             ::models/Identity identity-fields-ga

@@ -1,6 +1,7 @@
 {:deps {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
         com.cognitect.aws/api {:mvn/version "0.8.730-beta01"}
         com.cognitect.aws/dynamodb {:mvn/version "871.2.29.52", :aws/serviceFullName "Amazon DynamoDB"}
+        com.cognitect.aws/s3 {:mvn/version "871.2.31.23" :aws/serviceFullName "Amazon Simple Storage Service"}
         com.cognitect.aws/endpoints {:mvn/version "871.2.30.11"}
         com.github.sikt-no/clj-jwt {:mvn/version "0.5.98"}
         com.pitch/uix.core {:mvn/version "1.3.0"}

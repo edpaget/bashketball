@@ -12,7 +12,7 @@
   {:msg "Hello World"})
 
 (def test-resolvers
-  {:Query/hello #'hello-resolver})
+  {:Query/hello [(-> #'hello-resolver meta :schema) hello-resolver]})
 
 ;; --- Tests ---
 

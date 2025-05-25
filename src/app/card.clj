@@ -45,5 +45,5 @@
                     :values      [(cond-> (update input :card-type db/->pg_enum)
                                     (:size input) (update :size db/->pg_enum)
                                     (:abilities input) (update :abilities #(conj [:lift] %))
-                                    :alway vals)]
+                                    :always vals)]
                     :returning   [:*]}))
