@@ -23,6 +23,15 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432 # Keep the container port consistent
+      localstack:
+        image: localstack/localstack:3.5.0 # Pinning version for stability
+        env:
+          SERVICES: s3 # Only start S3 service, add others if needed e.g., dynamodb
+          DEBUG: 0
+        ports:
+          - 4566:4566
+        # GitHub Actions waits for the port to be available.
+        # A more specific health check is added in a later step.
 
     steps:
       - name: Checkout code
@@ -59,12 +68,33 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci # Use ci for faster, more reliable installs in CI
 
+      - name: Wait for LocalStack S3
+        run: |
+          echo "Waiting for LocalStack S3 service to be ready..."
+          # Poll the LocalStack health endpoint for S3 status
+          timeout 120 bash -c ' \
+            until curl -sf http://localhost:4566/_localstack/health | grep -E "\"s3\": \"(running|ready)\""; do \
+              echo "Waiting for S3 service in LocalStack..."; \
+              sleep 5; \
+            done'
+          echo "LocalStack S3 service is ready."
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1 # Or your preferred test region
+
       - name: Run Clojure JVM tests
         # Set the DATABASE_URL env var for the tests to connect to the service container
         # Set CLJ_OPTS to configure JVM timezone for tests
         env:
           DATABASE_URL: jdbc:postgresql://localhost:${{ job.services.postgres.ports[5432] }}/testdb?user=testuser&password=testpassword
           CLJ_OPTS: -Duser.timezone=UTC
+          # Add AWS credentials for LocalStack
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: us-east-1 # Match the region used by your s3_test.clj
+          # If your tests need to know the S3 endpoint:
+          # AWS_S3_ENDPOINT_URL: http://localhost:4566
         run: clojure -X:test
 
       - name: Run ClojureScript tests

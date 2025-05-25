@@ -1,6 +1,7 @@
 {:app.config/config               {}
  :app.db/pool                     {:config #ig/ref :app.config/config}
 
+ :app.s3/client                   {:congif #ig/ref :app.config/config}
  :app.server/jetty                {:handler #ig/ref :app.server/router
                                    :config #ig/ref :app.config/config
                                    :reload? true}
@@ -12,7 +13,6 @@
  :app.authn.handler/auth-handler  {:config #ig/ref :app.config/config}
  :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
  :app.graphql.server/resolvers    {}
-
  :dev/fe-app                      {:build
                                    {:target :browser
                                     :modules {:main {:entries [app.core]
