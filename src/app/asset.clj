@@ -31,8 +31,8 @@
    b64 encoded string."
   [:=> [:cat
         [:map
-         [:config [:map [:game-assets [:map [:asset-path]]]]]
-         [:s3-client [::s3/client]]]
+         [:config [:map [:game-assets [:map [:asset-path :string]]]]]
+         [:s3-client ::s3/client]]
         [:map
          [:mime-type :string]
          [:img-blob :string]]

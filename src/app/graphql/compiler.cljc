@@ -47,6 +47,10 @@
   [schema _ _ _]
   (mc/form schema))
 
+(defmethod ->graphql-type :uuid
+  [_ _ _ _]
+  (list 'non-null 'Uuid))
+
 (defmethod ->graphql-type :string
   [_ _ _ _]
   (list 'non-null 'String))
@@ -84,15 +88,23 @@
   nil)
 
 (defmethod ->graphql-type :cat
-  [_ _ children _]
-  (if (= 3 (count children))
-    (second children)
-    (throw (ex-info "field resolves must be 3-arity fns" {:arg-count (count children)}))))
+  [_ _ [child] _]
+  child)
 
 (defmethod ->graphql-type :=>
   [_ _ [field-args return-type] _]
   (cond-> {:type return-type}
     field-args (assoc :fields (second field-args))))
+
+(defn- narrow-fn
+  "Remove the first and second arguments before processing the function"
+  [schema _ children _]
+  (case (mc/type schema)
+    :=> (into [:=>] children)
+    :cat (if (= 3 (count children))
+           (mc/schema [:cat (second children)])
+           (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)})))
+    schema))
 
 (defn name->tuple->graphql-schema
   "Convert a map of graphql action name -> tuple of schema and fn of a graphql query or mutation
@@ -106,7 +118,9 @@
                                           "Mutation" :Mutation)
                                         :fields
                                         (csk/->camelCaseKeyword (name k))]
-             (mc/walk (first tuple) ->graphql-type)))
+             (-> (first tuple)
+                 (mc/walk narrow-fn)
+                 (mc/walk ->graphql-type))))
     @*type-collector*))
 
 (defmulti ^:private ->graphql-string

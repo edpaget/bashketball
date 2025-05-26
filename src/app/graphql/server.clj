@@ -21,10 +21,17 @@
              :parse str
              :serialize t/instant))
 
+(defn- uuid-scalar
+  [schema]
+  (update-in schema [:scalars :Uuid] assoc
+             :parse str
+             :serialize parse-uuid))
+
 (defn- build-graphql-schema
   [resolvers-map]
   (-> (gql.compiler/name->tuple->graphql-schema resolvers-map)
       date-scalar
+      uuid-scalar
       (lacina.util/inject-resolvers (update-vals resolvers-map second))
       lacina.schema/compile))
 
