@@ -1,16 +1,23 @@
 (ns app.s3
   (:require
    [cognitect.aws.client.api :as aws]
-   [integrant.core :as ig]))
+   [integrant.core :as ig]
+   [malli.experimental :as me]
+   [app.registry :as registry]))
 
 (def ^:dynamic *s3-client* nil)
 
-(defn create-client
+(registry/defschema ::client
+  [:map
+   [:client :any]
+   [:bucket-name :string]])
+
+(me/defn create-client :- ::client
   "Creates an S3 client for a bucket.
   `opts` is a map of options to pass to the cognitect.aws.client.api/client function.
   It can include :region, :credentials-provider, etc.
   Example: (create-client {:region \"us-east-1\"})"
-  [bucket-name opts]
+  [bucket-name :- :string opts :- :map]
   {:client (aws/client (merge {:api :s3} opts))
    :bucket-name bucket-name})
 
