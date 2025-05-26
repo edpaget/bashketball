@@ -5,4 +5,7 @@
 (defn find-and-run-tests
   "Entrypoint for running `clojure -X:test`"
   [args]
-  (eftest/run-tests (eftest/find-tests "test") args))
+  (let [test-results (eftest/run-tests (eftest/find-tests "test") args)]
+    (if (or (pos? (:fail test-results)) (pos? (:error test-results)))
+      (System/exit 1)
+      (System/exit 0))))
