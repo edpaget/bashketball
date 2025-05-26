@@ -4,7 +4,8 @@
    [app.config :as config]
    [app.db :as db]
    [app.db.connection-pool :as db.pool]
-   [app.models :as models] ; Add models namespace
+   [app.models :as models]
+   [app.test-utils.initializer :refer [initialized]]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [integrant.core :as ig]
@@ -29,7 +30,6 @@
 ;; --- Test Fixtures ---
 
 (defonce ^:private ^ReentrantLock db-fixture-lock (ReentrantLock.))
-(defonce ^:private initialized (atom {:db 0}))
 
 (defn db-fixture [f]
   (let [db-url (:database-url test-config)]
@@ -102,6 +102,8 @@
         (f)))
     (throw (IllegalStateException. "Test datasource is not initialized for transaction fixture. Ensure db-fixture runs first."))))
 
+;; --- Helper Macros ---
+
 (defn do-global-frozen-time
   "Internal helper for with-global-frozen-time."
   [f]
@@ -170,6 +172,8 @@
          ~@body
          (finally
            ~@cleanup-forms)))))
+
+;; --- Mocks ---
 
 ;; Mock auth handler that does accepts a token with a constant value
 (defmethod ig/init-key ::auth-handler [_ {:keys [config]}]

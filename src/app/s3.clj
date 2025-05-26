@@ -21,6 +21,19 @@
   {:client (aws/client (merge {:api :s3} opts))
    :bucket-name bucket-name})
 
+(defn- throw-if-error
+  "Checks an AWS SDK response map for errors. If an error is found,
+  throws an ex-info with details. Otherwise, returns the original response."
+  [response op-type key bucket-name]
+  (if (:cognitect.anomalies/category response)
+    (throw (ex-info (str "Failed to " (name op-type) " object " key " in bucket " bucket-name)
+                    {:type (keyword "s3" (str (name op-type) "-failed"))
+                     :key key
+                     :bucket-name bucket-name
+                     :operation op-type
+                     :response response}))
+    response))
+
 (defn put-object
   "Puts an object into an S3 bucket.
   `s3-client-map` is an optional map containing :client and :bucket-name.
@@ -30,11 +43,12 @@
   ([key body opts]
    (put-object *s3-client* key body opts))
   ([{:keys [client bucket-name]} key body opts]
-   (aws/invoke client {:op :PutObject
-                       :request (merge {:Bucket bucket-name
-                                        :Key key
-                                        :Body body}
-                                       opts)})))
+   (throw-if-error (aws/invoke client {:op :PutObject
+                                       :request (merge {:Bucket bucket-name
+                                                        :Key key
+                                                        :Body body}
+                                                       opts)})
+                   :PutObject key bucket-name)))
 
 (defn get-object
   "Gets an object from an S3 bucket.
@@ -45,9 +59,10 @@
   ([key]
    (get-object *s3-client* key))
   ([{:keys [client bucket-name]} key]
-   (aws/invoke client {:op :GetObject
-                       :request {:Bucket bucket-name
-                                 :Key key}})))
+   (throw-if-error (aws/invoke client {:op :GetObject
+                                       :request {:Bucket bucket-name
+                                                 :Key key}})
+                   :GetObject key bucket-name)))
 
 (defmethod ig/init-key ::client [_ {:keys [config]}]
   (create-client (get-in config [:s3 :bucket-name]) (:aws-opts config)))

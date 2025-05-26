@@ -184,9 +184,9 @@
 
 (registry/defschema ::GameAssetStatus
   [:enum
-   :game-asset-status/PENDING
-   :game-asset-status/UPLOADED
-   :game-asset-status/ERROR])
+   :game-asset-status-enum/PENDING
+   :game-asset-status-enum/UPLOADED
+   :game-asset-status-enum/ERROR])
 
 (registry/defschema ::GameAsset
   [:map

@@ -33,7 +33,7 @@
       (some-> value <-json (with-meta {:pgtype type}))
       value)))
 
-(def ^:private schema-enums #{"identity_strategy" "card_type_enum" "size_enum"})
+(def ^:private schema-enums #{"identity_strategy" "card_type_enum" "size_enum" "game_asset_status_enum"})
 
 (extend-protocol rs/ReadableColumn
   java.lang.String

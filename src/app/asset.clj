@@ -14,17 +14,17 @@
   [{:keys [mime-type asset-path]} :- [:map [:mime-type :string]]]
   (db/execute-one! {:insert-into [(models/->table-name ::models/GameAsset)]
                     :columns     [:mime-type :img-url :status]
-                    :values      [[mime-type asset-path #pg_enum :game-asset-status/PENDING]]
+                    :values      [[mime-type asset-path (db/->pg_enum :game-asset-status-enum/PENDING)]]
                     :returning   [:*]}))
 
 (me/defn update-status :- ::models/GameAsset
   "Update the status of the GameAsset"
   [id :- :uuid status :- ::models/GameAssetStatus & [err-msg] :- [:tuple :string]]
-  (db/execute! {:update [(models/->table-name ::models/GameAsset)]
-                :set (cond-> {:status #pg_enum status}
-                       err-msg (assoc :error-message err-msg))
-                :where [:= :id id]
-                :returning [:*]}))
+  (db/execute-one! {:update [(models/->table-name ::models/GameAsset)]
+                    :set (cond-> {:status #pg_enum status}
+                           err-msg (assoc :error-message err-msg))
+                    :where [:= :id id]
+                    :returning [:*]}))
 
 (gql.resolvers/defresolver :Mutation/createAsset
   "Create a new game asset. Accepts the mime type for the asset and the asset as a
@@ -45,7 +45,7 @@
       (s3/put-object (str asset-path "/" asset-id)
                      (.decode (Base64/getDecoder) img-blob)
                      nil)
-      (update-status asset-id :game-asset-status/UPLOADED)
+      (update-status asset-id :game-asset-status-enum/UPLOADED)
       (catch Throwable e
-        (update-status asset-id :game-asset-status/ERROR (ex-message e))
+        (update-status asset-id :game-asset-status-enum/ERROR (ex-message e))
         (throw e)))))
