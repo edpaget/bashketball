@@ -1,0 +1,54 @@
+[;; PlayerCard example
+ {:name "Rookie Guard"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/PLAYER_CARD
+  :deck-size 5
+  :sht 2
+  :pss 2
+  :def 3
+  :speed 2
+  :size #pg_enum :size-enum/MD
+  :abilities ["Tenacious Defender" "Gains +1 DEF when near own goal."]}
+
+ ;; AbilityCard example
+ {:name "Sudden Sprint"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/ABILITY_CARD
+  :abilities ["Target player gains +2 Speed until end of turn."]}
+
+ ;; SplitPlayCard example
+ {:name "Feint & Pass"
+  :version "1" ; Example with non-default version
+  :card-type #pg_enum :card-type-enum/SPLIT_PLAY_CARD
+  :fate 1
+  :offense "Attacker makes a PSS test. If successful, receiver may immediately move or make a SHT test."
+  :defense "Defender may attempt to intercept. +1 DEF if successful."}
+
+ ;; PlayCard example
+ {:name "Long Bomb"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/PLAY_CARD
+  :fate 2
+  :play "Choose a target square. If a friendly player is in the square, they gain possession. Otherwise, ball scatters."}
+
+ ;; CoachingCard example
+ {:name "Defensive Formation"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/COACHING_CARD
+  :fate 1
+  :coaching "All friendly players gain +1 DEF until your next turn."}
+
+ ;; StandardActionCard example
+ {:name "Calculated Move"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/STANDARD_ACTION_CARD
+  :fate 0
+  :offense "Move a player up to their Speed. They may then perform a PSS action."
+  :defense "Move a player up to their Speed. They may then attempt to Mark an opponent."}
+
+ ;; TeamAssetCard example
+ {:name "Hometown Crowd"
+  :version "0"
+  :card-type #pg_enum :card-type-enum/TEAM_ASSET_CARD
+  :fate 3
+  :asset-power "Once per game, re-roll a failed test."}]

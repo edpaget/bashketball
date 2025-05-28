@@ -13,6 +13,7 @@
  :app.authn.handler/auth-handler  {:config #ig/ref :app.config/config}
  :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
  :app.graphql.server/resolvers    {}
+ :dev/bound-pool                  {:db-pool #ig/ref :app.db/pool}
  :dev/fe-app                      {:build
                                    {:target :browser
                                     :modules {:main {:entries [app.core]

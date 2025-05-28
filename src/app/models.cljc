@@ -52,7 +52,7 @@
   [:map {::pk [:name :version]}
    [:name :string]
    [:version {:default-value "0"} :string]
-   [:asset-id {:ui/input-type "file"} :string]
+   [:game-asset-id {:ui/input-type "file"} :string]
    [:card-type ::CardType]
    [:created-at :time/instant]
    [:updated-at :time/instant]])
