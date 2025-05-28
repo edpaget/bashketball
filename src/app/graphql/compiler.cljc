@@ -7,6 +7,7 @@
    [clojure.string :as str]))
 
 (def ^:dynamic *type-collector* "atom that is bound to collect new types" nil)
+(def ^:dynamic *object-type* "Switches what type of object is " :objects)
 
 (defn- dispatch-mc-type
   [schema _ _ _]
@@ -15,7 +16,7 @@
 (defn- new-object!
   [object-name compiled-object]
   (when-let [collector *type-collector*]
-    (swap! collector assoc-in [:objects object-name :fields] compiled-object))
+    (swap! collector assoc-in [*object-type* object-name :fields] compiled-object))
   object-name)
 
 (defn- ->graphql-type-name
@@ -33,15 +34,14 @@
 
 (defmethod ->graphql-type ::mc/schema
   [schema _ _ _]
-  (if (contains? #{:time/instant} (mc/form schema))
-    (mc/walk (mc/deref schema) ->graphql-type)
-    (let [graphql-name (->graphql-type-name schema)]
-      (list 'non-null
-            (cond-> graphql-name
-              (not (contains? @*type-collector*
-                              graphql-name)) (new-object! (-> (mc/deref-recursive schema)
-                                                              (mc/walk ->graphql-type)
-                                                              second)))))))
+  (let [type-from-schema (mc/walk (mc/deref schema) ->graphql-type)]
+    (if-not (map? (second type-from-schema))
+      type-from-schema
+      (let [graphql-name (->graphql-type-name schema)]
+        (list 'non-null
+              (cond-> graphql-name
+                (not (contains? @*type-collector*
+                                graphql-name)) (new-object! (second type-from-schema))))))))
 
 (defmethod ->graphql-type :default
   [schema _ _ _]
@@ -87,24 +87,21 @@
   [_ _ _ _]
   nil)
 
-(defmethod ->graphql-type :cat
-  [_ _ [child] _]
-  child)
-
-(defmethod ->graphql-type :=>
-  [_ _ [field-args return-type] _]
-  (cond-> {:type return-type}
-    field-args (assoc :fields (second field-args))))
-
-(defn- narrow-fn
-  "Remove the first and second arguments before processing the function"
-  [schema _ children _]
-  (case (mc/type schema)
-    :=> (into [:=>] children)
-    :cat (if (= 3 (count children))
-           (mc/schema [:cat (second children)])
-           (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)})))
-    schema))
+(defn- compile-function
+  "Extract the arguments from the malli scheme and convert it into a graphql schema"
+  [type]
+  (fn
+    [schema _ children _]
+    (case (mc/type schema)
+      :=> (let [[field-args return-type] children]
+            (cond-> {:type (mc/walk return-type ->graphql-type)}
+              field-args (assoc :fields (second field-args))))
+      :cat (cond
+             (not= 3 (count children)) (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)}))
+             (= type :Mutation) (binding [*object-type* :input-objects]
+                                  (mc/walk (second children) ->graphql-type))
+             :else (mc/walk (second children) ->graphql-type))
+      schema)))
 
 (defn name->tuple->graphql-schema
   "Convert a map of graphql action name -> tuple of schema and fn of a graphql query or mutation
@@ -112,58 +109,93 @@
   [map]
   (binding [*type-collector* (atom {})]
     (doseq [[k tuple] map]
-      (swap! *type-collector* assoc-in [:objects
-                                        (case (namespace k)
-                                          "Query" :Query
-                                          "Mutation" :Mutation)
-                                        :fields
-                                        (csk/->camelCaseKeyword (name k))]
-             (-> (first tuple)
-                 (mc/walk narrow-fn)
-                 (mc/walk ->graphql-type))))
+      (let [compile-type  (case (namespace k)
+                            "Query" :Query
+                            "Mutation" :Mutation)]
+        (swap! *type-collector* assoc-in [:objects
+                                          compile-type
+                                          :fields
+                                          (csk/->camelCaseKeyword (name k))]
+               (mc/walk (first tuple) (compile-function compile-type)))))
     @*type-collector*))
+
+(defn ->graphql-type-string
+  [children]
+  (letfn [(node->str [node]
+            (condp = node
+              'list  "["
+              ::end-list "]"
+              'non-null "!"
+              (name node)))]
+    (loop [[child & next] (into [] children)
+           accum ""]
+      (if (empty? next)
+        (str accum (node->str child))
+        (recur (cond-> next
+                 (= 'list child) (conj next ::end-list))
+               (str accum (node->str child)))))))
+
+(defn ->graphql-argument-template
+  [[query-key gql-type]]
+  (str "$" (name query-key) ": " gql-type))
 
 (defmulti ^:private ->graphql-string
   "Compile a query form to a gql query"
-  (fn [{:keys [type]} _ctx] type))
+  (fn [{:keys [type]} _ctx]  type))
+
+(defmethod ->graphql-string ::with-args
+  [{:keys [children arguments]} ctx]
+  (str "("
+       (str/join ", " (map #(str (csk/->camelCaseString %)
+                                 ": $"
+                                 (csk/->camelCaseString %))
+                           arguments))
+       ")"
+       (->graphql-string (first children) ctx)))
 
 (defmethod ->graphql-string ::query
   [{:keys [children query-key]} ctx]
   (str (csk/->camelCase (name query-key))
-       " { "
-       (str/join " " (map ->graphql-string children (repeat (dissoc ctx ::in-field))))
-       " }"))
+       (str/join " " (map ->graphql-string children (repeat (dissoc ctx ::in-field))))))
 
 (defmethod ->graphql-string ::fields
   [{:keys [schema children]} {:keys [app.graphql.compiler/in-field] :as ctx}]
   (str
+   " { "
    (when in-field
      (str "... on " (name (->graphql-type-name schema)) " { "))
    (str/join " " (map ->graphql-string children (repeat (assoc ctx ::in-field true))))
    (when in-field
-     " }")))
+     " }")
+   " }"))
 
 (defmethod ->graphql-string ::field
   [{:keys [field]} _ctx]
   (name field))
 
 (defmethod ->graphql-string ::root
-  [{:keys [children]} ctx]
-  (str "query { " (str/join " " (map ->graphql-string children (repeat ctx))) " }"))
+  [{:keys [children name arguments]} ctx]
+  (str "query"
+       (when name
+         (str " " name))
+       (when arguments
+         (str "(" (str/join ", " (map ->graphql-argument-template arguments)) ")"))
+       " { "
+       (str/join " " (map ->graphql-string children (repeat ctx))) " }"))
 
 (defmulti ^:private ->query-ast
   "Convert a query map to an ast while checking if it is valid and expanding schemas"
   (fn [form] (cond
-               (seq? form)     ::query-with-args
+               (seq? form)     ::with-args
                (vector? form)  ::fields
                (map? form)     ::query
                (keyword? form) ::field
                :else (throw (ex-info "Unsupported form" {:form form})))))
 
-(defmethod ->query-ast ::query-with-args
+(defmethod ->query-ast ::with-args
   [[query & args]]
-  {:type ::query-with-args
-   :children [(->query-ast query)]
+  {:type      ::with-args
+   :children  [(->query-ast query)]
    :arguments args})
 
 (defn- ->query-field-names
@@ -184,22 +216,23 @@
   [[schema & fields]]
   (when (nil? schema)
     (throw (ex-info "Form must have at least provide a schema" {})))
-  {:type ::fields
+  {:type     ::fields
    :children (if (empty? fields)
                (map ->query-ast (->query-field-names schema))
                (map ->query-ast fields))
-   :schema schema})
+   :schema   schema})
 
 (defmethod ->query-ast ::query
   [form]
-  (map (fn [[k v]] {:type ::query
-                    :children [(->query-ast v)]
+  (map (fn [[k v]] {:type      ::query
+                    :children  [(->query-ast v)]
                     :query-key k})
        form))
 
 (defmethod ->query-ast ::field
   [form]
-  {:type ::field
+  {:type  ::field
+   :form  form
    :field (csk/->camelCaseKeyword (name form))})
 
 (defn ->query
@@ -211,13 +244,24 @@
   arguments as pairs of [:name placeholder] in the tail.
 
   Returns a tuple of the query string and map of __typename->malli-schemas."
-  [query]
-  (let [ast {:type ::root :children (->query-ast query)}
-        types (keep :schema (tree-seq #(or (seq? %) (map? %))
-                                      #(or (:children %) (seq %))
-                                      ast))]
-    [(->graphql-string ast {})
-     (zipmap (map (comp name ->graphql-type-name) types) types)]))
+  ([query]
+   (->query query nil nil))
+  ([query operation-name] (->query query operation-name nil))
+  ([query operation-name arguments]
+   (let [ast {:type ::root
+              :children (->query-ast query)
+              :name operation-name
+              :arguments (when arguments
+                           (map (fn [[gql-var gql-type]]
+                                  [(csk/->camelCaseString (name gql-var))
+                                   (->graphql-type-string (mc/walk gql-type ->graphql-type))])
+                                arguments))}
+
+         types (keep :schema (tree-seq #(or (seq? %) (map? %))
+                                       #(or (:children %) (seq %))
+                                       ast))]
+     [(->graphql-string ast {})
+      (zipmap (map (comp name ->graphql-type-name) types) types)])))
 
 (comment
   (->query {:Query/me [:app.models/Actor :id :useName]})

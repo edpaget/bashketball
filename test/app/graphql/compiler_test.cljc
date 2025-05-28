@@ -43,6 +43,17 @@
   [:map
    [:id :int]])
 
+;; Schemas for mutation input type tests
+(def InputPayloadDirect [:map {:graphql/type "InputPayloadDirect"} [:value :string]])
+
+(def RegisteredInputPayloadForTest [:map {:graphql/type "RegisteredInputForTest"} [:count :int]])
+
+(def MutationOutputForTest [:map {:graphql/type "MutationOutputForTest"} [:message :string]])
+
+;; Schemas for ->query complex argument tests
+(def ComplexInputTypeTest [:map {:graphql/type "ComplexInputTypeTest"} [:filter :string] [:count :int]])
+(def ComplexInputQueryResult [:map {:graphql/type "ComplexInputQueryResult"} [:status :boolean]])
+
 ;; --- Local Schemas for Inline Fragment Test ---
 
 (def TestInterfaceBase
@@ -136,24 +147,63 @@
                                         :simples {:type '(list (non-null :SimpleObject))} ; List of objects
                                         :createdAt {:type '(non-null Date)}}}}} ; :time/instant -> Date
              result)
-          "Should compile query with complex object return type and collect all nested types")))
+          "Should compile query with complex object return type and collect all nested types"))
 
-  (testing "multiple query and mutation fields"
-    (let [result (sut/name->tuple->graphql-schema
-                  {:Query/getSimpleObject get-simple-object-var
-                   :Query/getListOfStrings get-list-of-strings-var
-                   :Mutation/createSimpleObject create-simple-object-var})]
-      (is (= {:objects
-              {:Query {:fields {:getSimpleObject {:type :SimpleObject
-                                                  :fields {:id {:type '(non-null Int)}}}
-                                :getListOfStrings {:type '(list (non-null String))}}}
-               :Mutation {:fields {:createSimpleObject {:type '(non-null String)
-                                                        :fields {:name {:type '(non-null String)}}}}}
+    (testing "multiple query and mutation fields"
+      (let [result (sut/name->tuple->graphql-schema
+                    {:Query/getSimpleObject get-simple-object-var
+                     :Query/getListOfStrings get-list-of-strings-var
+                     :Mutation/createSimpleObject create-simple-object-var})]
+        (is (= {:objects
+                {:Query {:fields {:getSimpleObject {:type :SimpleObject
+                                                    :fields {:id {:type '(non-null Int)}}}
+                                  :getListOfStrings {:type '(list (non-null String))}}}
+                 :Mutation {:fields {:createSimpleObject {:type '(non-null String)
+                                                          :fields {:name {:type '(non-null String)}}}}}
                ;; SimpleObject type collected once
-               :SimpleObject {:fields {:id {:type '(non-null Int)}
-                                       :name {:type '(non-null String)}}}}}
-             result)
-          "Should correctly compile multiple queries and mutations, collecting types"))))
+                 :SimpleObject {:fields {:id {:type '(non-null Int)}
+                                         :name {:type '(non-null String)}}}}}
+               result)
+            "Should correctly compile multiple queries and mutations, collecting types"))))
+
+  (testing "mutation with various named input types and an output type"
+    (let [type-registry-value @registry/type-registry] ; Save current registry state
+      (try
+        ;; Register one of the input types to test ::mc/schema pathway for inputs
+        (registry/register-type! ::RegisteredInputPayloadForTest RegisteredInputPayloadForTest)
+
+        (let [;; Define the mutation var using the schemas
+              process-data-mutation-var [[:=> [:cat :any ; context map (e.g., from ring)
+                                               [:map ; arguments map for the mutation
+                                                [:directPayload InputPayloadDirect]
+                                                [:registeredPayload ::RegisteredInputPayloadForTest]]
+                                               :any] ; resolver context (e.g., from lacinia)
+                                          MutationOutputForTest] ; Return type schema
+               ;; Dummy resolver function
+                                         (fn [_args _ctx] {:message "processed"})]
+
+              schema-map {:Mutation/processComplexData process-data-mutation-var}
+              compiled-schema (sut/name->tuple->graphql-schema schema-map)]
+
+          (is (= {:objects
+                  {;; Mutation definition under :objects
+                   :Mutation
+                   {:fields
+                    {:processComplexData {:type '(non-null :MutationOutputForTest)
+                                          :fields {:directPayload {:type '(non-null :InputPayloadDirect)}
+                                                   :registeredPayload {:type '(non-null :RegisteredInputForTest)}}}}}
+                   ;; Output type definition under :objects
+                   :MutationOutputForTest {:fields {:message {:type '(non-null String)}}}}
+
+                  ;; Input types definitions under :input-objects
+                  :input-objects
+                  {;; Input type from a direct map schema (should be correctly compiled)
+                   :InputPayloadDirect {:fields {:value {:type '(non-null String)}}}
+                   :RegisteredInputForTest {:fields {:count {:type '(non-null Int)}}}}}
+                 compiled-schema)
+              "Should compile mutation with named input types, collecting output type correctly, direct input type correctly, and registered input type reflecting current compiler behavior for ::mc/schema."))
+        (finally
+          (reset! registry/type-registry type-registry-value))))))
 
 (deftest ->query-test
   (testing "simple query with specified fields"
@@ -205,6 +255,47 @@
       (is (= "query { team { id players { id userName } } }" query-str))
       (is (= {"Team" Team "Actor" Actor} types-map))))
 
+  (testing "query with an operation name"
+    (let [[query-str types-map] (sut/->query {:Query/me [Actor :id]} "GetMyActor")]
+      (is (= "query GetMyActor { me { id } }" query-str)
+          "Should prefix the query with 'query OperationName'")
+      (is (= {"Actor" Actor} types-map)
+          "Types map should be correctly generated even with an operation name")))
+
+  (testing "query with variable definitions using the third argument of ->query"
+    (let [[query-str types-map] (sut/->query
+                                 {:Query/user [Actor :id :user-name]} ; Query body
+                                 "GetUserWithVars" ; Operation name
+                                  ;; Variable definitions: var-name (keyword) -> malli-type-schema
+                                 [[:userId :string] [:limit :int]])]
+      (is (str/starts-with? query-str "query GetUserWithVars("))
+      (is (str/ends-with? query-str ") { user { id userName } }"))
+
+      ;; Extract the variable definitions part for a more robust check against order variations
+      (let [prefix "query GetUserWithVars("
+            suffix ") { user { id userName } }"
+            var-defs-part (when (and (str/starts-with? query-str prefix)
+                                     (str/ends-with? query-str suffix)
+                                     (> (count query-str) (+ (count prefix) (count suffix))))
+                            (subs query-str (count prefix) (- (count query-str) (count suffix))))]
+        (is (some? var-defs-part) "Query string structure is as expected to extract variable definitions.")
+        (is (= "$userId: !String, $limit: !Int" var-defs-part)
+            (str "Variable definitions part should be '$userId: !String, $limit: !Int' (order may vary). Actual: " var-defs-part)))
+
+      (is (= {"Actor" Actor} types-map)
+          "Types map should be correctly generated even with variable definitions")))
+
+  (testing "query with operation variable of a complex input type"
+    (let [[query-str types-map] (sut/->query
+                                 {:Query/processComplex (list [ComplexInputQueryResult :status] :payload)} ; Query body, field takes :payload arg
+                                 "ProcessComplexDataOp" ; Operation name
+                                 [[:payload ComplexInputTypeTest]])] ; Operation variable :payload of complex type
+      ;; Expected: query ProcessComplexDataOp($payload: !ComplexInputTypeTest) { processComplex(payload: $payload) { status } }
+      (is (= "query ProcessComplexDataOp($payload: !ComplexInputTypeTest) { processComplex(payload: $payload) { status } }" query-str)
+          "Should correctly format operation variable of complex input type and use it in field argument.")
+      (is (= {"ComplexInputQueryResult" ComplexInputQueryResult} types-map)
+          "Types map should contain the output type from selection set, not the input type.")))
+
   (testing "type collection for complex nested schemas using pre-defined ComplexObject and SimpleObject"
     (let [[query-str types-map] (sut/->query {:Query/complex [ComplexObject :id {:simple [SimpleObject :name]}]})]
       (is (= "query { complex { id simple { name } } }" query-str))
@@ -243,12 +334,46 @@
                              (sut/->query {:Query/data [SchemaWithoutGraphQLType :id]}))
            "In CLJS, (name nil) will result in a does not support name")))
 
-  (testing "query with arguments (feature currently has limitations in string generation)"
-    ;; This tests the current behavior where argument stringification is not implemented,
-    ;; leading to an error when ->graphql-string receives a raw map instead of an AST node.
-    (is (thrown-with-msg? #?(:clj IllegalArgumentException :cljs js/Error)
-                          #"No method in multimethod "
-                          (sut/->query '({:Query/userById [Actor :id]} :id "user-123")))))
+  (testing "query with field arguments"
+    (testing "field arguments correctly formatted without explicit operation vars"
+      (let [[query-str types-map] (sut/->query
+                                   {:Query/userById (list [Actor :id :user-name] :userIdParam) ; Field `userById` takes arg `userIdParam`, selects :id, :user-name
+                                    :Query/searchItems (list [SimpleObject :id] :filter :maxCount)} ; Field `searchItems` takes args `filter`, `maxCount`, selects :id
+                                   "GenericOp")] ; Operation name
+        (is (str/starts-with? query-str "query GenericOp { "))
+        (is (str/ends-with? query-str " }"))
+        ;; Check for field parts; their order in the query can vary
+        (is (str/includes? query-str "userById(userIdParam: $userIdParam) { id userName }")
+            "Should format field arguments like fieldName(argName: $argName) and include specified fields for userById.")
+        (is (str/includes? query-str "searchItems(filter: $filter, maxCount: $maxCount) { id }")
+            "Should format multiple field arguments correctly and include specified fields for searchItems.")
+        (is (= {"Actor" Actor "SimpleObject" SimpleObject} types-map)
+            "Types map should be correctly generated.")))
+
+    (testing "field arguments linked to operation variables"
+      (let [[query-str types-map] (sut/->query
+                                   {:Query/userById (list [Actor :id :user-name] :userId)} ; Field `userById` takes arg `userId`
+                                   "GetUserByIdOp" ; Operation name
+                                   {:userId :string, :limit :int})] ; Operation variables, :userId matches field arg, :limit is extra
+        ;; Expected query structure: query GetUserByIdOp($userId: !String, $limit: !Int) { userById(userId: $userId) { id userName } }
+        ;; The order of $userId and $limit in the var definition part can vary.
+        (is (str/starts-with? query-str "query GetUserByIdOp("))
+        (is (str/ends-with? query-str ") { userById(userId: $userId) { id userName } }"))
+
+        ;; Extract and check the variable definitions part robustly
+        (let [prefix "query GetUserByIdOp("
+              suffix ") { userById(userId: $userId) { id userName } }"
+              var-defs-part (when (and (str/starts-with? query-str prefix)
+                                       (str/ends-with? query-str suffix)
+                                       (> (count query-str) (+ (count prefix) (count suffix))))
+                              (subs query-str (count prefix) (- (count query-str) (count suffix))))]
+          (is (some? var-defs-part) "Query string structure should allow extraction of variable definitions.")
+          (if var-defs-part
+            (is (or (= "$userId: !String, $limit: !Int" var-defs-part)
+                    (= "$limit: !Int, $userId: !String" var-defs-part))
+                (str "Variable definitions part '$userId: !String, $limit: !Int' (order may vary) should be present. Actual: " var-defs-part))))
+        (is (= {"Actor" Actor} types-map)
+            "Types map should be correctly generated."))))
 
   (testing "query with inline fragments for different types (multi-schema using local test schemas)"
     (let [type-registry-value @registry/type-registry]
