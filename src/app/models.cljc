@@ -49,11 +49,12 @@
    :card-type-enum/TEAM_ASSET_CARD])
 
 (registry/defschema ::Card
-  [:map {::pk [:name :version]}
+  [:map {:graphql/interface "Card"
+         ::pk [:name :version]}
    [:name :string]
    [:version {:default-value "0"} :string]
    [:game-asset-id {:ui/input-type "file"} :string]
-   [:card-type ::CardType]
+   [:card-type {:graphql/hidden true} ::CardType]
    [:created-at :time/instant]
    [:updated-at :time/instant]])
 
@@ -66,7 +67,8 @@
 
 (registry/defschema ::PlayerCard
   [:merge ::Card
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "PlayerCard"}
     [:card-type [:= :card-type-enum/PLAYER_CARD]]
     [:deck-size {:ui/label "Deck Size"
                  :ui/auto-widget true
@@ -103,7 +105,8 @@
 
 (registry/defschema ::AbilityCard
   [:merge ::Card
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "AbilityCard"}
     [:card-type [:= :card-type-enum/ABILITY_CARD]]
     [:abilities {:ui/label "Abilities"
                  :ui/auto-widget true
@@ -120,7 +123,8 @@
 
 (registry/defschema ::SplitPlayCard
   [:merge ::CardWithFate
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "SplitPlayCard"}
     [:card-type [:= :card-type-enum/SPLIT_PLAY_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
@@ -133,7 +137,8 @@
 
 (registry/defschema ::PlayCard
   [:merge ::CardWithFate
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "PlayCard"}
     [:card-type [:= :card-type-enum/PLAY_CARD]]
     [:play {:ui/label "Play"
             :ui/auto-widget true
@@ -142,7 +147,8 @@
 
 (registry/defschema ::CoachingCard
   [:merge ::CardWithFate
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "CoachingCard"}
     [:card-type [:= :card-type-enum/COACHING_CARD]]
     [:coaching {:ui/label "Defense"
                 :ui/auto-widget true
@@ -151,7 +157,8 @@
 
 (registry/defschema ::StandardActionCard
   [:merge ::CardWithFate
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "StandardActionCard"}
     [:card-type [:= :card-type-enum/STANDARD_ACTION_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
@@ -164,13 +171,15 @@
 
 (registry/defschema ::TeamAssetCard
   [:merge ::CardWithFate
-   [:map
+   [:map {:graphql/implements [::Card]
+          :graphql/type "TeamAssetCard"}
     [:card-type [:= :card-type-enum/TEAM_ASSET_CARD]]
     [:asset-power
      :string]]])
 
 (registry/defschema ::GameCard
   [:multi {:dispatch :card-type
+           :graphql/type "GameCard"
            ;; this could be derived from all members being 'card', but
            ;; let's just be explicit
            ::pk [:name :version]}

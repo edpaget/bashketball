@@ -14,21 +14,25 @@
   (mc/type schema))
 
 (defn- new-object!
-  [object-name compiled-object]
-  (when-let [collector *type-collector*]
-    (swap! collector assoc-in [*object-type* object-name :fields] compiled-object))
-  object-name)
+  ([object-name compiled-object]
+   (new-object! object-name compiled-object *object-type*))
+  ([object-name compiled-object type]
+   (when-let [collector *type-collector*]
+     (swap! collector assoc-in [type object-name] compiled-object))
+   object-name))
 
 (defn- ->graphql-type-name
   [schema]
   (case (mc/type schema)
-    (:multi :map) (when-let [type-name (get (mc/properties schema) :graphql/type)]
+    (:multi :map) (when-let [type-name (or (get (mc/properties schema) :graphql/type)
+                                           (get (mc/properties schema) :graphql/interface))]
                     (csk/->PascalCaseKeyword type-name))
     ::mc/schema (-> schema mc/form name csk/->PascalCaseKeyword)))
 
 (defn- ->graphql-field
-  [[field-name _opts field-type]]
-  [(csk/->camelCaseKeyword field-name) {:type field-type}])
+  [[field-name opts field-type]]
+  (when-not (or (:graphql/hidden opts) (nil? field-type))
+    [(csk/->camelCaseKeyword field-name) {:type field-type}]))
 
 (defmulti ^:Private ->graphql-type dispatch-mc-type)
 
@@ -37,15 +41,16 @@
   (let [type-from-schema (mc/walk (mc/deref schema) ->graphql-type)]
     (if-not (map? (second type-from-schema))
       type-from-schema
-      (let [graphql-name (->graphql-type-name schema)]
-        (list 'non-null
-              (cond-> graphql-name
-                (not (contains? @*type-collector*
-                                graphql-name)) (new-object! (second type-from-schema))))))))
+      (list 'non-null (new-object! (->graphql-type-name schema)
+                                   {:fields (second type-from-schema)})))))
 
 (defmethod ->graphql-type :default
   [schema _ _ _]
   (mc/form schema))
+
+(defmethod ->graphql-type :=
+  [schema _ _ _]
+  nil)
 
 (defmethod ->graphql-type :uuid
   [_ _ _ _]
@@ -58,6 +63,10 @@
 (defmethod ->graphql-type :int
   [_ _ _ _]
   (list 'non-null 'Int))
+
+(defmethod ->graphql-type :boolean
+  [_ _ _ _]
+  (list 'non-null 'Boolean))
 
 (defmethod ->graphql-type :enum
   [_ _ _ _]
@@ -77,11 +86,36 @@
 
 (defmethod ->graphql-type :map
   [schema _ fields _]
-  (let [fields (into {} (map ->graphql-field) fields)]
+  (let [fields (into {} (comp (map ->graphql-field)
+                              (remove nil?))
+                     fields)
+        graphql-type (->graphql-type-name schema)
+        implements (->> (-> schema mc/properties :graphql/implements)
+                        (map mc/schema)
+                        (map #(mc/walk % ->graphql-type))
+                        (mapv second))]
     (list 'non-null
-          (if-let [graphql-type (->graphql-type-name schema)]
-            (new-object! graphql-type fields)
+          (cond
+            (-> schema mc/properties :graphql/type)
+            (new-object! graphql-type (cond-> {:fields fields}
+                                        (seq implements) (assoc :implements implements)))
+            (-> schema mc/properties :graphql/interface)
+            (new-object! graphql-type {:fields fields} :interfaces)
+
+            :else
             fields))))
+
+(defmethod ->graphql-type :multi
+  [schema _ children _]
+  (list 'non-null
+        (new-object! (->graphql-type-name schema)
+                     {:members (->> (map #(nth % 2) children)
+                                    (mapv second))}
+                     :unions)))
+
+(defmethod ->graphql-type :merge
+  [schema _ _ _]
+  (mc/walk (mc/deref schema) ->graphql-type))
 
 (defmethod ->graphql-type :any
   [_ _ _ _]

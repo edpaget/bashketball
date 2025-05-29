@@ -4,7 +4,8 @@
    [app.card :as card]
    [app.db :as db]
    [app.models :as models]
-   [app.test-utils :as tu]))
+   [app.test-utils :as tu]
+   [app.graphql.resolvers :as gql-resolvers]))
 
 (use-fixtures :once tu/db-fixture)
 (use-fixtures :each tu/rollback-fixture)
@@ -223,3 +224,49 @@
       (let [retrieved-card (card/get-by-name (:name input-card) (:version input-card))]
         (is (some? retrieved-card))
         (is (= all-expected-fields (select-keys retrieved-card (keys all-expected-fields))))))))
+
+(deftest query-card-resolver-test
+  (testing "Query/card resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Query/card)
+          card-data-v0 {:name "Resolver Test Card"
+                        :version "0"
+                        :card-type (db/->pg_enum :card-type-enum/PLAYER_CARD)
+                        :deck-size 1
+                        :offense "Offense for V0 Resolver Test Card"}
+          card-data-v1 {:name "Resolver Test Card"
+                        :version "1"
+                        :card-type (db/->pg_enum :card-type-enum/PLAYER_CARD)
+                        :deck-size 1
+                        :offense "Offense for V1 Resolver Test Card"}
+          ;; Expected data after retrieval (enums become keywords, select relevant fields)
+          expected-card-v0 (-> card-data-v0
+                               (assoc :card-type :card-type-enum/PLAYER_CARD)
+                               (select-keys [:name :version :card-type :deck-size :offense]))
+          expected-card-v1 (-> card-data-v1
+                               (assoc :card-type :card-type-enum/PLAYER_CARD)
+                               (select-keys [:name :version :card-type :deck-size :offense]))]
+
+      (tu/with-inserted-data [::models/GameCard card-data-v0
+                              ::models/GameCard card-data-v1]
+        (testing "retrieves card by name and specific version \"0\""
+          (let [result (resolver-fn nil {:name "Resolver Test Card" :version "0"} nil)]
+            (is (some? result) "Result should not be nil")
+            (is (= expected-card-v0 (select-keys result (keys expected-card-v0))))))
+
+        (testing "retrieves card by name and defaults to version \"0\" when version argument is omitted"
+          (let [result (resolver-fn nil {:name "Resolver Test Card"} nil)] ; :version is omitted
+            (is (some? result) "Result should not be nil")
+            (is (= expected-card-v0 (select-keys result (keys expected-card-v0))))))
+
+        (testing "retrieves card by name and specific version \"1\""
+          (let [result (resolver-fn nil {:name "Resolver Test Card" :version "1"} nil)]
+            (is (some? result) "Result should not be nil")
+            (is (= expected-card-v1 (select-keys result (keys expected-card-v1))))))
+
+        (testing "returns nil if card name does not exist"
+          (let [result (resolver-fn nil {:name "NonExistent Resolver Card" :version "0"} nil)]
+            (is (nil? result))))
+
+        (testing "returns nil if card version does not exist for the given name"
+          (let [result (resolver-fn nil {:name "Resolver Test Card" :version "99"} nil)]
+            (is (nil? result))))))))

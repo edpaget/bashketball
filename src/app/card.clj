@@ -3,6 +3,7 @@
   (:require
    [app.db :as db]
    [app.models :as models]
+   [app.graphql.resolvers :refer [defresolver]]
    [malli.experimental :as me]
    [app.registry :as registry]))
 
@@ -22,8 +23,8 @@
 
 (registry/defschema ::pagination-opts
   [:map
-   [:limit :int]
-   [:offset :int]])
+   [:limit {:optional true} :int]
+   [:offset {:optional true} :int]])
 
 (me/defn list :- ::models/GameCard
   "Lists game cards with pagination using HoneySQL. Relies on dynamic db binding. "
@@ -47,3 +48,31 @@
                                     (:abilities input) (update :abilities #(conj [:lift] %))
                                     :always vals)]
                     :returning   [:*]}))
+
+;; Schema for Query/card arguments
+(registry/defschema ::card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} :string]])
+
+;; Schema for Query/cards arguments
+;; app.card/list handles its own defaults for limit and offset if they are not provided.
+(registry/defschema ::cards-args
+  [:map
+   [:limit {:optional true} :int]
+   [:offset {:optional true} :int]])
+
+(defresolver :Query/card
+  "Retrieves a specific game card by its name and version."
+  [:=> [:cat :any  ::card-args :any]
+   ::models/GameCard]
+  [_context args _value]
+  (get-by-name (:name args) (:version args)))
+
+(defresolver :Query/cards
+  "Retrieves a list of game cards with pagination."
+  [:=> [:cat :any ::cards-args :any]
+   ::models/Card]
+  [_context args _value]
+  ;; card/list expects a map like {:limit l :offset o} and applies defaults if keys are missing.
+  (list args))

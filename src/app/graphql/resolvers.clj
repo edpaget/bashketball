@@ -1,6 +1,7 @@
 (ns app.graphql.resolvers
   (:require
-   [app.registry :as registry]))
+   [app.registry :as registry]
+   [app.card.graphql.resolvers])) ;; Ensure card resolvers are loaded
 
 (def resolvers-registry (atom {}))
 

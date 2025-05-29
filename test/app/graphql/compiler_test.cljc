@@ -4,7 +4,8 @@
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
    [app.graphql.compiler :as sut]
    [clojure.string :as str]
-   [app.registry :as registry]))
+   [app.registry :as registry]
+   [malli.core :as mc]))
 
 ;; --- Test Data ---
 
@@ -57,7 +58,7 @@
 ;; --- Local Schemas for Inline Fragment Test ---
 
 (def TestInterfaceBase
-  [:map {:graphql/type "TestInterfaceBase"}
+  [:map {:graphql/interface "TestInterfaceBase"}
    [:commonField :string]])
 
 (def TestConcreteTypeA
@@ -94,6 +95,74 @@
 
 (def get-optional-int-var [[:=> [:cat :any :any :any] [:maybe :int]]
                            nil])
+
+;; Schemas for ->graphql-type :map method tests
+(def MapTestInterfaceSchema
+  [:map {:graphql/interface "MapTestInterface"}
+   [:id :uuid]
+   [:interface-field :string]])
+
+(def MapTestInterfaceOne
+  [:map {:graphql/interface "MapTestInterfaceOne"}
+   [:common-field-a :int]])
+
+(def MapTestInterfaceTwo
+  [:map {:graphql/interface "MapTestInterfaceTwo"}
+   [:common-field-b :boolean]])
+
+(def MapTestImplementingType
+  [:merge
+   MapTestInterfaceOne
+   MapTestInterfaceTwo
+   [:map {:graphql/type "MapTestImplementingType"
+          :graphql/implements [MapTestInterfaceOne MapTestInterfaceTwo]}
+    [:id :uuid] ; Assuming id is part of MyImplementingType, not necessarily from an interface here
+    [:unique-type-field :string]]])
+
+(def MapTestRegisteredInterfaceSchema
+  [:map {:graphql/interface "MapTestRegisteredInterface"}
+   [:registry-common-field :string]])
+
+(def MapTestImplementingTypeViaRegistered
+  [:merge ::MapTestRegisteredInterfaceSchema
+   [:map {:graphql/type "MapTestImplementingTypeViaRegistered"
+          :graphql/implements [::MapTestRegisteredInterfaceSchema]} ; Using a keyword to refer to registry
+    [:id :uuid]]])
+
+(def MapTestPlainMapSchema
+  [:map
+   [:plain-field-x :string]
+   [:plain-field-y :boolean]])
+
+;; Schemas for ->graphql-type :multi method test
+(def UnionMemberOneSchema
+  [:map {:graphql/type "UnionMemberOne"}
+   [:field-alpha :string]])
+
+(def UnionMemberTwoSchema
+  [:map {:graphql/type "UnionMemberTwo"}
+   [:field-beta :boolean]])
+
+(def TestUnionViaMultiSchema
+  [:multi {:dispatch (fn [m] (cond (:field-alpha m) ::UnionMemberOneSchema ; Using keywords for registry lookup
+                                   (:field-beta m) ::UnionMemberTwoSchema))
+           :graphql/type "TestUnionViaMulti"} ; Name for the GraphQL Union
+   [::UnionMemberOneSchema UnionMemberOneSchema]
+   [::UnionMemberTwoSchema UnionMemberTwoSchema]])
+
+;; Schema for :graphql/hidden test
+(def MapWithHiddenFieldSchema
+  [:map {:graphql/type "MapWithHiddenField"}
+   [:visible-field :string]
+   [:hidden-field {:graphql/hidden true} :int]
+   [:another-visible-field :boolean]])
+
+;; Schema for := exclusion test
+(def MapWithEqualsFieldSchema
+  [:map {:graphql/type "MapWithEqualsField"}
+   [:normal-field :string]
+   [:equals-field [ := "constant-value"]] ; This field should be excluded
+   [:another-normal-field :int]])
 
 ;; --- Tests ---
 
@@ -204,6 +273,123 @@
               "Should compile mutation with named input types, collecting output type correctly, direct input type correctly, and registered input type reflecting current compiler behavior for ::mc/schema."))
         (finally
           (reset! registry/type-registry type-registry-value))))))
+
+(deftest ->graphql-type-map-method-test
+  (testing ":map method of ->graphql-type multimethod for interfaces and implementations"
+    (testing "compiling a schema marked as a GraphQL interface"
+      (let [collector (atom {})
+            ;; Using MapTestInterfaceSchema defined above
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects] ; Default for top-level walk
+                     (mc/walk MapTestInterfaceSchema sut/->graphql-type))]
+        (is (= '(non-null :MapTestInterface) result)
+            "Should return a non-null reference to the interface type name.")
+        (is (= {:interfaces {:MapTestInterface {:fields {:id {:type '(non-null Uuid)}
+                                                         :interfaceField {:type '(non-null String)}}}}}
+               @collector)
+            "The interface schema should be collected under :interfaces in the type collector with camelCase field names.")))
+
+    (testing "compiling a schema that implements one or more GraphQL interfaces"
+      (let [collector (atom {})
+            ;; Using MapTestImplementingType, MapTestInterfaceOne, MapTestInterfaceTwo defined above
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects]
+                     (mc/walk MapTestImplementingType sut/->graphql-type))]
+
+        (is (= '(non-null :MapTestImplementingType) result)
+            "Should return a non-null reference to the implementing type name.")
+
+        (is (= {:objects {:MapTestImplementingType {:fields {:id {:type '(non-null Uuid)}
+                                                             :commonFieldA {:type '(non-null Int)}
+                                                             :commonFieldB {:type '(non-null Boolean)}
+                                                             :uniqueTypeField {:type '(non-null String)}}
+                                                    :implements [:MapTestInterfaceOne :MapTestInterfaceTwo]}}
+                :interfaces {:MapTestInterfaceOne {:fields {:commonFieldA {:type '(non-null Int)}}}
+                             :MapTestInterfaceTwo {:fields {:commonFieldB {:type '(non-null Boolean)}}}}}
+               @collector)
+            "The implementing type should be collected under :objects with an :implements key and camelCase field names. Implemented interfaces also collected.")))
+
+    (testing "compiling a schema that implements an interface registered in malli registry"
+      (let [collector (atom {})
+            type-registry-backup @registry/type-registry
+            interface-key ::MapTestRegisteredInterfaceSchema]
+        (try
+          ;; Register the interface schema (MapTestRegisteredInterfaceSchema defined above)
+          (registry/register-type! interface-key MapTestRegisteredInterfaceSchema)
+
+          ;; Using MapTestImplementingTypeViaRegistered defined above
+          (let [result (binding [sut/*type-collector* collector
+                                 sut/*object-type* :objects]
+                         (mc/walk MapTestImplementingTypeViaRegistered sut/->graphql-type))]
+
+            (is (= '(non-null :MapTestImplementingTypeViaRegistered) result))
+            (is (= {:objects {:MapTestImplementingTypeViaRegistered
+                              {:fields {:id {:type '(non-null Uuid)}
+                                        :registryCommonField {:type '(non-null String)}}
+                               :implements [:MapTestRegisteredInterface]}}
+                    :interfaces {:MapTestRegisteredInterface
+                                 {:fields {:registryCommonField {:type '(non-null String)}}}}}
+                   @collector)
+                "Should correctly resolve registered interface, add to :implements list, and use camelCase field names."))
+          (finally
+            (reset! registry/type-registry type-registry-backup)))))
+
+    (testing "compiling a plain map schema (no :graphql/type, e.g., for arguments)"
+      (let [collector (atom {})
+            ;; Using MapTestPlainMapSchema defined above
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects] ; Does not affect this path
+                     (mc/walk MapTestPlainMapSchema sut/->graphql-type))]
+        (is (= '(non-null {:plainFieldX {:type (non-null String)}
+                           :plainFieldY {:type (non-null Boolean)}}) result)
+            "Should return the compiled fields directly (wrapped in non-null) with camelCase field names.")
+        (is (empty? @collector)
+            "No named type should be added to the collector for a plain map schema without :graphql/type.")))
+
+    (testing "compiling a :multi schema into a GraphQL union type"
+      (let [collector (atom {})
+            type-registry-backup @registry/type-registry]
+        (try
+          ;; Register member types for the multi schema, as mc/children on :multi schema returns keywords
+          (registry/register-type! ::UnionMemberOneSchema UnionMemberOneSchema)
+          (registry/register-type! ::UnionMemberTwoSchema UnionMemberTwoSchema)
+
+          (let [result (binding [sut/*type-collector* collector
+                                 sut/*object-type* :objects] ; Member types are objects
+                         (mc/walk TestUnionViaMultiSchema sut/->graphql-type))]
+            (is (= '(non-null :TestUnionViaMulti) result)
+                "Should return a non-null reference to the union type name.")
+            (is (= {:unions {:TestUnionViaMulti {:members [:UnionMemberOne :UnionMemberTwo]}}
+                    :objects {:UnionMemberOne {:fields {:fieldAlpha {:type '(non-null String)}}}
+                              :UnionMemberTwo {:fields {:fieldBeta {:type '(non-null Boolean)}}}}}
+                   @collector)
+                "The union schema should be collected under :unions, and its members (objects) under :objects with camelCase field names."))
+          (finally
+            (reset! registry/type-registry type-registry-backup)))))
+
+    (testing "compiling a map schema with a :graphql/hidden field"
+      (let [collector (atom {})
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects]
+                     (mc/walk MapWithHiddenFieldSchema sut/->graphql-type))]
+        (is (= '(non-null :MapWithHiddenField) result))
+        (is (= {:objects {:MapWithHiddenField
+                          {:fields {:visibleField {:type '(non-null String)}
+                                    :anotherVisibleField {:type '(non-null Boolean)}}}}} ; :hiddenField is excluded
+               @collector)
+            "The :graphql/hidden field should be excluded from the compiled type.")))
+
+    (testing "compiling a map schema with a field using := schema"
+      (let [collector (atom {})
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects]
+                     (mc/walk MapWithEqualsFieldSchema sut/->graphql-type))]
+        (is (= '(non-null :MapWithEqualsField) result))
+        (is (= {:objects {:MapWithEqualsField
+                          {:fields {:normalField {:type '(non-null String)}
+                                    :anotherNormalField {:type '(non-null Int)}}}}} ; :equalsField is excluded
+               @collector)
+            "Fields with := schema should be excluded from the compiled type.")))))
 
 (deftest ->query-test
   (testing "simple query with specified fields"
