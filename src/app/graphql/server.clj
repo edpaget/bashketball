@@ -31,7 +31,6 @@
 
 (defn- build-graphql-schema
   [resolvers-map]
-(clojure.pprint/pprint (gql.compiler/name->tuple->graphql-schema resolvers-map))
   (-> (gql.compiler/name->tuple->graphql-schema resolvers-map)
       date-scalar
       uuid-scalar

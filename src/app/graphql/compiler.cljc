@@ -49,7 +49,7 @@
   (mc/form schema))
 
 (defmethod ->graphql-type :=
-  [schema _ _ _]
+  [_ _ _ _]
   nil)
 
 (defmethod ->graphql-type :uuid
