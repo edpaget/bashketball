@@ -10,7 +10,7 @@
    [app.models :as models]))
 
 (defui cards-index []
-  (let [{:keys [loading data]} (graphql.client/use-query {:Query/get-all-cards [::models/Card]})]
+  (let [{:keys [loading data]} (graphql.client/use-query {:Query/cards [::models/Card]} "getAllCards")]
     ($ :div {:className "container mx-auto p-4"} ; Added container and padding
        (cond
          loading ($ :p {:className "text-gray-500"} "loading cards...") ; Styled loading text

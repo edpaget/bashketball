@@ -5,7 +5,10 @@
    [app.models :as models]
    [app.graphql.resolvers :refer [defresolver]]
    [malli.experimental :as me]
-   [app.registry :as registry]))
+   [app.registry :as registry]
+   [app.graphql.compiler :as gql.compiler]
+   [com.walmartlabs.lacinia.schema :as schema]
+   [app.graphql.transformer :as gql.transformer]))
 
 (me/defn get-by-name :- ::models/GameCard
   "Retrieves a specific game card by its name and version using HoneySQL. Defaults to getting version 0 if unspecified."
@@ -62,17 +65,21 @@
    [:limit {:optional true} :int]
    [:offset {:optional true} :int]])
 
+(def ^:private tagger (gql.compiler/merge-tag-with-type ::models/GameCard))
+
 (defresolver :Query/card
   "Retrieves a specific game card by its name and version."
-  [:=> [:cat :any  ::card-args :any]
+  [:=> [:cat :any ::card-args :any]
    ::models/GameCard]
   [_context args _value]
-  (get-by-name (:name args) (:version args)))
+  (apply get-by-name (:name args) (or (:version args) "0")))
 
 (defresolver :Query/cards
   "Retrieves a list of game cards with pagination."
   [:=> [:cat :any ::cards-args :any]
-   ::models/Card]
+   [:vector ::models/Card]]
   [_context args _value]
   ;; card/list expects a map like {:limit l :offset o} and applies defaults if keys are missing.
-  (list args))
+  (->> (list args)
+       (map (juxt #(gql.transformer/encode % ::models/Card) tagger))
+       (mapv (partial apply schema/tag-with-type))))

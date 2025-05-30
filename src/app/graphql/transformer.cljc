@@ -13,3 +13,7 @@
 (defn decode
   [encoded model]
   (mc/decode model encoded transformer))
+
+(defn encode
+  [decoded model]
+  (mc/encode model decoded transformer))

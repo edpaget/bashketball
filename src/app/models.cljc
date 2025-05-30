@@ -53,7 +53,8 @@
          ::pk [:name :version]}
    [:name :string]
    [:version {:default-value "0"} :string]
-   [:game-asset-id {:ui/input-type "file"} :string]
+   [:game-asset-id {:ui/input-type "file"
+                    ::fk ::GameAsset} [:maybe :uuid]]
    [:card-type {:graphql/hidden true} ::CardType]
    [:created-at :time/instant]
    [:updated-at :time/instant]])
@@ -183,13 +184,13 @@
            ;; this could be derived from all members being 'card', but
            ;; let's just be explicit
            ::pk [:name :version]}
-   [1 ::PlayerCard]
-   [2 ::AbilityCard]
-   [3 ::SplitPlayCard]
-   [4 ::PlayCard]
-   [5 ::CoachingCard]
-   [6 ::StandardActionCard]
-   [7 ::TeamAssetCard]])
+   [:card-type-enum/PLAYER_CARD ::PlayerCard]
+   [:card-type-enum/ABILITY_CARD ::AbilityCard]
+   [:card-type-enum/SPLIT_PLAY_CARD ::SplitPlayCard]
+   [:card-type-enum/PLAY_CARD ::PlayCard]
+   [:card-type-enum/COACHING_CARD ::CoachingCard]
+   [:card-type-enum/STANDARD_ACTION_CARD ::StandardActionCard]
+   [:card-type-enum/TEAM_ASSET_CARD ::TeamAssetCard]])
 
 (registry/defschema ::GameAssetStatus
   [:enum
@@ -225,3 +226,4 @@
   "Return the primary key of the model as a vector"
   [type]
   (or (-> type mc/deref-recursive mc/properties ::pk) [:id]))
+

@@ -73,8 +73,8 @@
 
 ;; Define a multi-schema to act as the interface/union
 (def TestInterfaceMulti
-  [:multi {:dispatch (fn [m] (cond (:fieldA m) ::TestConcreteTypeA
-                                   (:fieldB m) ::TestConcreteTypeB
+  [:multi {:dispatch (fn [m] (cond (contains? m :fieldA) ::TestConcreteTypeA
+                                   (contains? m :fieldB) ::TestConcreteTypeB
                                    :else ::TestInterfaceBase)) ; Dispatch logic example
            :graphql/type "TestInterfaceMulti"} ; Explicit GraphQL type name for the interface/union
    [::TestConcreteTypeA TestConcreteTypeA]
@@ -161,7 +161,7 @@
 (def MapWithEqualsFieldSchema
   [:map {:graphql/type "MapWithEqualsField"}
    [:normal-field :string]
-   [:equals-field [ := "constant-value"]] ; This field should be excluded
+   [:equals-field [:= "constant-value"]] ; This field should be excluded
    [:another-normal-field :int]])
 
 ;; --- Tests ---
@@ -390,6 +390,51 @@
                                     :anotherNormalField {:type '(non-null Int)}}}}} ; :equalsField is excluded
                @collector)
             "Fields with := schema should be excluded from the compiled type.")))))
+
+(deftest merge-tag-with-type-test
+  (testing "with TestUnionViaMultiSchema (simulating a GraphQL Union)"
+    (let [type-registry-backup @registry/type-registry]
+      (try
+        ;; Register member types as TestUnionViaMultiSchema's dispatch fn returns keywords
+        ;; and its children are defined with keywords.
+        (registry/register-type! ::UnionMemberOneSchema UnionMemberOneSchema)
+        (registry/register-type! ::UnionMemberTwoSchema UnionMemberTwoSchema)
+
+        (let [tagger-fn (sut/merge-tag-with-type TestUnionViaMultiSchema)
+              instance1 {:field-alpha "data for one"}   ; dispatch-fn returns ::UnionMemberOneSchema
+              instance2 {:field-beta true}]             ; dispatch-fn returns ::UnionMemberTwoSchema
+          (is (= :UnionMemberOne (tagger-fn instance1))
+              "Tagger should return :UnionMemberOne for instance1 based on dispatch to ::UnionMemberOneSchema.")
+          (is (= :UnionMemberTwo (tagger-fn instance2))
+              "Tagger should return :UnionMemberTwo for instance2 based on dispatch to ::UnionMemberTwoSchema."))
+        (finally
+          (reset! registry/type-registry type-registry-backup)))))
+
+  (testing "with TestInterfaceMulti (simulating a GraphQL Interface)"
+    (let [type-registry-backup @registry/type-registry]
+      (try
+        ;; TestInterfaceMulti dispatches to ::TestConcreteTypeA, ::TestConcreteTypeB, or ::TestInterfaceBase.
+        ;; Its children are [::TestConcreteTypeA TestConcreteTypeA] and [::TestConcreteTypeB TestConcreteTypeB].
+        (registry/register-type! ::TestConcreteTypeA TestConcreteTypeA)
+        (registry/register-type! ::TestConcreteTypeB TestConcreteTypeB)
+        ;; TestInterfaceBase is not a direct child in TestInterfaceMulti's definition,
+        ;; so a dispatch to ::TestInterfaceBase is expected to yield nil from the tagger.
+        ;; Also, TestConcreteTypeA/B are :merge schemas.
+        (registry/register-type! ::TestInterfaceBase TestInterfaceBase) ;; Register for completeness if dispatch returns it.
+
+        (let [tagger-fn (sut/merge-tag-with-type TestInterfaceMulti)
+              instanceA {:fieldA 123}       ; dispatch-fn returns ::TestConcreteTypeA
+              instanceB {:fieldB false}     ; dispatch-fn returns ::TestConcreteTypeB
+              instanceBase {:other true}]   ; dispatch-fn returns ::TestInterfaceBase
+
+          (is (= :TestConcreteTypeA (tagger-fn instanceA))
+              "Tagger should return :TestConcreteTypeA for instanceA.")
+          (is (= :TestConcreteTypeB (tagger-fn instanceB))
+              "Tagger should return :TestConcreteTypeB for instanceB.")
+          (is (nil? (tagger-fn instanceBase))
+              "Tagger should return nil for instanceBase as ::TestInterfaceBase is not an explicit child in TestInterfaceMulti's definition for ->tag-map processing."))
+        (finally
+          (reset! registry/type-registry type-registry-backup))))))
 
 (deftest ->query-test
   (testing "simple query with specified fields"

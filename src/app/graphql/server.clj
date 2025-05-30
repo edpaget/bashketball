@@ -20,14 +20,14 @@
 (defn- date-scalar
   [schema]
   (update-in schema [:scalars :Date] assoc
-             :parse str
-             :serialize t/instant))
+             :parse t/instant
+             :serialize str))
 
 (defn- uuid-scalar
   [schema]
   (update-in schema [:scalars :Uuid] assoc
-             :parse str
-             :serialize parse-uuid))
+             :parse parse-uuid
+             :serialize str))
 
 (defn- build-graphql-schema
   [resolvers-map]
