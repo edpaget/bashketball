@@ -1,5 +1,6 @@
 (ns app.graphql.client
   (:require
+   [clojure.walk :as walk]
    [app.graphql.transformer :as gql.transformer]
    [app.graphql.compiler :as gql.compiler]
    [camel-snake-kebab.core :as csk]
@@ -16,15 +17,16 @@
   ([query query-name arguments variables]
    (let [keys (map name (keys query))
          [query* type-mappings] (gql.compiler/->query query query-name arguments)]
-     (prn query*)
+     (prn type-mappings)
      (letfn [(decode-type-mapping [{:keys [__typename] :as result}]
+               (prn __typename)
                (if-let [schema (get type-mappings __typename)]
-                 (gql.transformer/decode schema result)
+                 (gql.transformer/decode result schema)
                  result))
              (decode-type-mappings [data]
-               (reduce (fn [accum key]
-                         (update accum key decode-type-mapping))
-                       data keys))]
+               (walk/postwalk (fn [x] (cond-> x
+                                        (map? x) decode-type-mapping))
+                              data))]
        (-> (apollo.client/gql query*)
            (apollo.client/useQuery (clj->js {:variables (update-keys variables csk/->camelCase)}))
            (js->clj :keywordize-keys true)

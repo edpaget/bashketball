@@ -1,5 +1,6 @@
 (ns app.card.edit
   (:require
+   [app.models :as models]
    [app.card.types :as card-types]
    [uix.core :as uix :refer [defui $]]
    [uix.dom]))
@@ -71,6 +72,7 @@
                                field))))))
 
 (defui edit-card [{:keys [card update-card-field]}]
+  (prn card)
   ($ :div.card-edit
      ($ :form
         ($ :h1 "Edit Card")
