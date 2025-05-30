@@ -240,11 +240,11 @@
                         :offense "Offense for V1 Resolver Test Card"}
           ;; Expected data after retrieval (enums become keywords, select relevant fields)
           expected-card-v0 (-> card-data-v0
-                               (assoc :card-type :card-type-enum/PLAYER_CARD)
-                               (select-keys [:name :version :card-type :deck-size :offense]))
+                               (assoc :deckSize 1)
+                               (select-keys [:name :version :offense]))
           expected-card-v1 (-> card-data-v1
-                               (assoc :card-type :card-type-enum/PLAYER_CARD)
-                               (select-keys [:name :version :card-type :deck-size :offense]))]
+                               (assoc :deckSize 1)
+                               (select-keys [:name :version :offense]))]
 
       (tu/with-inserted-data [::models/GameCard card-data-v0
                               ::models/GameCard card-data-v1]

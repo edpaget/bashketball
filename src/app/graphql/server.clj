@@ -20,17 +20,18 @@
 (defn- date-scalar
   [schema]
   (update-in schema [:scalars :Date] assoc
-             :parse t/instant
+             :parse t/instant 
              :serialize str))
 
 (defn- uuid-scalar
   [schema]
   (update-in schema [:scalars :Uuid] assoc
-             :parse parse-uuid
+             :parse parse-uuid 
              :serialize str))
 
 (defn- build-graphql-schema
   [resolvers-map]
+  (clojure.pprint/pprint (gql.compiler/name->tuple->graphql-schema resolvers-map))
   (-> (gql.compiler/name->tuple->graphql-schema resolvers-map)
       date-scalar
       uuid-scalar

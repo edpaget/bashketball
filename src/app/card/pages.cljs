@@ -27,8 +27,10 @@
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
         {:keys [loading data]} (graphql.client/use-query
-                                {:Query/get-card-by-name '([::models/GameCard] [:card-name])}
-                                {:card-name card-id})
+                                {:Query/card '([::models/GameCard] :name)}
+                                "getMostRecentCardVersionByName"
+                                [[:name :string]]
+                                {:name card-id})
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer (:card data))]
     ;; Wrap content in a styled container
     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}

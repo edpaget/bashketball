@@ -56,23 +56,27 @@
 (registry/defschema ::card-args
   [:map
    [:name :string]
-   [:version {:optional true :default "0"} :string]])
+   [:version {:optional true :default "0"} [:maybe :string]]])
 
 ;; Schema for Query/cards arguments
 ;; app.card/list handles its own defaults for limit and offset if they are not provided.
 (registry/defschema ::cards-args
   [:map
-   [:limit {:optional true} :int]
-   [:offset {:optional true} :int]])
+   [:limit {:optional true} [:maybe :int]]
+   [:offset {:optional true} [:maybe :int]]])
 
 (def ^:private tagger (gql.compiler/merge-tag-with-type ::models/GameCard))
+
+(def ^:private tag-and-transform (juxt #(gql.transformer/encode % ::models/Card) tagger))
 
 (defresolver :Query/card
   "Retrieves a specific game card by its name and version."
   [:=> [:cat :any ::card-args :any]
-   ::models/GameCard]
+   [:maybe ::models/GameCard]]
   [_context args _value]
-  (apply get-by-name (:name args) (or (:version args) "0")))
+  (some->> (get-by-name (:name args) (or (:version args) "0"))
+           tag-and-transform
+           (apply schema/tag-with-type)))
 
 (defresolver :Query/cards
   "Retrieves a list of game cards with pagination."
@@ -81,5 +85,5 @@
   [_context args _value]
   ;; card/list expects a map like {:limit l :offset o} and applies defaults if keys are missing.
   (->> (list args)
-       (map (juxt #(gql.transformer/encode % ::models/Card) tagger))
+       (map tag-and-transform)
        (mapv (partial apply schema/tag-with-type))))

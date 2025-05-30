@@ -16,6 +16,7 @@
   ([query query-name arguments variables]
    (let [keys (map name (keys query))
          [query* type-mappings] (gql.compiler/->query query query-name arguments)]
+     (prn query*)
      (letfn [(decode-type-mapping [{:keys [__typename] :as result}]
                (if-let [schema (get type-mappings __typename)]
                  (gql.transformer/decode schema result)

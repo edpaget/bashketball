@@ -121,15 +121,25 @@
   [_ _ _ _]
   nil)
 
+(defn- pop-object!
+  "Remove an object from the bound set of objects and return its fields"
+  [object-name]
+  (prn object-name)
+  (let [fields (get-in @*type-collector* [:objects object-name])]
+    (swap! *type-collector* update :objects dissoc object-name)
+    (:fields fields)))
+
 (defn- compile-function
   "Extract the arguments from the malli scheme and convert it into a graphql schema"
   [type]
   (fn
     [schema _ children _]
     (case (mc/type schema)
-      :=> (let [[field-args return-type] children]
+      :=> (let [[[_ field-args] return-type] children
+                field-args (cond-> field-args
+                             (keyword? field-args) pop-object!)]
             (cond-> {:type (mc/walk return-type ->graphql-type)}
-              field-args (assoc :fields (second field-args))))
+              field-args (assoc :args field-args)))
       :cat (cond
              (not= 3 (count children)) (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)}))
              (= type :Mutation) (binding [*object-type* :input-objects]
@@ -177,23 +187,25 @@
     (fn [model]
       (get tag-map (dispatch-fn model)))))
 
-(defn ->graphql-type-string
+(defn- ->graphql-type-string
   [children]
   (letfn [(node->str [node]
             (condp = node
               'list  "["
               ::end-list "]"
-              'non-null "!"
+              'non-null ""
+              ::end-null "!"
               (name node)))]
-    (loop [[child & next] (into [] children)
+    (loop [cs (into [] children)
            accum ""]
-      (if (empty? next)
-        (str accum (node->str child))
-        (recur (cond-> next
-                 (= 'list child) (conj next ::end-list))
-               (str accum (node->str child)))))))
+      (if (empty? cs)
+        accum
+        (recur (cond-> (subvec cs 1)
+                 (= 'non-null (first cs)) (conj ::end-null)
+                 (= 'list (first cs)) (conj ::end-list))
+               (str accum (node->str (first cs))))))))
 
-(defn ->graphql-argument-template
+(defn- ->graphql-argument-template
   [[query-key gql-type]]
   (str "$" (name query-key) ": " gql-type))
 
@@ -219,12 +231,10 @@
 (defmethod ->graphql-string ::fields
   [{:keys [schema children]} {:keys [app.graphql.compiler/in-field] :as ctx}]
   (str
+   (when in-field
+     (str "... on " (name (->graphql-type-name schema))))
    " { "
-   (when in-field
-     (str "... on " (name (->graphql-type-name schema)) " { "))
    (str/join " " (map ->graphql-string children (repeat (assoc ctx ::in-field true))))
-   (when in-field
-     " }")
    " }"))
 
 (defmethod ->graphql-string ::field

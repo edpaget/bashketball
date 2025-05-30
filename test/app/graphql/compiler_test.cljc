@@ -51,6 +51,9 @@
 
 (def MutationOutputForTest [:map {:graphql/type "MutationOutputForTest"} [:message :string]])
 
+;; Schema for anonymous map argument tests
+(def PlainMapArgSchema [:map [:filter :string] [:limit :int]])
+
 ;; Schemas for ->query complex argument tests
 (def ComplexInputTypeTest [:map {:graphql/type "ComplexInputTypeTest"} [:filter :string] [:count :int]])
 (def ComplexInputQueryResult [:map {:graphql/type "ComplexInputQueryResult"} [:status :boolean]])
@@ -95,6 +98,12 @@
 
 (def get-optional-int-var [[:=> [:cat :any :any :any] [:maybe :int]]
                            nil])
+
+(def get-items-by-plain-map-filter-var
+  [[:=> [:cat :any [:map [:criteria PlainMapArgSchema]] :any] [:vector :string]] nil])
+
+(def update-items-by-plain-map-filter-var
+  [[:=> [:cat :any [:map [:config PlainMapArgSchema]] :any] :boolean] nil])
 
 ;; Schemas for ->graphql-type :map method tests
 (def MapTestInterfaceSchema
@@ -189,7 +198,7 @@
     (let [result (sut/name->tuple->graphql-schema {:Query/getSimpleObject get-simple-object-var})]
       (is (= {:objects
               {:Query {:fields {:getSimpleObject {:type :SimpleObject ; Return type name
-                                                  :fields {:id {:type '(non-null Int)}}}}} ; Argument type
+                                                  :args {:id {:type '(non-null Int)}}}}} ; Argument type
                ;; The SimpleObject type definition should also be collected
                :SimpleObject {:fields {:id {:type '(non-null Int)}
                                        :name {:type '(non-null String)}}}}}
@@ -200,7 +209,7 @@
     (let [result (sut/name->tuple->graphql-schema {:Mutation/createSimpleObject create-simple-object-var})]
       (is (= {:objects
               {:Mutation {:fields {:createSimpleObject {:type '(non-null String) ; Return type
-                                                        :fields {:name {:type '(non-null String)}}}}}}} ; Argument type
+                                                        :args {:name {:type '(non-null String)}}}}}}} ; Argument type
              result)
           "Should correctly compile a mutation with args and a simple return type")))
 
@@ -225,10 +234,10 @@
                      :Mutation/createSimpleObject create-simple-object-var})]
         (is (= {:objects
                 {:Query {:fields {:getSimpleObject {:type :SimpleObject
-                                                    :fields {:id {:type '(non-null Int)}}}
+                                                    :args {:id {:type '(non-null Int)}}}
                                   :getListOfStrings {:type '(list (non-null String))}}}
                  :Mutation {:fields {:createSimpleObject {:type '(non-null String)
-                                                          :fields {:name {:type '(non-null String)}}}}}
+                                                          :args {:name {:type '(non-null String)}}}}}
                ;; SimpleObject type collected once
                  :SimpleObject {:fields {:id {:type '(non-null Int)}
                                          :name {:type '(non-null String)}}}}}
@@ -259,8 +268,8 @@
                    :Mutation
                    {:fields
                     {:processComplexData {:type '(non-null :MutationOutputForTest)
-                                          :fields {:directPayload {:type '(non-null :InputPayloadDirect)}
-                                                   :registeredPayload {:type '(non-null :RegisteredInputForTest)}}}}}
+                                          :args {:directPayload {:type '(non-null :InputPayloadDirect)}
+                                                 :registeredPayload {:type '(non-null :RegisteredInputForTest)}}}}}
                    ;; Output type definition under :objects
                    :MutationOutputForTest {:fields {:message {:type '(non-null String)}}}}
 
@@ -272,7 +281,27 @@
                  compiled-schema)
               "Should compile mutation with named input types, collecting output type correctly, direct input type correctly, and registered input type reflecting current compiler behavior for ::mc/schema."))
         (finally
-          (reset! registry/type-registry type-registry-value))))))
+          (reset! registry/type-registry type-registry-value)))))
+
+  (testing "query with an anonymous map schema as argument type"
+    (let [result (sut/name->tuple->graphql-schema {:Query/getItemsByPlainMapFilter get-items-by-plain-map-filter-var})]
+      (is (= {:objects
+              {:Query {:fields {:getItemsByPlainMapFilter
+                                {:type '(list (non-null String))
+                                 :args {:criteria {:type '(non-null {:filter {:type (non-null String)}
+                                                                     :limit {:type (non-null Int)}})}}}}}}}
+             result)
+          "Should compile query with an anonymous map argument, inlining its fields.")))
+
+  (testing "mutation with an anonymous map schema as argument type"
+    (let [result (sut/name->tuple->graphql-schema {:Mutation/updateItemsByPlainMapFilter update-items-by-plain-map-filter-var})]
+      (is (= {:objects
+              {:Mutation {:fields {:updateItemsByPlainMapFilter
+                                   {:type '(non-null Boolean)
+                                    :args {:config {:type '(non-null {:filter {:type (non-null String)}
+                                                                      :limit {:type (non-null Int)}})}}}}}}}
+             result)
+          "Should compile mutation with an anonymous map argument, inlining its fields. No separate input object should be created."))))
 
 (deftest ->graphql-type-map-method-test
   (testing ":map method of ->graphql-type multimethod for interfaces and implementations"
@@ -510,8 +539,8 @@
                                      (> (count query-str) (+ (count prefix) (count suffix))))
                             (subs query-str (count prefix) (- (count query-str) (count suffix))))]
         (is (some? var-defs-part) "Query string structure is as expected to extract variable definitions.")
-        (is (= "$userId: !String, $limit: !Int" var-defs-part)
-            (str "Variable definitions part should be '$userId: !String, $limit: !Int' (order may vary). Actual: " var-defs-part)))
+        (is (= "$userId: String!, $limit: Int!" var-defs-part)
+            (str "Variable definitions part should be '$userId: String!, $limit: Int!' . Actual: " var-defs-part)))
 
       (is (= {"Actor" Actor} types-map)
           "Types map should be correctly generated even with variable definitions")))
@@ -522,7 +551,7 @@
                                  "ProcessComplexDataOp" ; Operation name
                                  [[:payload ComplexInputTypeTest]])] ; Operation variable :payload of complex type
       ;; Expected: query ProcessComplexDataOp($payload: !ComplexInputTypeTest) { processComplex(payload: $payload) { status } }
-      (is (= "query ProcessComplexDataOp($payload: !ComplexInputTypeTest) { processComplex(payload: $payload) { status } }" query-str)
+      (is (= "query ProcessComplexDataOp($payload: ComplexInputTypeTest!) { processComplex(payload: $payload) { status } }" query-str)
           "Should correctly format operation variable of complex input type and use it in field argument.")
       (is (= {"ComplexInputQueryResult" ComplexInputQueryResult} types-map)
           "Types map should contain the output type from selection set, not the input type.")))
@@ -599,7 +628,7 @@
                                        (> (count query-str) (+ (count prefix) (count suffix))))
                               (subs query-str (count prefix) (- (count query-str) (count suffix))))]
           (is (some? var-defs-part) "Query string structure should allow extraction of variable definitions.")
-          (is (= "$userId: !String, $limit: !Int" var-defs-part)))
+          (is (= "$userId: String!, $limit: Int!" var-defs-part)))
         (is (= {"Actor" Actor} types-map)
             "Types map should be correctly generated."))))
 
