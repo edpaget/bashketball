@@ -132,10 +132,12 @@
      [:= :card-type-enum/SPLIT_PLAY_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
+               :ui/input-type "textarea"
                :default ""}
      :string]
     [:defense {:ui/label "Defense"
                :ui/auto-widget true
+               :ui/input-type "textarea"
                :default ""}
      :string]]])
 
@@ -143,9 +145,11 @@
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "PlayCard"}
-    [:card-type [:= :card-type-enum/PLAY_CARD]]
+    [:card-type {:default :card-type-enum/PLAY_CARD}
+     [:= :card-type-enum/PLAY_CARD]]
     [:play {:ui/label "Play"
             :ui/auto-widget true
+            :ui/input-type "textarea"
             :default ""}
      :string]]])
 
@@ -157,6 +161,7 @@
      [:= :card-type-enum/COACHING_CARD]]
     [:coaching {:ui/label "Defense"
                 :ui/auto-widget true
+                :ui/input-type "textarea"
                 :default ""}
      :string]]])
 
@@ -168,10 +173,12 @@
      [:= :card-type-enum/STANDARD_ACTION_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
+               :ui/input-type "textarea"
                :default ""}
      :string]
     [:defense {:ui/label "Defense"
                :ui/auto-widget true
+               :ui/input-type "textarea"
                :default ""}
      :string]]])
 
@@ -181,7 +188,8 @@
           :graphql/type "TeamAssetCard"}
     [:card-type {:default :card-type-enum/TEAM_ASSET_CARD}
      [:= :card-type-enum/TEAM_ASSET_CARD]]
-    [:asset-power :string]]])
+    [:asset-power {:ui/label "Asset Power"
+                   :ui/input-type "textarea"} :string]]])
 
 (registry/defschema ::GameCard
   [:multi {:dispatch :card-type
@@ -231,4 +239,3 @@
   "Return the primary key of the model as a vector"
   [type]
   (or (-> type mc/deref-recursive mc/properties ::pk) [:id]))
-
