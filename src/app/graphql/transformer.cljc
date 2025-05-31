@@ -12,7 +12,8 @@
 
 (defn decode
   [encoded model]
-  (mc/decode model encoded transformer))
+  (prn model)
+  (mc/decode model encoded (mt/transformer transformer mt/default-value-transformer)))
 
 (defn encode
   [decoded model]

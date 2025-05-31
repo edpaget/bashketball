@@ -52,7 +52,7 @@
   [:map {:graphql/interface "Card"
          ::pk [:name :version]}
    [:name :string]
-   [:version {:default-value "0"} :string]
+   [:version {:default "0"} :string]
    [:game-asset-id {:ui/input-type "file"
                     ::fk ::GameAsset} [:maybe :uuid]]
    [:card-type {:graphql/hidden true} ::CardType]
@@ -70,26 +70,27 @@
   [:merge ::Card
    [:map {:graphql/implements [::Card]
           :graphql/type "PlayerCard"}
-    [:card-type [:= :card-type-enum/PLAYER_CARD]]
+    [:card-type {:default :card-type-enum/PLAYER_CARD}
+     [:= :card-type-enum/PLAYER_CARD]]
     [:deck-size {:ui/label "Deck Size"
                  :ui/auto-widget true
-                 :default-value 5}
+                 :default 5}
      :int]
     [:sht {:ui/label "Shot"
            :ui/auto-widget true
-           :default-value 1}
+           :default 1}
      :int]
     [:pss {:ui/label "Pass"
            :ui/auto-widget true
-           :default-value 1}
+           :default 1}
      :int]
     [:def {:ui/label "Defense"
            :ui/auto-widget true
-           :default-value 1}
+           :default 1}
      :int]
     [:speed {:ui/label "Speed"
              :ui/auto-widget true
-             :default-value 1}
+             :default 1}
      :int]
     [:size {:ui/label "Size"
             :ui/select-label "Select Player Size"
@@ -97,21 +98,22 @@
             :ui/options {"SM" "Small"
                          "MD" "Medium"
                          "LG" "Large"}
-            :default-value "SM"}
+            :default "SM"}
      ::PlayerSize]
     [:abilities {:ui/label "Abilities"
                  :ui/auto-widget true
-                 :default-value [""]}
+                 :default [""]}
      [:vector :string]]]])
 
 (registry/defschema ::AbilityCard
   [:merge ::Card
    [:map {:graphql/implements [::Card]
           :graphql/type "AbilityCard"}
-    [:card-type [:= :card-type-enum/ABILITY_CARD]]
+    [:card-type {:default :card-type-enum/ABILITY_CARD}
+     [:= :card-type-enum/ABILITY_CARD]]
     [:abilities {:ui/label "Abilities"
                  :ui/auto-widget true
-                 :default-value [""]}
+                 :default [""]}
      [:vector :string]]]])
 
 (registry/defschema ::CardWithFate
@@ -119,21 +121,22 @@
    [:map
     [:fate {:ui/label "Fate"
             :ui/auto-widget true
-            :default-value 0}
+            :default 0}
      :int]]])
 
 (registry/defschema ::SplitPlayCard
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "SplitPlayCard"}
-    [:card-type [:= :card-type-enum/SPLIT_PLAY_CARD]]
+    [:card-type {:default :card-type-enum/SPLIT_PLAY_CARD}
+     [:= :card-type-enum/SPLIT_PLAY_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
-               :default-value ""}
+               :default ""}
      :string]
     [:defense {:ui/label "Defense"
                :ui/auto-widget true
-               :default-value ""}
+               :default ""}
      :string]]])
 
 (registry/defschema ::PlayCard
@@ -143,40 +146,42 @@
     [:card-type [:= :card-type-enum/PLAY_CARD]]
     [:play {:ui/label "Play"
             :ui/auto-widget true
-            :default-value ""}
+            :default ""}
      :string]]])
 
 (registry/defschema ::CoachingCard
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "CoachingCard"}
-    [:card-type [:= :card-type-enum/COACHING_CARD]]
+    [:card-type {:defualt-value :card-type-enum/COACHING_CARD}
+     [:= :card-type-enum/COACHING_CARD]]
     [:coaching {:ui/label "Defense"
                 :ui/auto-widget true
-                :default-value ""}
+                :default ""}
      :string]]])
 
 (registry/defschema ::StandardActionCard
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "StandardActionCard"}
-    [:card-type [:= :card-type-enum/STANDARD_ACTION_CARD]]
+    [:card-type {:default :card-type-enum/STANDARD_ACTION_CARD}
+     [:= :card-type-enum/STANDARD_ACTION_CARD]]
     [:offense {:ui/label "Offense"
                :ui/auto-widget true
-               :default-value ""}
+               :default ""}
      :string]
     [:defense {:ui/label "Defense"
                :ui/auto-widget true
-               :default-value ""}
+               :default ""}
      :string]]])
 
 (registry/defschema ::TeamAssetCard
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "TeamAssetCard"}
-    [:card-type [:= :card-type-enum/TEAM_ASSET_CARD]]
-    [:asset-power
-     :string]]])
+    [:card-type {:default :card-type-enum/TEAM_ASSET_CARD}
+     [:= :card-type-enum/TEAM_ASSET_CARD]]
+    [:asset-power :string]]])
 
 (registry/defschema ::GameCard
   [:multi {:dispatch :card-type

@@ -1,5 +1,14 @@
 (ns app.card.types)
 
+(def ->type-label
+  {:card-type-enum/PLAYER_CARD "Player"
+   :card-type-enum/ABILITY_CARD "Ability"
+   :card-type-enum/COACHING_CARD "Coaching"
+   :card-type-enum/PLAY_CARD "Play"
+   :card-type-enum/SPLIT_PLAY_CARD "Splity Play"
+   :card-type-enum/STANDARD_ACTION_CARD "Standard Action"
+   :card-type-enum/TEAM_ASSET_CARD "Team Asset"})
+
 (def types
   {:player {:type-label "Player"
             :fields [{:name "card-type"
