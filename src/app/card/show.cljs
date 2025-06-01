@@ -35,12 +35,18 @@
      (case card-type
        :card-type-enum/PLAYER_CARD ($ :<>
                                       ($ :div {:class "p-4 grid grid-cols-3 gap-2 text-center border-t border-gray-200"}
-                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SHT") ($ :p {:class "text-gray-600"} (:sht card)))
-                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "PSS") ($ :p {:class "text-gray-600"} (:pss card)))
-                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "DEF") ($ :p {:class "text-gray-600"} (:def card))))
+                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SHT")
+                                            ($ :p {:class "text-gray-600"} (:sht card)))
+                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "PSS")
+                                            ($ :p {:class "text-gray-600"} (:pss card)))
+                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "DEF")
+                                            ($ :p {:class "text-gray-600"} (:def card))))
                                       ($ :div {:class "p-4 grid grid-cols-2 gap-2 text-center border-t border-gray-200"}
-                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SPEED") ($ :p {:class "text-gray-600"} (:speed card)))
-                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SIZE") ($ :p {:class "text-gray-600"} (:size card))))
+                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SPEED")
+                                            ($ :p {:class "text-gray-600"} (:speed card)))
+                                         ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SIZE")
+                                            ($ :p {:class "text-gray-600"}
+                                               (name (:size card)))))
                                       ($ list-abilities card))
        :card-type-enum/COACHING_CARD ($ :div {:class "p-4 border-t border-gray-200"}
                                         ($ :p {:class "text-sm text-gray-600"} (:coaching card)))

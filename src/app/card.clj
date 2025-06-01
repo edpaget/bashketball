@@ -67,7 +67,8 @@
 
 (def ^:private tagger (gql.compiler/merge-tag-with-type ::models/GameCard))
 
-(def ^:private tag-and-transform (juxt #(gql.transformer/encode % ::models/Card) tagger))
+(def ^:private game-card-tag-and-transform (juxt #(gql.transformer/encode % ::models/GameCard) tagger))
+(def ^:private card-tag-and-transform (juxt #(gql.transformer/encode % ::models/Card) tagger))
 
 (defresolver :Query/card
   "Retrieves a specific game card by its name and version."
@@ -75,7 +76,7 @@
    [:maybe ::models/GameCard]]
   [_context args _value]
   (some->> (get-by-name (:name args) (or (:version args) "0"))
-           tag-and-transform
+           game-card-tag-and-transform
            (apply schema/tag-with-type)))
 
 (defresolver :Query/cards
@@ -85,5 +86,5 @@
   [_context args _value]
   ;; card/list expects a map like {:limit l :offset o} and applies defaults if keys are missing.
   (->> (list args)
-       (map tag-and-transform)
+       (map card-tag-and-transform)
        (mapv (partial apply schema/tag-with-type))))
