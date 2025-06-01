@@ -92,7 +92,7 @@
         (let [query (-> (h/select :use-name) ; Select :use-name
                         (h/from :actor)
                         (h/where [:in :id [id7 id8]]))
-              actors (into #{} (map #(do (prn %) (select-keys % [:use_name]))) ; Select :use-name
+              actors (into #{} (map #(select-keys % [:use_name])) ; Select :use-name
                            (db/plan tx query))]
           (is (= #{{:use_name "gracem"} {:use_name "mattj"}} actors))))))) ; Check :use-name
 

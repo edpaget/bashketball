@@ -124,7 +124,6 @@
 (defn- pop-object!
   "Remove an object from the bound set of objects and return its fields"
   [object-name]
-  (prn object-name)
   (let [fields (get-in @*type-collector* [:objects object-name])]
     (swap! *type-collector* update :objects dissoc object-name)
     (:fields fields)))

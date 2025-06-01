@@ -97,7 +97,6 @@
         (is false "Should have thrown")
         (catch clojure.lang.ExceptionInfo e
           (let [ex-data (ex-data e)]
-            (prn ex-data)
             (is (= :s3/GetObject-failed (:type ex-data)))
             (is (= non-existent-key (:key ex-data)))
             (is (= tu.s3/*test-bucket-name* (:bucket-name ex-data)))

@@ -31,18 +31,19 @@
                                 "getMostRecentCardVersionByName"
                                 [[:name :string]]
                                 {:name card-id})
-        [dirty-card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})
-        unsaved-card (merge dirty-card (:card data))]
-    (prn data)
+        [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})]
+    (uix/use-effect (fn []
+                      (when-let [new-card (:card data)]
+                        (card-reducer/reset-state! dispatch-card! new-card))) [data])
     ;; Wrap content in a styled container
     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
        ($ :div {} ; Column for edit form (conditionally rendered)
           ($ authn/login-required {:show-prompt false}
              (when-not loading
-               ($ edit-card {:card unsaved-card
+               ($ edit-card {:card card
                              :update-card-field (card-reducer/update-field-dispatch dispatch-card!)}))))
        ($ :div {} ; Column for showing the card
-          ($ show-card unsaved-card)))))
+          ($ show-card card)))))
 
 (defui cards-new []
   (let [[card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})]

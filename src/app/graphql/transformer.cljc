@@ -22,9 +22,7 @@
               enum-namespace (when-let [first-option (first enum-options)]
                                (when (keyword? first-option)
                                  (namespace first-option)))]
-          (prn schema)
           (fn [value] ; value is the string from GraphQL, e.g., "A"
-            (prn schema)
             (if (and (string? value) enum-namespace)
               (let [kw-value (keyword enum-namespace value)]
                  ;; Only convert to keyword if it's a valid option in the schema.

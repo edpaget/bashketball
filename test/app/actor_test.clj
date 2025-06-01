@@ -8,7 +8,6 @@
 (def current-actor (gql.resolvers/get-resolver-fn :Query/me))
 
 (deftest current-actor-test
-  (prn current-actor)
   (testing "when current-actor exists in request context"
     (let [expected-actor {:id "test-actor-id"
                           :enrollment-state "test"

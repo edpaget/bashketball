@@ -227,7 +227,6 @@
 
 (defn validate
   [type value]
-  (prn type)
   ((-validator type) value))
 
 (defn ->table-name
