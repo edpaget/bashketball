@@ -29,10 +29,14 @@
                     (csk/->PascalCaseKeyword type-name))
     ::mc/schema (-> schema mc/form name csk/->PascalCaseKeyword)))
 
+(declare ->graphql-type)
+
 (defn- ->graphql-field
   [[field-name opts field-type]]
   (when-not (or (:graphql/hidden opts) (nil? field-type))
-    [(csk/->camelCaseKeyword field-name) {:type field-type}]))
+    (if-let [fk (:app.models/fk opts)]
+      [(csk/->camelCaseKeyword field-name) {:type (mc/walk (mc/schema fk) ->graphql-type)}]
+      [(csk/->camelCaseKeyword field-name) {:type field-type}])))
 
 (defmulti ^:Private ->graphql-type dispatch-mc-type)
 
@@ -271,7 +275,7 @@
            (fn [schema _ children _]
              (condp = (mc/type schema)
                :merge (->query-field-names schema)
-               :map (into #{} (comp (remove #(:graphql/hidden (second %)))
+               :map (into #{} (comp (remove #(some #{:graphql/hidden :app.models/fk} (keys (second %))))
                                     (map first)) children)
                :multi (into #{}
                             (comp

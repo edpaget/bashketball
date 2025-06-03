@@ -173,6 +173,35 @@
    [:equals-field [:= "constant-value"]] ; This field should be excluded
    [:another-normal-field :int]])
 
+;; Schemas for :app.models/fk tests
+(def FkTargetObject
+  [:map {:graphql/type "FkTargetObject"}
+   [:target-id :uuid] ; Kebab case field name, expects camelCase in GraphQL (targetId)
+   [:target-name :string]])
+
+(def ObjectWithFk
+  [:map {:graphql/type "ObjectWithFk"}
+   [:id :int]
+   [:fk-field {:app.models/fk FkTargetObject} :int]
+   [:another-field :string]])
+
+(def RegisteredFkTargetObject
+  [:map {:graphql/type "RegisteredFkTargetObject"}
+   [:reg-target-id :uuid]])
+
+(def ObjectWithRegisteredFk
+  [:map {:graphql/type "ObjectWithRegisteredFk"}
+   [:id :int]
+   [:reg-fk-field {:app.models/fk ::RegisteredFkTargetObject} :string] ; :string should be overridden
+   [:description :string]])
+
+;; Vars for name->tuple->graphql-schema tests involving FKs
+(def get-object-with-fk-var
+  [[:=> [:cat :any :any :any] [:maybe ObjectWithFk]] nil])
+
+(def get-object-with-registered-fk-var
+  [[:=> [:cat :any :any :any] [:maybe ObjectWithRegisteredFk]] nil])
+
 ;; --- Tests ---
 
 (deftest name->tuple->graphql-schema-test
@@ -301,7 +330,35 @@
                                     :args {:config {:type '(non-null {:filter {:type (non-null String)}
                                                                       :limit {:type (non-null Int)}})}}}}}}}
              result)
-          "Should compile mutation with an anonymous map argument, inlining its fields. No separate input object should be created."))))
+          "Should compile mutation with an anonymous map argument, inlining its fields. No separate input object should be created.")))
+
+  (testing "query with a field referencing an FK via :app.models/fk"
+    (let [result (sut/name->tuple->graphql-schema {:Query/getObjectWithFk get-object-with-fk-var})]
+      (is (= {:objects
+              {:Query {:fields {:getObjectWithFk {:type :ObjectWithFk}}}
+               :ObjectWithFk {:fields {:id {:type '(non-null Int)}
+                                       :fkField {:type '(non-null :FkTargetObject)}
+                                       :anotherField {:type '(non-null String)}}}
+               :FkTargetObject {:fields {:targetId {:type '(non-null Uuid)}
+                                         :targetName {:type '(non-null String)}}}}}
+             result)
+          "Should compile query, correctly typing the FK field (fkField to FkTargetObject) and collecting both object types. Query return type ObjectWithFk should be non-null as per current :maybe behavior.")))
+
+  (testing "query with a field referencing a registered schema as FK via :app.models/fk"
+    (let [type-registry-backup @registry/type-registry]
+      (try
+        (registry/register-type! ::RegisteredFkTargetObject RegisteredFkTargetObject)
+        (let [result (sut/name->tuple->graphql-schema {:Query/getObjectWithRegisteredFk get-object-with-registered-fk-var})]
+          (is (= {:objects
+                  {:Query {:fields {:getObjectWithRegisteredFk {:type :ObjectWithRegisteredFk}}}
+                   :ObjectWithRegisteredFk {:fields {:id {:type '(non-null Int)}
+                                                     :regFkField {:type '(non-null :RegisteredFkTargetObject)}
+                                                     :description {:type '(non-null String)}}}
+                   :RegisteredFkTargetObject {:fields {:regTargetId {:type '(non-null Uuid)}}}}}
+                 result)
+              "Should compile query with registered FK (regFkField to RegisteredFkTargetObject), correctly typing the FK field and collecting types. Query return type ObjectWithRegisteredFk should be non-null."))
+      (finally
+        (reset! registry/type-registry type-registry-backup))))))
 
 (deftest ->graphql-type-map-method-test
   (testing ":map method of ->graphql-type multimethod for interfaces and implementations"
@@ -418,7 +475,43 @@
                           {:fields {:normalField {:type '(non-null String)}
                                     :anotherNormalField {:type '(non-null Int)}}}}} ; :equalsField is excluded
                @collector)
-            "Fields with := schema should be excluded from the compiled type.")))))
+            "Fields with := schema should be excluded from the compiled type.")))
+
+    (testing "compiling a map schema with an :app.models/fk field"
+      (let [collector (atom {})
+            result (binding [sut/*type-collector* collector
+                             sut/*object-type* :objects]
+                     (mc/walk ObjectWithFk sut/->graphql-type))]
+        (is (= '(non-null :ObjectWithFk) result)
+            "Should return a non-null reference to the object type name.")
+        (is (= {:objects
+                {:ObjectWithFk {:fields {:id {:type '(non-null Int)}
+                                         :fkField {:type '(non-null :FkTargetObject)}
+                                         :anotherField {:type '(non-null String)}}}
+                 :FkTargetObject {:fields {:targetId {:type '(non-null Uuid)}
+                                           :targetName {:type '(non-null String)}}}}}
+               @collector)
+            "The object type (ObjectWithFk) and the FK target type (FkTargetObject) should be collected, with FK field (fkField) correctly typed and field names camelCased.")))
+
+    (testing "compiling a map schema with an :app.models/fk field pointing to a registered schema"
+      (let [collector (atom {})
+            type-registry-backup @registry/type-registry]
+        (try
+          (registry/register-type! ::RegisteredFkTargetObject RegisteredFkTargetObject)
+          (let [result (binding [sut/*type-collector* collector
+                                 sut/*object-type* :objects]
+                         (mc/walk ObjectWithRegisteredFk sut/->graphql-type))]
+            (is (= '(non-null :ObjectWithRegisteredFk) result)
+                "Should return a non-null reference to the object type name.")
+            (is (= {:objects
+                    {:ObjectWithRegisteredFk {:fields {:id {:type '(non-null Int)}
+                                                       :regFkField {:type '(non-null :RegisteredFkTargetObject)}
+                                                       :description {:type '(non-null String)}}}
+                     :RegisteredFkTargetObject {:fields {:regTargetId {:type '(non-null Uuid)}}}}}
+                   @collector)
+                "The object type (ObjectWithRegisteredFk) and the registered FK target type (RegisteredFkTargetObject) should be collected, with FK field (regFkField) correctly typed and field names camelCased."))
+          (finally
+            (reset! registry/type-registry type-registry-backup)))))))
 
 (deftest merge-tag-with-type-test
   (testing "with TestUnionViaMultiSchema (simulating a GraphQL Union)"
