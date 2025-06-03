@@ -31,7 +31,7 @@
                   value)) ; Return original string if not a valid enum member; Malli will validate.
               value))))}}
     :encoders
-    {:enum name}}))
+    {:enum (fn [value] (when value (name value)))}}))
 
 (def ^:private kebab-key-transformer
   "A Malli transformer for map keys.
