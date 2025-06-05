@@ -84,7 +84,137 @@
   [:=> [:cat :any ::cards-args :any]
    [:vector ::models/Card]]
   [_context args _value]
-  ;; card/list expects a map like {:limit l :offset o} and applies defaults if keys are missing.
   (->> (list args)
        (map card-tag-and-transform)
        (mapv (partial apply schema/tag-with-type))))
+
+;; --- PlayerCard ---
+(registry/defschema ::player-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   ;; Fields specific to PlayerCard, defaults match ::models/PlayerCard
+   [:deck-size {:optional true :default 5} :int]
+   [:sht {:optional true :default 1} :int]
+   [:pss {:optional true :default 1} :int]
+   [:def {:optional true :default 1} :int]
+   [:speed {:optional true :default 1} :int]
+   [:size {:optional true :default :size-enum/SM} ::models/PlayerSize]
+   [:abilities {:optional true :default [""]} [:vector :string]]])
+
+(defresolver :Mutation/createPlayerCard
+  "Create a PLAYER_CARD-typed card"
+  [:=> [:cat :any ::player-card-args :any]
+   ::models/PlayerCard]
+  [_context args _value]
+  (create (assoc args :card-type :card-type-enum/PLAYER_CARD)))
+
+;; --- AbilityCard ---
+(registry/defschema ::ability-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:abilities {:optional true :default [""]} [:vector :string]]])
+
+(defresolver :Mutation/createAbilityCard
+  "Create an ABILITY_CARD-typed card"
+  [:=> [:cat :any ::ability-card-args :any]
+   ::models/AbilityCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/ABILITY_CARD))
+   ::models/AbilityCard))
+
+;; --- SplitPlayCard ---
+(registry/defschema ::split-play-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true :default 0} :int]
+   [:offense {:optional true :default ""} :string]
+   [:defense {:optional true :default ""} :string]])
+
+(defresolver :Mutation/createSplitPlayCard
+  "Create a SPLIT_PLAY_CARD-typed card"
+  [:=> [:cat :any ::split-play-card-args :any]
+   ::models/SplitPlayCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/SPLIT_PLAY_CARD))
+   ::models/SplitPlayCard))
+
+;; --- PlayCard ---
+(registry/defschema ::play-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true :default 0} :int]
+   [:play {:optional true :default ""} :string]])
+
+(defresolver :Mutation/createPlayCard
+  "Create a PLAY_CARD-typed card"
+  [:=> [:cat :any ::play-card-args :any]
+   ::models/PlayCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/PLAY_CARD))
+   ::models/PlayCard))
+
+;; --- CoachingCard ---
+(registry/defschema ::coaching-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true :default 0} :int]
+   [:coaching {:optional true :default ""} :string]])
+
+(defresolver :Mutation/createCoachingCard
+  "Create a COACHING_CARD-typed card"
+  [:=> [:cat :any ::coaching-card-args :any]
+   ::models/CoachingCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/COACHING_CARD))
+   ::models/CoachingCard))
+
+;; --- StandardActionCard ---
+(registry/defschema ::standard-action-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true :default 0} :int]
+   [:offense {:optional true :default ""} :string]
+   [:defense {:optional true :default ""} :string]])
+
+(defresolver :Mutation/createStandardActionCard
+  "Create a STANDARD_ACTION_CARD-typed card"
+  [:=> [:cat :any ::standard-action-card-args :any]
+   ::models/StandardActionCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/STANDARD_ACTION_CARD))
+   ::models/StandardActionCard))
+
+;; --- TeamAssetCard ---
+(registry/defschema ::team-asset-card-args
+  [:map
+   [:name :string]
+   [:version {:optional true :default "0"} [:maybe :string]]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true :default 0} :int]
+   [:asset-power :string]])
+
+(defresolver :Mutation/createTeamAssetCard
+  "Create a TEAM_ASSET_CARD-typed card"
+  [:=> [:cat :any ::team-asset-card-args :any]
+   ::models/TeamAssetCard]
+  [_context args _value]
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/TEAM_ASSET_CARD))
+   ::models/TeamAssetCard))

@@ -72,3 +72,8 @@
   Applies enum and key transformations."
   [decoded model]
   (mc/encode model decoded encoding-transformer))
+
+(defn coerce
+  "Coerces (transforms then validates) a value given a model"
+  [encoded model]
+  (mc/coerce model encoded decoding-transformer))

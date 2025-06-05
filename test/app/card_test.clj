@@ -5,7 +5,8 @@
    [app.db :as db]
    [app.models :as models]
    [app.test-utils :as tu]
-   [app.graphql.resolvers :as gql-resolvers]))
+   [app.graphql.resolvers :as gql-resolvers]
+   [com.walmartlabs.lacinia.schema :as schema]))
 
 (use-fixtures :once tu/db-fixture)
 (use-fixtures :each tu/rollback-fixture)
@@ -28,7 +29,7 @@
                      :coaching nil
                      :fate nil
                      :asset-power nil}
-             ;; Prepare expected data (enums become keywords, JSONB needs reading)
+          ;; Prepare expected data (enums become keywords, JSONB needs reading)
           expected-card {:name "Test Player"
                          :version "0"
                          :card-type :card-type-enum/PLAYER_CARD
@@ -50,13 +51,13 @@
         (testing "by name and version"
           (let [found-card (card/get-by-name "Test Player" "0")] ; Pass version as string
             (is (some? found-card))
-               ;; Compare relevant fields, excluding auto-generated ones
+            ;; Compare relevant fields, excluding auto-generated ones
             (is (= expected-card (select-keys found-card (keys expected-card))))))
 
         (testing "by name and version limiting columns returned"
           (let [found-card (card/get-by-name [:name :version] "Test Player" "0")] ; Pass version as string
             (is (some? found-card))
-               ;; Compare relevant fields, excluding auto-generated ones
+            ;; Compare relevant fields, excluding auto-generated ones
             (is (= (select-keys expected-card [:name :version]) found-card))))
 
         (testing "by name only (defaults to version 0)"
@@ -270,3 +271,134 @@
         (testing "returns nil if card version does not exist for the given name"
           (let [result (resolver-fn nil {:name "Resolver Test Card" :version "99"} nil)]
             (is (nil? result))))))))
+
+(deftest create-card-mutations-test
+  (testing "Mutation/createPlayerCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createPlayerCard)
+          base-valid-args {:name "Mutation Player Card"
+                           :version "mpc0"
+                           :deck-size 10
+                           :sht 2
+                           :pss 3
+                           :def 1
+                           :speed 5
+                           :size :size-enum/SM
+                           :abilities ["Fast Runner"]}]
+      (testing "with valid arguments"
+        (let [input-args base-valid-args
+              expected-db-card (assoc input-args :card-type :card-type-enum/PLAYER_CARD)
+              result (resolver-fn nil input-args nil)
+              db-card (card/get-by-name (:name input-args) (:version input-args))]
+          (is (some? result) "Result should not be nil")
+          (is (= expected-db-card (select-keys result (keys expected-db-card))))
+          (is (some? db-card))
+          (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+      (testing "with invalid arguments"
+        (testing "missing required 'name'"
+          (is (= {:name ["missing required key"]
+                  :message "failed to validate arguments"}
+                 (get-in (resolver-fn nil (dissoc base-valid-args :name) nil)
+                         [:resolved-value :data])))))))
+
+  (testing "Mutation/createAbilityCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createAbilityCard)
+          input-args {:name "Mutation Ability Card"
+                      :version "mac0"
+                      :abilities ["Extra Power"]}
+          expected-db-card (assoc input-args :card-type :card-type-enum/ABILITY_CARD)
+          expected-gql-type ::models/AbilityCard
+          result (resolver-fn nil input-args nil)
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+
+  (testing "Mutation/createSplitPlayCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createSplitPlayCard)
+          input-args {:name "Mutation SplitPlay Card"
+                      :version "mspc0"
+                      :fate 1
+                      :offense "Offensive Play"
+                      :defense "Defensive Play"}
+          expected-db-card (assoc input-args :card-type :card-type-enum/SPLIT_PLAY_CARD)
+          expected-gql-type ::models/SplitPlayCard
+          result (resolver-fn nil input-args nil)
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+
+  (testing "Mutation/createPlayCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createPlayCard)
+          input-args {:name "Mutation Play Card"
+                      :version "mpc1"
+                      :fate 2
+                      :play "Main Play Action"}
+          expected-db-card (assoc input-args :card-type :card-type-enum/PLAY_CARD)
+          expected-gql-type ::models/PlayCard
+          result (resolver-fn nil input-args nil)
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+
+  (testing "Mutation/createCoachingCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createCoachingCard)
+          input-args {:name "Mutation Coaching Card"
+                      :version "mcc0"
+                      :fate 3
+                      :coaching "Coaching Advice"}
+          expected-db-card (assoc input-args :card-type :card-type-enum/COACHING_CARD)
+          expected-gql-type ::models/CoachingCard
+          result (resolver-fn nil input-args nil)
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+
+  (testing "Mutation/createStandardActionCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createStandardActionCard)
+          input-args {:name "Mutation Standard Action Card"
+                      :version "msac0"
+                      :fate 1
+                      :offense "Standard Offense"
+                      :defense "Standard Defense"}
+          expected-db-card (assoc input-args :card-type :card-type-enum/STANDARD_ACTION_CARD)
+          expected-gql-type ::models/StandardActionCard
+          result (resolver-fn nil input-args nil) ; Corrected binding
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
+
+  (testing "Mutation/createTeamAssetCard resolver"
+    (let [resolver-fn (gql-resolvers/get-resolver-fn :Mutation/createTeamAssetCard)
+          input-args {:name "Mutation Team Asset Card"
+                      :version "mtac0"
+                      :fate 0
+                      :asset-power "Team Power Boost"}
+          expected-db-card (assoc input-args :card-type :card-type-enum/TEAM_ASSET_CARD)
+          expected-gql-type ::models/TeamAssetCard
+          result (resolver-fn nil input-args nil)
+          db-card (card/get-by-name (:name input-args) (:version input-args))]
+      (is (some? result) "Result should not be nil")
+      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      ;; Verify card is in DB
+      (is (some? db-card))
+      (is (= expected-db-card (select-keys db-card (keys expected-db-card)))))))

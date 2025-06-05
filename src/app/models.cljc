@@ -53,8 +53,7 @@
          ::pk [:name :version]}
    [:name :string]
    [:version {:default "0"} :string]
-   [:game-asset-id {:ui/input-type "file"
-                    ::fk ::GameAsset} [:maybe :uuid]]
+   [:game-asset-id {:ui/input-type "file"} [:maybe :uuid]]
    [:card-type {:graphql/hidden true} ::CardType]
    [:created-at :time/instant]
    [:updated-at :time/instant]])

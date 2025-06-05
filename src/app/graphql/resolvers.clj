@@ -1,7 +1,12 @@
 (ns app.graphql.resolvers
   (:require
    [app.registry :as registry]
-   [app.card.graphql.resolvers])) ;; Ensure card resolvers are loaded
+   [app.card.graphql.resolvers]
+   [com.walmartlabs.lacinia.resolve :as lacinia.resolve]
+   [malli.core :as mc]
+   [app.graphql.transformer :as gql.transformer]
+   [clojure.tools.logging :as log]
+   [malli.error :as merr]))
 
 (def resolvers-registry (atom {}))
 
@@ -9,6 +14,35 @@
   (registry/register-type! graphql-operation schema)
   (swap! resolvers-registry assoc graphql-operation (with-meta [schema fn]
                                                       {:doc doc-string})))
+
+(defn ->argument-type
+  "Gets the second argument to the function schema"
+  [schema _ children _]
+  (case (mc/type schema)
+    :=> (first children)
+    :cat (second children)
+    schema))
+
+(defn coerce-graphql-args
+  "Given a malli schema wrap a funtion and apply malli coerce to it's second argument
+  returning a formatted graphql error if coercion fails."
+  [arg-type f]
+  (fn [arg1 arg2 arg3]
+    (try
+      (let [coerced (gql.transformer/coerce arg2 arg-type)]
+        (f arg1 coerced arg3))
+      (catch Throwable e
+        (let [data (ex-data e)]
+          (if-not (= ::mc/coercion (:type data))
+            (throw e)
+            (do
+              (log/error e "failed to coerce arguments")
+              (lacinia.resolve/resolve-as nil (-> (ex-data e)
+                                                     :data
+                                                     :explain
+                                                     merr/humanize
+                                                     (assoc :message "failed to validate arguments"))))))))))
+
 (defmacro defresolver
   "Define a register a new graphql resolver function. Takes a keyword for the resolver
   name that must be qualified with either Query/ or Mutation/. Otherwise defines a three argument
@@ -37,7 +71,10 @@
                  ?doc-string)
         opts (when (string? ?doc-string)
                {:doc ?doc-string})]
-    `(register-resolver! ~operation-kw ~schema (fn ~fn-name ~@fn-body) ~opts)))
+    `(register-resolver! ~operation-kw ~schema
+                         (coerce-graphql-args (mc/walk ~schema ->argument-type)
+                                              (fn ~fn-name ~@fn-body))
+                         ~opts)))
 
 (defn get-resolver-fn
   [kw]
