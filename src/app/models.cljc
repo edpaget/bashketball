@@ -8,7 +8,7 @@
    [camel-snake-kebab.core :as csk]))
 
 (registry/defschema ::IdentityStrategy
-  [:enum :identity-strategy/SIGN_IN_WITH_GOOGLE :identity-strategy/INVALID])
+  [:enum {:graphql/type "IdentityStrategy"} :identity-strategy/SIGN_IN_WITH_GOOGLE :identity-strategy/INVALID])
 
 (registry/defschema ::Identity
   [:map {::pk [:provider :provider_identity]}
@@ -60,7 +60,7 @@
    [:updated-at :time/instant]])
 
 (registry/defschema ::PlayerSize
-  [:enum
+  [:enum {:graphql/type "PlayerSize"}
    :size-enum/INVALID
    :size-enum/SM
    :size-enum/MD
@@ -157,7 +157,7 @@
   [:merge ::CardWithFate
    [:map {:graphql/implements [::Card]
           :graphql/type "CoachingCard"}
-    [:card-type {:defualt-value :card-type-enum/COACHING_CARD}
+    [:card-type {:default :card-type-enum/COACHING_CARD}
      [:= :card-type-enum/COACHING_CARD]]
     [:coaching {:ui/label "Defense"
                 :ui/auto-widget true
@@ -206,7 +206,7 @@
    [:card-type-enum/TEAM_ASSET_CARD ::TeamAssetCard]])
 
 (registry/defschema ::GameAssetStatus
-  [:enum
+  [:enum {:graphql/type "GameAssetStatus"}
    :game-asset-status-enum/PENDING
    :game-asset-status-enum/UPLOADED
    :game-asset-status-enum/ERROR])

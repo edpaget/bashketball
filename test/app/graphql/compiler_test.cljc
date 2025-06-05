@@ -202,6 +202,44 @@
 (def get-object-with-registered-fk-var
   [[:=> [:cat :any :any :any] [:maybe ObjectWithRegisteredFk]] nil])
 
+;; Schemas for enum tests
+(def ColorEnum
+  [:enum {:graphql/type "ColorEnumType"}
+   "RED" "GREEN" "BLUE"])
+
+(def ObjectWithEnum
+  [:map {:graphql/type "ObjectWithEnum"}
+   [:id :int]
+   [:favorite-color ColorEnum]
+   [:optional-color [:maybe ColorEnum]]])
+
+(def get-object-with-enum-var
+  [[:=> [:cat :any :any :any] [:maybe ObjectWithEnum]] nil])
+
+(def UnnamedEnum [:enum "ALPHA" "BETA"]) ;; For testing fallback
+
+(def ObjectWithUnnamedEnum
+  [:map {:graphql/type "ObjectWithUnnamedEnum"}
+   [:id :int]
+   [:some-choice UnnamedEnum]])
+
+(def get-object-with-unnamed-enum-var
+  [[:=> [:cat :any :any :any] [:maybe ObjectWithUnnamedEnum]] nil])
+
+;; Schemas for enum tests with keyword values
+(def KeywordColorEnum
+  [:enum {:graphql/type "KeywordColorEnumType"}
+   :RED :GREEN :BLUE]) ; Enum values are keywords
+
+(def ObjectWithKeywordEnum
+  [:map {:graphql/type "ObjectWithKeywordEnum"}
+   [:id :int]
+   [:primary-color KeywordColorEnum]
+   [:secondary-color [:maybe KeywordColorEnum]]])
+
+(def get-object-with-keyword-enum-var
+  [[:=> [:cat :any :any :any] [:maybe ObjectWithKeywordEnum]] nil])
+
 ;; --- Tests ---
 
 (deftest name->tuple->graphql-schema-test
@@ -267,7 +305,7 @@
                                   :getListOfStrings {:type '(list (non-null String))}}}
                  :Mutation {:fields {:createSimpleObject {:type '(non-null String)
                                                           :args {:name {:type '(non-null String)}}}}}
-               ;; SimpleObject type collected once
+                 ;; SimpleObject type collected once
                  :SimpleObject {:fields {:id {:type '(non-null Int)}
                                          :name {:type '(non-null String)}}}}}
                result)
@@ -286,7 +324,7 @@
                                                 [:registeredPayload ::RegisteredInputPayloadForTest]]
                                                :any] ; resolver context (e.g., from lacinia)
                                           MutationOutputForTest] ; Return type schema
-               ;; Dummy resolver function
+                                         ;; Dummy resolver function
                                          (fn [_args _ctx] {:message "processed"})]
 
               schema-map {:Mutation/processComplexData process-data-mutation-var}
@@ -357,8 +395,41 @@
                    :RegisteredFkTargetObject {:fields {:regTargetId {:type '(non-null Uuid)}}}}}
                  result)
               "Should compile query with registered FK (regFkField to RegisteredFkTargetObject), correctly typing the FK field and collecting types. Query return type ObjectWithRegisteredFk should be non-null."))
-      (finally
-        (reset! registry/type-registry type-registry-backup))))))
+        (finally
+          (reset! registry/type-registry type-registry-backup)))))
+
+  (testing "query with a field using a named enum type"
+    (let [result (sut/name->tuple->graphql-schema {:Query/getObjectWithEnum get-object-with-enum-var})]
+      (is (= {:objects
+              {:Query {:fields {:getObjectWithEnum {:type :ObjectWithEnum}}}
+               :ObjectWithEnum {:fields {:id {:type '(non-null Int)}
+                                         :favoriteColor {:type '(non-null :ColorEnumType)}
+                                         :optionalColor {:type :ColorEnumType}}}}
+              :enums
+              {:ColorEnumType {:values #{"RED" "GREEN" "BLUE"}}}}
+             result)
+          "Should compile query, correctly typing enum fields and collecting the enum type definition.")))
+
+  (testing "query with a field using an unnamed enum type (should fallback to String)"
+    (let [result (sut/name->tuple->graphql-schema {:Query/getObjectWithUnnamedEnum get-object-with-unnamed-enum-var})]
+      (is (= {:objects
+              {:Query {:fields {:getObjectWithUnnamedEnum {:type :ObjectWithUnnamedEnum}}}
+               :ObjectWithUnnamedEnum {:fields {:id {:type '(non-null Int)}
+                                                :someChoice {:type '(non-null String)}}}}}
+             result)
+          "Should compile query, correctly typing unnamed enum field as String, and not collecting an enum type.")))
+
+  (testing "query with a field using a named enum type defined with keyword values"
+    (let [result (sut/name->tuple->graphql-schema {:Query/getObjectWithKeywordEnum get-object-with-keyword-enum-var})]
+      (is (= {:objects
+              {:Query {:fields {:getObjectWithKeywordEnum {:type :ObjectWithKeywordEnum}}}
+               :ObjectWithKeywordEnum {:fields {:id {:type '(non-null Int)}
+                                                :primaryColor {:type '(non-null :KeywordColorEnumType)}
+                                                :secondaryColor {:type :KeywordColorEnumType}}}}
+              :enums
+              {:KeywordColorEnumType {:values #{"RED" "GREEN" "BLUE"}}}} ; Enum values should be strings
+             result)
+          "Should compile query, correctly typing enum fields (from keyword values) and collecting the enum type definition with string values."))))
 
 (deftest ->graphql-type-map-method-test
   (testing ":map method of ->graphql-type multimethod for interfaces and implementations"
@@ -511,7 +582,36 @@
                    @collector)
                 "The object type (ObjectWithRegisteredFk) and the registered FK target type (RegisteredFkTargetObject) should be collected, with FK field (regFkField) correctly typed and field names camelCased."))
           (finally
-            (reset! registry/type-registry type-registry-backup)))))))
+            (reset! registry/type-registry type-registry-backup))))))
+
+  (testing "compiling a named enum schema"
+    (let [collector (atom {})
+          result (binding [sut/*type-collector* collector]
+                   (mc/walk ColorEnum sut/->graphql-type))]
+      (is (= '(non-null :ColorEnumType) result)
+          "Should return a non-null reference to the enum type name.")
+      (is (= {:enums {:ColorEnumType {:values #{"RED" "GREEN" "BLUE"}}}}
+             @collector)
+          "The enum type should be collected under :enums in the type collector.")))
+
+  (testing "compiling an unnamed enum schema (fallback to String)"
+    (let [collector (atom {})
+          result (binding [sut/*type-collector* collector]
+                   (mc/walk UnnamedEnum sut/->graphql-type))]
+      (is (= '(non-null String) result)
+          "Should return '(non-null String)' for an unnamed enum.")
+      (is (empty? @collector)
+          "No enum type should be added to the collector for an unnamed enum.")))
+
+  (testing "compiling a named enum schema with keyword values"
+    (let [collector (atom {})
+          result (binding [sut/*type-collector* collector]
+                   (mc/walk KeywordColorEnum sut/->graphql-type))]
+      (is (= '(non-null :KeywordColorEnumType) result)
+          "Should return a non-null reference to the enum type name.")
+      (is (= {:enums {:KeywordColorEnumType {:values #{"RED" "GREEN" "BLUE"}}}} ; Enum values should be strings
+             @collector)
+          "The enum type (defined with keyword values) should be collected under :enums with string values."))))
 
 (deftest merge-tag-with-type-test
   (testing "with TestUnionViaMultiSchema (simulating a GraphQL Union)"
@@ -619,7 +719,7 @@
     (let [[query-str types-map] (sut/->query
                                  {:Query/user [Actor :id :user-name]} ; Query body
                                  "GetUserWithVars" ; Operation name
-                                  ;; Variable definitions: var-name (keyword) -> malli-type-schema
+                                 ;; Variable definitions: var-name (keyword) -> malli-type-schema
                                  [[:userId :string] [:limit :int]])]
       (is (str/starts-with? query-str "query GetUserWithVars("))
       (is (str/ends-with? query-str ") { user { id userName } }"))

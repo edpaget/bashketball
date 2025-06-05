@@ -24,7 +24,7 @@
 (defn- ->graphql-type-name
   [schema]
   (case (mc/type schema)
-    (:multi :map) (when-let [type-name (or (get (mc/properties schema) :graphql/type)
+    (:multi :map :enum) (when-let [type-name (or (get (mc/properties schema) :graphql/type)
                                            (get (mc/properties schema) :graphql/interface))]
                     (csk/->PascalCaseKeyword type-name))
     ::mc/schema (-> schema mc/form name csk/->PascalCaseKeyword)))
@@ -73,8 +73,12 @@
   (list 'non-null 'Boolean))
 
 (defmethod ->graphql-type :enum
-  [_ _ _ _]
-  (list 'non-null 'String))
+  [schema _ children _]
+  (if-let [enum-gql-name (->graphql-type-name schema)]
+    (do
+      (new-object! enum-gql-name {:values (set (map name children))} :enums)
+      (list 'non-null enum-gql-name))
+    (list 'non-null 'String)))
 
 (defmethod ->graphql-type :time/instant
   [_ _ _ _]
