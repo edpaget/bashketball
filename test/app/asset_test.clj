@@ -15,7 +15,7 @@
 (use-fixtures :once tu.s3/s3-test-fixture tu/db-fixture)
 (use-fixtures :each tu/rollback-fixture)
 
-(def ^:private resolver-fn (gql.resolvers/get-resolver-fn :Mutation/createAsset))
+(def ^:private resolver-fn (gql.resolvers/get-resolver-fn 'app.asset :Mutation/createAsset))
 (def ^:private test-asset-base-path "test-assets")
 (def ^:private mock-config {:game-assets {:asset-path test-asset-base-path}})
 

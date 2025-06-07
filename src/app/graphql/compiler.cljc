@@ -25,17 +25,23 @@
   [schema]
   (case (mc/type schema)
     (:multi :map :enum) (when-let [type-name (or (get (mc/properties schema) :graphql/type)
-                                           (get (mc/properties schema) :graphql/interface))]
-                    (csk/->PascalCaseKeyword type-name))
+                                                 (get (mc/properties schema) :graphql/interface))]
+                          (csk/->PascalCaseKeyword type-name))
     ::mc/schema (-> schema mc/form name csk/->PascalCaseKeyword)))
 
 (declare ->graphql-type)
+
+(defn- trim-id
+  "Remove the trailing `-id` from a keyword or string"
+  [nameable]
+  (str/replace (name nameable) #"-id$" ""))
 
 (defn- ->graphql-field
   [[field-name opts field-type]]
   (when-not (or (:graphql/hidden opts) (nil? field-type))
     (if-let [fk (:app.models/fk opts)]
-      [(csk/->camelCaseKeyword field-name) {:type (mc/walk (mc/schema fk) ->graphql-type)}]
+      [(-> (trim-id field-name)
+           csk/->camelCaseKeyword) {:type (mc/walk (mc/schema fk) ->graphql-type)}]
       [(csk/->camelCaseKeyword field-name) {:type field-type}])))
 
 (defmulti ^:Private ->graphql-type dispatch-mc-type)
@@ -160,9 +166,10 @@
   [map]
   (binding [*type-collector* (atom {})]
     (doseq [[k tuple] map]
-      (let [compile-type  (case (namespace k)
-                            "Query" :Query
-                            "Mutation" :Mutation)]
+      (when-let [compile-type (case (namespace k)
+                                "Query" :Query
+                                "Mutation" :Mutation
+                                nil)]
         (swap! *type-collector* assoc-in [:objects
                                           compile-type
                                           :fields
@@ -288,14 +295,18 @@
                             children)
                schema))))
 
+(def field-sentinel ::all-fields)
+
 (defmethod ->query-ast ::fields
   [[schema & fields]]
   (when (nil? schema)
     (throw (ex-info "Form must have at least provide a schema" {})))
   {:type     ::fields
-   :children (if (empty? fields)
-               (map ->query-ast (->query-field-names schema))
-               (map ->query-ast fields))
+   :children (cond
+               (empty? fields) (map ->query-ast (->query-field-names schema))
+               (= field-sentinel (first fields)) (concat (map ->query-ast (->query-field-names schema))
+                                                         (map ->query-ast (rest fields)))
+               :else (map ->query-ast fields))
    :schema   schema})
 
 (defmethod ->query-ast ::query
@@ -312,14 +323,94 @@
    :field (csk/->camelCaseKeyword (name form))})
 
 (defn ->query
-  "Take a map of graphql-query-name to a vector in the form [malli-schema field ...field-n] and turn it
-  into a graphql query. If no fields are provided all fields will be selected. Nested queries can be
-  added as a map of field-name->[malli-schema field ...field-n] specific types within an interface or
-  union can be selected as a vector of vectors eg [malli-schema-interface interface-field [malli-schema type type field]].
-  If a query takes arguments it's it can be wrapped in a seq with the query map as the first item and the
-  arguments as pairs of [:name placeholder] in the tail.
+  "Constructs a GraphQL query string and a map of __typename to Malli schemas.
 
-  Returns a tuple of the query string and map of __typename->malli-schemas."
+  The function can be called with one, two, or three arguments:
+  - `(->query query-desc)`
+  - `(->query query-desc operation-name)`
+  - `(->query query-desc operation-name operation-args)`
+
+  1. `query-desc` (Map):
+     Describes the GraphQL selection set.
+     - Keys: GraphQL query/mutation names (e.g., :Query/me, :Mutation/createUser).
+     - Values: Vectors defining the selection for that query/mutation.
+
+     Selection Vector Format: `[malli-schema field1 field2 ...]`
+     - `malli-schema`: Malli schema keyword (e.g., :app.models/User).
+     - `field1, field2, ...`: Keywords for fields to select.
+     - If no fields are listed after the schema, all applicable fields from the
+       schema are selected (those not marked :graphql/hidden or :app.models/fk).
+
+     Nested Selections:
+     Use a map for a field's value to specify a nested selection:
+     `{:field-name [nested-malli-schema :nested-field1 ...]}`
+
+     Interface/Union Specific Fields (Inline Fragments):
+     Use a nested vector to select fields for a concrete type within an interface/union:
+     `[interface-schema :common-field [concrete-type-schema :specific-field1 ...]]`
+
+     Field Arguments:
+     To pass arguments to a field, wrap the selection vector and its arguments in a sequence:
+     `{:Query/user '([:app.models/User :id]} :userId)`
+     This generates a field call like `user(userId: $userId) { id }`. The GraphQL
+     variable `$userId` must then be defined in `operation-args`.
+
+  2. `operation-name` (String, optional):
+     An optional name for the GraphQL operation (e.g., \"GetUserQuery\").
+
+  3. `operation-args` (Vector of pairs, optional):
+     Defines variables for the GraphQL operation. Each pair is `[:variableName malli-type]`.
+     - `:variableName`: Keyword for the variable (e.g., :userId).
+     - `malli-type`: Malli schema for the variable's type (e.g., :string, :int, [:maybe :uuid]).
+       A non-maybe type implies a non-null GraphQL type (e.g., String!).
+
+  Returns:
+  A tuple: `[query-string, typename->schema-map]`
+  - `query-string`: The generated GraphQL query string.
+  - `typename->schema-map`: A map from GraphQL __typename (string) to its Malli schema.
+
+  Examples:
+
+  ;; Basic query for specific fields
+  (->query {:Query/me [:app.models/Actor :id :userName]})
+  ; => [\"query { me { id userName } }\", {\"Actor\" :app.models/Actor}]
+
+  ;; Query for all fields of a type (fields derived from schema)
+  (->query {:Query/gameCard [:app.models/GameCard]})
+  ; => [\"query { gameCard { <all_fields_from_GameCard_schema> } }\",
+  ;     {\"GameCard\" :app.models/GameCard}]
+
+  ;; Query with an operation name and operation arguments
+  (->query {:Query/userById [:app.models/User :id :email]}
+           \"GetUser\"
+           [[:userId :uuid]]) ; :uuid implies Uuid!
+  ; => [\"query GetUser($userId: Uuid!) { userById { id email } }\",
+  ;     {\"User\" :app.models/User}]
+
+  ;; Query with field arguments (linking to operation arguments)
+  (->query '({:Query/userSearch [:app.models/User :name]} :searchTerm) ; Field arg
+           \"SearchUsers\"
+           [[:searchTerm [:maybe :string]]]) ; Operation arg, [:maybe :string] implies String
+  ; => [\"query SearchUsers($searchTerm: String) { userSearch(searchTerm: $searchTerm) { name } }\",
+  ;     {\"User\" :app.models/User}]
+
+  ;; Nested query
+  (->query {:Query/viewer [:app.models/Viewer
+                           :id
+                           {:profile [:app.models/Profile :firstName :lastName]}]})
+  ; => [\"query { viewer { id profile { firstName lastName } } }\",
+  ;     {\"Viewer\" :app.models/Viewer, \"Profile\" :app.models/Profile}]
+
+  ;; Querying fields from specific types in an interface/union (inline fragments)
+  (->query {:Query/node [:app.models/NodeInterface
+                         :id
+                         [:app.models/UserNode :email]    ; ... on UserNode
+                         [:app.models/PostNode :title]]}) ; ... on PostNode
+  ; => [\"query { node { id ... on UserNode { email } ... on PostNode { title } } }\",
+  ;     {\"NodeInterface\" :app.models/NodeInterface,
+  ;      \"UserNode\" :app.models/UserNode,
+  ;      \"PostNode\" :app.models/PostNode}]
+  "
   ([query]
    (->query query nil nil))
   ([query operation-name] (->query query operation-name nil))

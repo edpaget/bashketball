@@ -26,7 +26,7 @@
           :card-type-enum/PLAYER_CARD ($ :small {:class "text-xs text-gray-500 self-center"} (str (:deck-size card) " cards"))
           ($ :small {:class "text-xs text-gray-500 self-center"} (str "Fate: " (:fate card)))))
      ($ :div {:class "relative"}
-        (if-let [img (:img card)]
+        (if-let [img (-> card :game-asset :img-url)]
           ($ :img {:src img :alt (:name card) :class "w-full h-48 object-cover"})
           ($ :div {:class "w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400"}
              ($ :p "No Image")))

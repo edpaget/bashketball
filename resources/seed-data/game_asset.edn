@@ -1,0 +1,36 @@
+[;; Example GameAsset 1: Player Card Artwork
+ {:id #uuid "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+  :mime-type "image/png"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/UPLOADED}
+
+ ;; Example GameAsset 2: Ability Card Icon
+ {:id #uuid "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+  :mime-type "image/svg+xml"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/UPLOADED}
+
+ ;; Example GameAsset 3: Coaching Card Portrait
+ {:id #uuid "123e4567-e89b-12d3-a456-426614174000"
+  :mime-type "image/jpeg"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/UPLOADED}
+
+ ;; Example GameAsset 4: Team Asset Card Logo
+ {:id #uuid "abcdef12-3456-7890-fedc-ba9876543210"
+  :mime-type "image/png"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/UPLOADED}
+
+ ;; Example GameAsset 5: Asset with pending status
+ {:id #uuid "00000000-1111-2222-3333-444444444444"
+  :mime-type "image/png"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/PENDING}
+
+ ;; Example GameAsset 6: Asset with error status
+ {:id #uuid "ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb"
+  :mime-type "image/gif"
+  :img-url "seed/images/"
+  :status #pg_enum :game-asset-status-enum/ERROR
+  :error-message "Upload failed due to unsupported file type."}]

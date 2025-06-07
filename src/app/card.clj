@@ -3,12 +3,13 @@
   (:require
    [app.db :as db]
    [app.models :as models]
-   [app.graphql.resolvers :refer [defresolver]]
+   [app.graphql.resolvers :refer [defresolver alias-resolver]]
    [malli.experimental :as me]
    [app.registry :as registry]
    [app.graphql.compiler :as gql.compiler]
    [com.walmartlabs.lacinia.schema :as schema]
-   [app.graphql.transformer :as gql.transformer]))
+   [app.graphql.transformer :as gql.transformer]
+   [clojure.tools.logging :as log]))
 
 (me/defn get-by-name :- ::models/GameCard
   "Retrieves a specific game card by its name and version using HoneySQL. Defaults to getting version 0 if unspecified."
@@ -70,6 +71,8 @@
 (def ^:private game-card-tag-and-transform (juxt #(gql.transformer/encode % ::models/GameCard) tagger))
 (def ^:private card-tag-and-transform (juxt #(gql.transformer/encode % ::models/Card) tagger))
 
+;; --- Query Resolvers
+
 (defresolver :Query/card
   "Retrieves a specific game card by its name and version."
   [:=> [:cat :any ::card-args :any]
@@ -84,9 +87,28 @@
   [:=> [:cat :any ::cards-args :any]
    [:vector ::models/Card]]
   [_context args _value]
+  (log/info (list args))
   (->> (list args)
        (map card-tag-and-transform)
        (mapv (partial apply schema/tag-with-type))))
+
+;; --- AssetFkResolver ---
+
+(defresolver :PlayerCard/gameAsset
+  "Retrieves the card's associated Game Asset"
+  [:=> [:cat :any :any :any]
+   [:maybe ::models/GameAsset]]
+  [_context _args {:keys [gameAssetId]}]
+  (when gameAssetId
+    {}))
+
+(alias-resolver :PlayerCard/gameAsset
+                :AbilityCard/gameAsset
+                :SplitPlayCard/gameAsset
+                :PlayCard/gameAsset
+                :CoachingCard/gameAsset
+                :StandardActionCard/gameAsset
+                :TeamAssetCard/gameAsset)
 
 ;; --- PlayerCard ---
 (registry/defschema ::player-card-args

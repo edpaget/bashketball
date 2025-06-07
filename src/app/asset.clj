@@ -4,7 +4,8 @@
    [app.s3 :as s3]
    [malli.experimental :as me]
    [app.db :as db]
-   [app.graphql.resolvers :as gql.resolvers])
+   [app.graphql.resolvers :as gql.resolvers]
+   [app.registry :as registry])
   (:import
    [java.util Base64]))
 
@@ -26,6 +27,11 @@
                     :where [:= :id id]
                     :returning [:*]}))
 
+(me/defn with-full-path :- ::models/GameAsset
+  "Takes an asset model and formats the img-url as a full path"
+  [{:keys [id] :as asset} :- ::models/GameAsset]
+  (update asset :img-url str "/" id))
+
 (gql.resolvers/defresolver :Mutation/createAsset
   "Create a new game asset. Accepts the mime type for the asset and the asset as a
    b64 encoded string."
@@ -41,11 +47,11 @@
   [{:keys [config]} {:keys [mime-type img-blob]} _]
   (let [asset-path (-> config :game-assets :asset-path)
         {asset-id :id} (create {:mime-type mime-type :asset-path asset-path})]
-    (try
-      (s3/put-object (str asset-path "/" asset-id)
-                     (.decode (Base64/getDecoder) img-blob)
-                     nil)
-      (update-status asset-id :game-asset-status-enum/UPLOADED)
-      (catch Throwable e
-        (update-status asset-id :game-asset-status-enum/ERROR (ex-message e))
-        (throw e)))))
+    (with-full-path
+     (try
+       (s3/put-object (str asset-path "/" asset-id)
+                      (.decode (Base64/getDecoder) img-blob)
+                      {:Content-Type mime-type})
+       (update-status asset-id :game-asset-status-enum/UPLOADED)
+       (catch Throwable e
+         (update-status asset-id :game-asset-status-enum/ERROR (ex-message e)))))))

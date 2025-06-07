@@ -5,7 +5,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]))
 
-(def current-actor (gql.resolvers/get-resolver-fn :Query/me))
+(def current-actor (gql.resolvers/get-resolver-fn 'app.actor :Query/me))
 
 (deftest current-actor-test
   (testing "when current-actor exists in request context"

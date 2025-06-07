@@ -27,7 +27,15 @@
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
         {:keys [loading data]} (graphql.client/use-query
-                                {:Query/card '([::models/GameCard] :name)}
+                                {:Query/card (list [::models/GameCard
+                                                    [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/SplitPlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/PlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                                    [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
+                                                   :name)}
                                 "getMostRecentCardVersionByName"
                                 [[:name :string]]
                                 {:name card-id})
