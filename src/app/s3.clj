@@ -72,11 +72,7 @@
   ([key]
    (signed-get-url *s3-client* key))
   ([{:keys [client bucket-name]} key]
-   (prn key)
-   (prn client)
-   (prn bucket-name)
    (aws.sign/generate-presigned-url client bucket-name key {:path-style true})))
 
 (defmethod ig/init-key ::client [_ {:keys [config]}]
-  (prn config)
   (create-client (get-in config [:s3 :bucket-name]) (:aws-opts config)))

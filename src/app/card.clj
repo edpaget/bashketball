@@ -9,8 +9,7 @@
    [app.registry :as registry]
    [app.graphql.compiler :as gql.compiler]
    [com.walmartlabs.lacinia.schema :as schema]
-   [app.graphql.transformer :as gql.transformer]
-   [clojure.tools.logging :as log]))
+   [app.graphql.transformer :as gql.transformer]))
 
 (me/defn get-by-name :- ::models/GameCard
   "Retrieves a specific game card by its name and version using HoneySQL. Defaults to getting version 0 if unspecified."
@@ -97,7 +96,6 @@
   [:=> [:cat :any ::cards-args :any]
    [:vector ::models/Card]]
   [_context args _value]
-  (log/info (list args))
   (->> (list args)
        (map card-tag-and-transform)
        (mapv (partial apply schema/tag-with-type))))
@@ -109,7 +107,8 @@
   [:=> [:cat :any :any :any]
    [:maybe ::models/GameAsset]]
   [_context _args {:keys [gameAssetId]}]
-  (gql.transformer/encode (asset/get-by-id gameAssetId) ::models/GameAsset))
+  (when gameAssetId
+    (gql.transformer/encode (asset/get-by-id gameAssetId) ::models/GameAsset)))
 
 (alias-resolver :PlayerCard/gameAsset
                 :AbilityCard/gameAsset

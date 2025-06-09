@@ -159,7 +159,7 @@
           :graphql/type "CoachingCard"}
     [:card-type {:default :card-type-enum/COACHING_CARD}
      [:= :card-type-enum/COACHING_CARD]]
-    [:coaching {:ui/label "Defense"
+    [:coaching {:ui/label "Coaching"
                 :ui/auto-widget true
                 :ui/input-type "textarea"
                 :default ""}
@@ -189,6 +189,7 @@
     [:card-type {:default :card-type-enum/TEAM_ASSET_CARD}
      [:= :card-type-enum/TEAM_ASSET_CARD]]
     [:asset-power {:ui/label "Asset Power"
+                   :ui/auto-widget true
                    :ui/input-type "textarea"} :string]]])
 
 (registry/defschema ::GameCard
