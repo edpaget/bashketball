@@ -402,3 +402,74 @@
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card)))))))
+
+(deftest set-game-asset-id-test
+  (testing "Setting game_asset_id for a GameCard"
+    (let [card-name "AssetLinkCard"
+          card-version "alc0"
+          ;; Base card data for insertion in each sub-test
+          initial-card-data {:name card-name
+                             :version card-version
+                             :card-type (db/->pg_enum :card-type-enum/PLAY_CARD)
+                             :fate 1}
+          minimal-asset-data (fn [id] {:id id
+                                       :mime-type "image/png" ; per ::models/GameAsset
+                                       :img-url (str "https://example.com/assets/" id ".png") ; per ::models/GameAsset
+                                       :status (db/->pg_enum :game-asset-status-enum/UPLOADED) ; per ::models/GameAsset
+                                       ;; :error-message is optional
+                                       ;; :created-at and :updated-at are typically set by DB
+                                       })]
+
+      (testing "successfully sets game_asset_id using a UUID"
+        (let [asset-id (java.util.UUID/randomUUID)
+              asset-data (minimal-asset-data asset-id)]
+          (tu/with-inserted-data [::models/GameAsset asset-data
+                                  ::models/GameCard initial-card-data]
+            (let [update-count (card/set-game-asset-id card-name card-version asset-id)
+                  updated-card (card/get-by-name card-name card-version)]
+              (is (= {:next.jdbc/update-count 1} update-count) "Should update one row")
+              (is (some? updated-card) "Updated card should be retrievable")
+              (is (= asset-id (:game-asset-id updated-card)) "game_asset_id should be updated to the new UUID")))))
+
+      (testing "successfully sets game_asset_id using a GameAsset map"
+        (let [asset-id (java.util.UUID/randomUUID)
+              ;; game-asset-map-for-db is created using the updated minimal-asset-data
+              game-asset-map-for-db (minimal-asset-data asset-id)
+              ;; The function under test expects a map conforming to ::models/GameAsset (keywords for enums)
+              ;; when asset-or-id is a map.
+              game-asset-map-for-fn {:id asset-id
+                                     :mime-type "image/jpeg" ; Example, can differ from minimal-asset-data for test variety
+                                     :img-url (str "https://example.com/other/" asset-id ".jpg")
+                                     :status :game-asset-status-enum/PENDING
+                                     ;; :error-message, :created-at, :updated-at are optional or auto-set
+                                     }]
+          ;; Ensure initial-card-data does not have game_asset_id for a clean test
+          (tu/with-inserted-data [::models/GameAsset game-asset-map-for-db
+                                  ::models/GameCard (dissoc initial-card-data :game-asset-id)]
+            (let [update-count (card/set-game-asset-id card-name card-version game-asset-map-for-fn)
+                  updated-card (card/get-by-name card-name card-version)]
+              (is (= {:next.jdbc/update-count 1} update-count) "Should update one row")
+              (is (some? updated-card) "Updated card should be retrievable")
+              (is (= asset-id (:game-asset-id updated-card)) "game_asset_id should be updated using the ID from the map")))))
+
+      (testing "updates an existing game_asset_id to a new UUID"
+        (let [initial-asset-id (java.util.UUID/randomUUID)
+              initial-asset-data (minimal-asset-data initial-asset-id)
+              new-asset-id (java.util.UUID/randomUUID)
+              new-asset-data (minimal-asset-data new-asset-id)
+              card-with-initial-asset (assoc initial-card-data :game-asset-id initial-asset-id)]
+          (tu/with-inserted-data [::models/GameAsset initial-asset-data
+                                  ::models/GameAsset new-asset-data ; Also insert the new asset
+                                  ::models/GameCard card-with-initial-asset]
+            (let [update-count (card/set-game-asset-id card-name card-version new-asset-id)
+                  updated-card (card/get-by-name card-name card-version)]
+              (is (= {:next.jdbc/update-count 1} update-count) "Should update one row")
+              (is (some? updated-card) "Updated card should be retrievable")
+              (is (not= initial-asset-id (:game-asset-id updated-card)) "game_asset_id should have changed from the initial one")
+              (is (= new-asset-id (:game-asset-id updated-card)) "game_asset_id should be updated to the new ID")))))
+
+      (testing "returns 0 if card is not found"
+        ;; No card inserted for this test case with this name/version
+        (let [asset-id (java.util.UUID/randomUUID)
+              update-count (card/set-game-asset-id "NonExistentCard" "v0" asset-id)]
+          (is (= {:next.jdbc/update-count 0} update-count) "Should update zero rows as card does not exist"))))))

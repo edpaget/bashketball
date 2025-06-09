@@ -1,6 +1,7 @@
 (ns app.card
   (:refer-clojure :exclude [list])
   (:require
+   [app.asset :as asset]
    [app.db :as db]
    [app.models :as models]
    [app.graphql.resolvers :refer [defresolver alias-resolver]]
@@ -41,6 +42,15 @@
                  :order-by [:name :version]
                  :limit    limit
                  :offset   offset})))
+
+(me/defn set-game-asset-id :- :int
+  [card-name :- :string
+   card-version :- :string
+   asset-or-id :- [:or :uuid ::models/GameAsset]]
+  (db/execute-one! {:update [(models/->table-name ::models/GameCard)]
+                    :set {:game-asset-id (if (map? asset-or-id) (:id asset-or-id) asset-or-id)}
+                    :where [:and [:= :name card-name]
+                            [:= :version card-version]]}))
 
 (me/defn create :- ::models/GameCard
   "Save a GameCard model to the database"
@@ -99,8 +109,7 @@
   [:=> [:cat :any :any :any]
    [:maybe ::models/GameAsset]]
   [_context _args {:keys [gameAssetId]}]
-  (when gameAssetId
-    {}))
+  (gql.transformer/encode (asset/get-by-id gameAssetId) ::models/GameAsset))
 
 (alias-resolver :PlayerCard/gameAsset
                 :AbilityCard/gameAsset

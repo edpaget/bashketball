@@ -1,4 +1,5 @@
 {:lint-as {uix.core/defui clojure.core/defn}
  :hooks {:analyze-call {app.db/with-transaction hooks.app.db/with-transaction
                         app.db/with-connection  hooks.app.db/with-connection
-                        app.graphql.resolvers/defresolver hooks.app.graphql.resolvers/defresolver}}}
+                        app.graphql.resolvers/defresolver hooks.app.graphql.resolvers/defresolver
+                        dev.integrant/with-system hooks.dev.integrant/with-system}}}

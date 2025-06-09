@@ -1,27 +1,21 @@
 (ns dev.migrate
   (:require
-   [integrant.core :as ig]
+   [dev.integrant :as i]
    [clojure.tools.logging :as log]
-   [clojure.java.io :as io]
    [ragtime.next-jdbc :as next-jdbc]
-   [ragtime.repl :as repl]))
+   [ragtime.repl :as repl]
+   [app.db :as db]))
 
 (def ^:dynamic *ragtime-config* nil)
 
-(def ^:private config (-> (io/resource "migrate.edn") slurp ig/read-string))
-
 (defn do-with-config
   [thunk]
-  (ig/load-namespaces config)
-  (let [{:keys [app.db/pool] :as system} (ig/init config)]
-    (try
-      (binding [*ragtime-config* {:datastore  (next-jdbc/sql-database pool)
-                                  :migrations (next-jdbc/load-resources "migrations")}]
-        (thunk))
-      (catch Throwable e
-        (log/error e "Migration failed with error"))
-      (finally
-        (ig/halt! system)))))
+  (try
+    (binding [*ragtime-config* {:datastore  (next-jdbc/sql-database db/*datasource*)
+                                :migrations (next-jdbc/load-resources "migrations")}]
+      (thunk))
+    (catch Throwable e
+      (log/error e "Migration failed with error"))))
 
 (defmacro with-config
   [& body]
@@ -47,7 +41,9 @@
 
 (defn -main [& args]
   (let [command (first args)]
-    (cond
-      (= command "migrate") (migrate)
-      (= command "rollback") (rollback)
-      :else (log/info "Unknown command. Use 'migrate' or 'rollback'."))))
+    (i/with-system [{:keys [app.db/pool]} "migrate.edn"]
+      (binding [db/*datasource* pool]
+        (cond
+          (= command "migrate") (migrate)
+          (= command "rollback") (rollback)
+          :else (log/info "Unknown command. Use 'migrate' or 'rollback'."))))))

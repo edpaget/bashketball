@@ -31,3 +31,4 @@ node_modules/
 /.clj-kondo/.lock
 /.env
 /.envrc
+/test-assets/

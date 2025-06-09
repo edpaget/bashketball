@@ -1,11 +1,10 @@
 (ns app.asset
   (:require
-   [app.models :as models]
-   [app.s3 :as s3]
-   [malli.experimental :as me]
    [app.db :as db]
    [app.graphql.resolvers :as gql.resolvers]
-   [app.registry :as registry])
+   [app.models :as models]
+   [app.s3 :as s3]
+   [malli.experimental :as me])
   (:import
    [java.util Base64]))
 
@@ -32,6 +31,27 @@
   [{:keys [id] :as asset} :- ::models/GameAsset]
   (update asset :img-url str "/" id))
 
+(me/defn get-by-id :- ::models/GameAsset
+  "Retrieves a GameAsset by its ID."
+  [id :- :uuid]
+  (with-full-path
+    (db/execute-one! {:select [:*]
+                      :from   [(models/->table-name ::models/GameAsset)]
+                      :where  [:= :id id]})))
+
+(defn create-and-upload-asset
+  "Creates and uploads the provided assets as bytes and reocrds it in the database"
+  [asset-path mime-type bytes]
+  (let [{asset-id :id} (create {:mime-type mime-type :asset-path asset-path})]
+    (with-full-path
+      (try
+        (s3/put-object (str asset-path "/" asset-id)
+                       bytes
+                       {:Content-Type mime-type})
+        (update-status asset-id :game-asset-status-enum/UPLOADED)
+        (catch Throwable e
+          (update-status asset-id :game-asset-status-enum/ERROR (ex-message e)))))))
+
 (gql.resolvers/defresolver :Mutation/createAsset
   "Create a new game asset. Accepts the mime type for the asset and the asset as a
    b64 encoded string."
@@ -45,13 +65,6 @@
         :any]
    ::models/GameAsset]
   [{:keys [config]} {:keys [mime-type img-blob]} _]
-  (let [asset-path (-> config :game-assets :asset-path)
-        {asset-id :id} (create {:mime-type mime-type :asset-path asset-path})]
-    (with-full-path
-     (try
-       (s3/put-object (str asset-path "/" asset-id)
-                      (.decode (Base64/getDecoder) img-blob)
-                      {:Content-Type mime-type})
-       (update-status asset-id :game-asset-status-enum/UPLOADED)
-       (catch Throwable e
-         (update-status asset-id :game-asset-status-enum/ERROR (ex-message e)))))))
+  (let [asset-path (-> config :game-assets :asset-path)]
+    (create-and-upload-asset asset-path mime-type
+                             (.decode (Base64/getDecoder) img-blob))))
