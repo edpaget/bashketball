@@ -21,7 +21,6 @@
         aws-opts       (get config :aws-opts {}) ; Passed to s3/create-client
         s3-client-map  (when s3-bucket-name (s3/create-client s3-bucket-name aws-opts))
         file-to-upload (io/file file-path)]
-
     (if-not s3-client-map
       (log/error "S3 client could not be created. Check S3 configuration in app-config.edn. Asset processing aborted.")
       (if-not (.exists file-to-upload)

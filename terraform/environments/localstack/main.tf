@@ -9,10 +9,10 @@ provider "aws" {
   skip_requesting_account_id  = true
 
   endpoints {
-    dynamodb = "http://localhost:4566"
+    s3 = "http://localhost:4566"
   }
 }
 
-module "dynamo_table" {
-  source = "./stack/ddb/"
+module "s3-bucket" {
+  source = "./stack/s3/"
 }

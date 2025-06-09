@@ -4,6 +4,9 @@
                                                 :test  "jdbc:postgresql://localhost:5432/blood_basket_test?user=postgres&password=password"}]
  :s3 {:bucket-name "bashketball-assets"}
  :game-assets {:asset-path "game-assets"}
- :aws-opts {}
+ :aws-opts #profile {:default {:region "us-east-1"
+                               :endpoint-override {:protocol :http
+                                                   :hostname "localhost"
+                                                   :port 4566}}}
  :auth {:cookie-name "BB_COOKIE"
         :google-jwks "https://www.googleapis.com/oauth2/v3/certs"}}

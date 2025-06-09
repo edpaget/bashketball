@@ -4,7 +4,8 @@
    [app.graphql.resolvers :as gql.resolvers]
    [app.models :as models]
    [app.s3 :as s3]
-   [malli.experimental :as me])
+   [malli.experimental :as me]
+   [clojure.tools.logging :as log])
   (:import
    [java.util Base64]))
 
@@ -29,7 +30,7 @@
 (me/defn with-full-path :- ::models/GameAsset
   "Takes an asset model and formats the img-url as a full path"
   [{:keys [id] :as asset} :- ::models/GameAsset]
-  (update asset :img-url str "/" id))
+  (update asset :img-url #(str "/" % "/" id)))
 
 (me/defn get-by-id :- ::models/GameAsset
   "Retrieves a GameAsset by its ID."
@@ -47,9 +48,10 @@
       (try
         (s3/put-object (str asset-path "/" asset-id)
                        bytes
-                       {:Content-Type mime-type})
+                       {:ContentType mime-type})
         (update-status asset-id :game-asset-status-enum/UPLOADED)
         (catch Throwable e
+          (log/error e "Failed to upload asset")
           (update-status asset-id :game-asset-status-enum/ERROR (ex-message e)))))))
 
 (gql.resolvers/defresolver :Mutation/createAsset
