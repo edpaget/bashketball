@@ -8,7 +8,8 @@
    [ring.util.response :as ring.response]
    [integrant.core :as ig]
    [app.authz.middleware :as authz]
-   [app.db :as db]))
+   [app.db :as db]
+   [app.s3 :as s3]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})
@@ -32,10 +33,11 @@
         (respond (index-handler-fn request)))))))
 
 (defn make-handler
-  [{:keys [authn-handler config db-pool graphql-handler]}]
+  [{:keys [authn-handler config db-pool graphql-handler s3-client]}]
   (letfn [(wrap-db-pool-binding [handler]
             (fn [req]
-              (binding [db/*datasource* db-pool]
+              (binding [db/*datasource* db-pool
+                        s3/*s3-client* s3-client]
                 (handler req))))]
     (r/ring-handler
      (r/router

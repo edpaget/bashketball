@@ -1,2 +1,3 @@
 {:app.config/config {}
+ :app.s3/client     {:config #ig/ref :app.config/config}
  :app.db/pool       {:config #ig/ref :app.config/config}}

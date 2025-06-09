@@ -39,7 +39,7 @@
 
       (is (uuid? asset-id) "Result ID should be a UUID")
       (is (= mime-type (:mime-type result)))
-      (is (str/starts-with? (:img-url result) test-asset-base-path))
+      (is (str/includes? (:img-url result) test-asset-base-path))
       (is (= :game-asset-status-enum/UPLOADED (:status result)))
       (is (nil? (:error-message result)))
 

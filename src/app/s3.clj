@@ -1,5 +1,6 @@
 (ns app.s3
   (:require
+   [aws-simple-sign.core :as aws.sign]
    [cognitect.aws.client.api :as aws]
    [integrant.core :as ig]
    [malli.experimental :as me]
@@ -17,7 +18,9 @@
   `opts` is a map of options to pass to the cognitect.aws.client.api/client function.
   It can include :region, :credentials-provider, etc.
   Example: (create-client {:region \"us-east-1\"})"
-  [bucket-name :- :string opts :- :map]
+  [bucket-name :- :string
+   opts :- :map]
+  (prn opts)
   {:client (aws/client (merge {:api :s3} opts))
    :bucket-name bucket-name})
 
@@ -64,5 +67,16 @@
                                                  :Key key}})
                    :GetObject key bucket-name)))
 
+(defn signed-get-url
+  "Generates a pre-signed URL the client can use to get an object from the s3 bucket"
+  ([key]
+   (signed-get-url *s3-client* key))
+  ([{:keys [client bucket-name]} key]
+   (prn key)
+   (prn client)
+   (prn bucket-name)
+   (aws.sign/generate-presigned-url client bucket-name key {:path-style true})))
+
 (defmethod ig/init-key ::client [_ {:keys [config]}]
+  (prn config)
   (create-client (get-in config [:s3 :bucket-name]) (:aws-opts config)))

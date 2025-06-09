@@ -30,7 +30,8 @@
 (me/defn with-full-path :- ::models/GameAsset
   "Takes an asset model and formats the img-url as a full path"
   [{:keys [id] :as asset} :- ::models/GameAsset]
-  (update asset :img-url #(str "/" % "/" id)))
+  (-> (update asset :img-url str "/" id)
+      (update :img-url s3/signed-get-url)))
 
 (me/defn get-by-id :- ::models/GameAsset
   "Retrieves a GameAsset by its ID."
