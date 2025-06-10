@@ -2,7 +2,8 @@
   (:require
    [app.db :as db]
    [app.models :as models]
-   [malli.experimental :as me]))
+   [malli.experimental :as me]
+   [com.walmartlabs.lacinia.resolve :as resolve]))
 
 (me/defn get-actor! :- ::models/Actor
   [app-authorization-id :- :uuid]
@@ -23,3 +24,11 @@
                            get-actor!)]
       (handler (assoc req :current-actor actor))
       (handler req))))
+
+(defn wrap-require-login
+  "Graphql middleware that asserts the current actor is present"
+  [handler]
+  (fn [{:keys [request] :as ctx} args parents]
+    (if (:current-actor request)
+      (handler ctx args parents)
+      (resolve/resolve-as nil {:message "must be logged in"}))))

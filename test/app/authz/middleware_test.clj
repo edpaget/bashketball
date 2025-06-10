@@ -1,6 +1,6 @@
 (ns app.authz.middleware-test
   (:require
-   [app.authz.middleware :refer [wrap-current-actor get-actor!]]
+   [app.authz.middleware :as authz-mw]
    [app.db]
    [app.models :as models]
    [app.test-utils :as tu]
@@ -68,7 +68,7 @@
                       (is (some? (-> req :current-actor :updated-at)))
                       (is (= (dissoc req :current-actor) request) "Original request keys should be preserved")
                       {:status 200})
-            wrapped-handler (wrap-current-actor handler {:cookie-name test-cookie-name})]
+            wrapped-handler (authz-mw/wrap-current-actor handler {:cookie-name test-cookie-name})]
         (wrapped-handler request)
         (is @handler-called? "Handler should be called"))))
 
@@ -79,7 +79,7 @@
                     (reset! handler-called? true)
                     (is (= request req) "Request should not have :current-actor")
                     {:status 200})
-          wrapped-handler (wrap-current-actor handler {:cookie-name test-cookie-name})]
+          wrapped-handler (authz-mw/wrap-current-actor handler {:cookie-name test-cookie-name})]
       (wrapped-handler request)
       (is @handler-called? "Handler should be called")))
 
@@ -90,7 +90,7 @@
                     (reset! handler-called? true)
                     (is (= request req) "Request should not have :current-actor")
                     {:status 200})
-          wrapped-handler (wrap-current-actor handler {:cookie-name test-cookie-name})]
+          wrapped-handler (authz-mw/wrap-current-actor handler {:cookie-name test-cookie-name})]
       (wrapped-handler request)
       (is @handler-called? "Handler should be called")))
 
@@ -101,7 +101,7 @@
                     (reset! handler-called? true)
                     (is (= request req) "Request should be unchanged")
                     {:status 200})
-          wrapped-handler (wrap-current-actor handler {:cookie-name test-cookie-name})]
+          wrapped-handler (authz-mw/wrap-current-actor handler {:cookie-name test-cookie-name})]
       (wrapped-handler request)
       (is @handler-called? "Handler should be called")))
 
@@ -112,7 +112,7 @@
                     (reset! handler-called? true)
                     (is (= request req) "Request should be unchanged")
                     {:status 200})
-          wrapped-handler (wrap-current-actor handler {:cookie-name test-cookie-name})]
+          wrapped-handler (authz-mw/wrap-current-actor handler {:cookie-name test-cookie-name})]
       (wrapped-handler request)
       (is @handler-called? "Handler should be called"))))
 
@@ -121,7 +121,7 @@
     (tu/with-inserted-data [::models/Actor actor-data-ga
                             ::models/Identity identity-fields-ga
                             ::models/AppAuthorization valid-authz-data-ga]
-      (let [actor (get-actor! valid-authz-id-ga)]
+      (let [actor (authz-mw/get-actor! valid-authz-id-ga)]
         (is (some? actor) "Actor should be found")
         (is (= actor-id-ga (:id actor)))
         (is (= (:use-name actor-data-ga) (:use-name actor)))
@@ -129,15 +129,64 @@
         (is (some? (:updated-at actor)))))))
 
 (deftest get-actor!-auth-not-exists-test
- (testing "when authorization does not exist"
-   (tu/with-inserted-data [::models/Actor actor-data-ga] ; Actor exists, but no matching authz
-     (let [actor (get-actor! non-existent-authz-id-ga)]
-       (is (nil? actor) "Actor should not be found for a non-existent authorization ID")))))
+  (testing "when authorization does not exist"
+    (tu/with-inserted-data [::models/Actor actor-data-ga] ; Actor exists, but no matching authz
+      (let [actor (authz-mw/get-actor! non-existent-authz-id-ga)]
+        (is (nil? actor) "Actor should not be found for a non-existent authorization ID")))))
 
 (deftest get-actor!-auth-expired-test
   (testing "when authorization is expired"
     (tu/with-inserted-data [::models/Actor actor-data-ga
                             ::models/Identity identity-fields-ga
                             ::models/AppAuthorization expired-authz-data-ga]
-      (let [actor (get-actor! expired-authz-id-ga)]
+      (let [actor (authz-mw/get-actor! expired-authz-id-ga)]
         (is (nil? actor) "Actor should not be found due to expired authorization")))))
+
+(deftest wrap-require-login-test
+  (testing "when current-actor is present in the request"
+    (let [handler-invoked? (atom false)
+          mock-response :handler-response
+          test-handler (fn [_ctx _args _parents]
+                         (reset! handler-invoked? true)
+                         mock-response)
+          middleware-fn (authz-mw/wrap-require-login test-handler)
+          ctx {:request {:current-actor {:id "some-actor-id"}}}
+          args {}
+          parents nil
+          result (middleware-fn ctx args parents)]
+      (is (true? @handler-invoked?) "The original handler should be invoked.")
+      (is (= mock-response result) "The result from the original handler should be returned.")))
+
+  (testing "when current-actor is not present in the request"
+    (let [handler-invoked? (atom false)
+          test-handler (fn [_ctx _args _parents]
+                         (reset! handler-invoked? true)
+                         :handler-response) ; This should not be returned
+          middleware-fn (authz-mw/wrap-require-login test-handler)
+          ctx {:request {}} ; No current-actor
+          args {}
+          parents nil
+          result (middleware-fn ctx args parents)
+          expected-error-map {:message "must be logged in"}]
+      (is (false? @handler-invoked?) "The original handler should not be invoked.")
+      (is (nil? (-> result :resolved-value :value))
+          "The value of the ResolvedValue should be nil.")
+      (is (= expected-error-map (-> result :resolved-value :data))
+          "The errors of the ResolvedValue should contain the specified error message.")))
+
+  (testing "when current-actor is nil in the request"
+    (let [handler-invoked? (atom false)
+          test-handler (fn [_ctx _args _parents]
+                         (reset! handler-invoked? true)
+                         :handler-response) ; This should not be returned
+          middleware-fn (authz-mw/wrap-require-login test-handler)
+          ctx {:request {:current-actor nil}} ; current-actor is nil
+          args {}
+          parents nil
+          result (middleware-fn ctx args parents)
+          expected-error-map {:message "must be logged in"}]
+      (is (false? @handler-invoked?) "The original handler should not be invoked.")
+      (is (nil? (-> result :resolved-value :value))
+          "The value of the ResolvedValue should be nil.")
+      (is (= expected-error-map (-> result :resolved-value :data))
+          "The errors of the ResolvedValue should contain the specified error message."))))

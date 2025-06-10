@@ -15,7 +15,8 @@
    [com.walmartlabs.lacinia.schema :as lacina.schema]
    [com.walmartlabs.lacinia.util :as lacina.util]
    [ring.util.response :as ring.response]
-   [integrant.core :as ig]))
+   [integrant.core :as ig]
+   [app.authz.middleware :as authz]))
 
 (defn- date-scalar
   [schema]
@@ -36,6 +37,13 @@
       uuid-scalar
       (lacina.util/inject-resolvers (update-vals resolvers-map second))
       lacina.schema/compile))
+
+(defn- with-middleware
+  "Wrap graphql handlers with the provided list of middleware"
+  [resolver-map & middleware]
+  (update-vals resolver-map (fn [[schema resolver-fn]]
+                              [schema
+                               (reduce #(%2 %1) resolver-fn middleware)])))
 
 (defn- wrap-graphql-request
   "Middleware that extracts graphql attributes from the request"
@@ -63,5 +71,5 @@
 
 (defmethod ig/init-key ::resolvers [_ _]
   (merge (gql.resolvers/ns-gql-resolvers 'app.actor)
-         (gql.resolvers/ns-gql-resolvers 'app.asset)
-         (gql.resolvers/ns-gql-resolvers 'app.card)))
+         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.asset) authz/wrap-require-login)
+         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.card) authz/wrap-require-login)))
