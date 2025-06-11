@@ -1,18 +1,18 @@
-resource "aws_iam_role" "blood_basket_ecs_execution_role" {
-  name        = "blood-basket-ecs-execution-role"
-  description = "ecs execution role for the blood basket application"
+resource "aws_iam_role" "bashketball_ecs_execution_role" {
+  name        = "bashketball-ecs-execution-role"
+  description = "ecs execution role for the bashketball application"
 
-  assume_role_policy = data.aws_iam_policy_document.blood_basket_ecs_task_assume_role_doc.json
+  assume_role_policy = data.aws_iam_policy_document.bashketball_ecs_task_assume_role_doc.json
 }
 
-resource "aws_iam_role" "blood_basket_ecs_task_role" {
-  name        = "blood-basket-ecs-task-role"
-  description = "ecs task role for the blood basket application"
+resource "aws_iam_role" "bashketball_ecs_task_role" {
+  name        = "bashketball-ecs-task-role"
+  description = "ecs task role for the bashketball application"
 
-  assume_role_policy = data.aws_iam_policy_document.blood_basket_ecs_task_assume_role_doc.json
+  assume_role_policy = data.aws_iam_policy_document.bashketball_ecs_task_assume_role_doc.json
 }
 
-data "aws_iam_policy_document" "blood_basket_ecs_task_assume_role_doc" {
+data "aws_iam_policy_document" "bashketball_ecs_task_assume_role_doc" {
   statement {
     sid    = "ECSTaskAssumeRole"
     effect = "Allow"
@@ -27,7 +27,7 @@ data "aws_iam_policy_document" "blood_basket_ecs_task_assume_role_doc" {
   }
 }
 
-data "aws_iam_policy_document" "blood_basket_ecs_execution_policy_doc" {
+data "aws_iam_policy_document" "bashketball_ecs_execution_policy_doc" {
   statement {
     sid    = "ECSExecutionRole"
     effect = "Allow"
@@ -54,43 +54,33 @@ data "aws_iam_policy_document" "blood_basket_ecs_execution_policy_doc" {
   }
 }
 
-data "aws_iam_policy_document" "blood_basket_ecs_task_policy_doc" {
+data "aws_iam_policy_document" "bashketball_ecs_task_policy_doc" {
   statement {
-    sid    = "DynamoDBAccess"
-    effect = "Allow"
-    actions = [
-      "dynamodb:GetItem",
-      "dynamodb:PutItem",
-      "dynamodb:Query",
-    ]
-    resources = [
-      module.dynamo_table.table_arn,
-    ]
   }
 }
 
-resource "aws_iam_policy" "blood_basket_ecs_execution_policy" {
-  name        = "blood-basket-ecs-execution-policy"
-  description = "Allow ecs execution by github oidc"
+resource "aws_iam_policy" "bashketball_ecs_execution_policy" {
+  name        = "bashketball-ecs-execution-policy"
+  description = "Allow ecs execution by github oidc" # Consider updating description if it's not related to github oidc for this specific policy
 
-  policy = data.aws_iam_policy_document.blood_basket_ecs_execution_policy_doc.json
-
-}
-
-resource "aws_iam_policy" "blood_basket_ecs_task_policy" {
-  name        = "blood-basket-ecs-task-policy"
-  description = "Allow ecs task by github oidc"
-
-  policy = data.aws_iam_policy_document.blood_basket_ecs_task_policy_doc.json
+  policy = data.aws_iam_policy_document.bashketball_ecs_execution_policy_doc.json
 
 }
 
-resource "aws_iam_role_policy_attachment" "blood_basket_ecs_execution_policy_attachment" {
-  role       = aws_iam_role.blood_basket_ecs_execution_role.name
-  policy_arn = aws_iam_policy.blood_basket_ecs_execution_policy.arn
+resource "aws_iam_policy" "bashketball_ecs_task_policy" {
+  name        = "bashketball-ecs-task-policy"
+  description = "Allow ecs task by github oidc" # Consider updating description if it's not related to github oidc for this specific policy
+
+  policy = data.aws_iam_policy_document.bashketball_ecs_task_policy_doc.json
+
 }
 
-resource "aws_iam_role_policy_attachment" "blood_basket_ecs_task_policy_attachment" {
-  role       = aws_iam_role.blood_basket_ecs_task_role.name
-  policy_arn = aws_iam_policy.blood_basket_ecs_task_policy.arn
+resource "aws_iam_role_policy_attachment" "bashketball_ecs_execution_policy_attachment" {
+  role       = aws_iam_role.bashketball_ecs_execution_role.name
+  policy_arn = aws_iam_policy.bashketball_ecs_execution_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "bashketball_ecs_task_policy_attachment" {
+  role       = aws_iam_role.bashketball_ecs_task_role.name
+  policy_arn = aws_iam_policy.bashketball_ecs_task_policy.arn
 }
