@@ -31,14 +31,6 @@ resource "aws_rds_cluster" "this" {
   tags = merge(var.tags, {
     Name = var.name_prefix
   })
-
-  # Ensure password is set if not using manage_master_user_password
-  lifecycle {
-    ignore_changes = [
-      # If manage_master_user_password is set to true in the future, this might be needed.
-      # For now, password changes are handled by Terraform.
-    ]
-  }
 }
 
 resource "aws_rds_cluster_instance" "this" {
