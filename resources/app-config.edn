@@ -9,4 +9,8 @@
                                                    :hostname "localhost"
                                                    :port 4566}}}
  :auth {:cookie-name "BB_COOKIE"
+        :email-validator #profile {:default {:strategy :any}
+                                   :prod {:strategy :in-set
+                                          :strategy-args [#{"ed.paget@gmail.com"
+                                                            "tmucia@gmail.com"}]}}
         :google-jwks "https://www.googleapis.com/oauth2/v3/certs"}}

@@ -62,7 +62,8 @@
       (tu/with-global-frozen-time (t/with-offset (t/offset-date-time 2023 1 23 11 11) 0)
         (let [authenticator (authn.handler/make-id-token-authenticator
                              {:jwks-url test-jwks-url
-                              :strategy test-strategy}
+                              :strategy test-strategy
+                              :email-validator (authn.handler/make-email-validator {:strategy :any})}
                              (fn [jwks-url _]
                                (is (= test-jwks-url jwks-url))
                                {:email test-email}))
@@ -78,7 +79,8 @@
     (tu/with-global-frozen-time (t/with-offset (t/offset-date-time 2023 1 23 9 11) 0)
       (let [authenticator (authn.handler/make-id-token-authenticator
                            {:jwks-url test-jwks-url
-                            :strategy test-strategy}
+                            :strategy test-strategy
+                            :email-validator (authn.handler/make-email-validator {:strategy :any})}
                            (fn [jwks-url _]
                              (is (= test-jwks-url jwks-url))
                              {:email "totally-different-sub@gmail.com"}))
@@ -94,7 +96,8 @@
   (testing "Failed authentication - invalid token"
     (let [authenticator (authn.handler/make-id-token-authenticator
                          {:jwks-url test-jwks-url
-                          :strategy test-strategy}
+                          :strategy test-strategy
+                          :email-validator (authn.handler/make-email-validator {:strategy :any})}
                          (fn [_ _]
                            (throw (ex-info "failed to auth token" {}))))
           result (authenticator {:token "invalid-token"})]
@@ -102,11 +105,69 @@
   (testing "Failed authentication - nil token"
     (let [authenticator (authn.handler/make-id-token-authenticator
                          {:jwks-url test-jwks-url
-                          :strategy test-strategy}
+                          :strategy test-strategy
+                          :email-validator (authn.handler/make-email-validator {:strategy :any})}
                          (fn [_ _]
                            (throw (ex-info "failed to auth token" {}))))
           result (authenticator {:token nil})]
-      (is (nil? result) "Should return nil if token is nil"))))
+      (is (nil? result) "Should return nil if token is nil")))
+
+  (testing "Email validation with :in-set strategy"
+    (let [allowed-emails #{"allowed@example.com" "another.allowed@example.com"}
+          email-validator-in-set (authn.handler/make-email-validator
+                                  {:strategy :in-set
+                                   :strategy-args [allowed-emails]})]
+
+      (testing "Successful authentication - email is in the allowed set"
+        (tu/with-global-frozen-time (t/with-offset (t/offset-date-time 2023 10 10 10 10) 0)
+          (let [authenticator (authn.handler/make-id-token-authenticator
+                               {:jwks-url test-jwks-url
+                                :strategy test-strategy
+                                :email-validator email-validator-in-set}
+                               (fn [jwks-url _] ; Mock unsign
+                                 (is (= test-jwks-url jwks-url))
+                                 {:email "allowed@example.com"})) ; This email should pass
+                result (authenticator {:token test-token})]
+            (is (some? result) "Should return an identity for an allowed email")
+            (is (= "allowed@example.com" (:provider-identity result)) "Provider identity should match the allowed email")
+            (is (= #inst "2023-10-10T10:10:00.000-00:00" (:last-successful-at result)) "Last successful at should be updated"))))
+
+      (testing "Failed authentication - email is NOT in the allowed set"
+        (let [authenticator (authn.handler/make-id-token-authenticator
+                             {:jwks-url test-jwks-url
+                              :strategy test-strategy
+                              :email-validator email-validator-in-set}
+                             (fn [jwks-url _] ; Mock unsign
+                               (is (= test-jwks-url jwks-url))
+                               {:email "disallowed@example.com"})) ; This email should NOT pass
+              result (authenticator {:token test-token})]
+          (is (nil? result) "Should return nil for a disallowed email")))
+
+      (testing "Failed authentication - email from token is nil, even if validator would allow nil (it won't due to schema)"
+        (let [authenticator (authn.handler/make-id-token-authenticator
+                             {:jwks-url test-jwks-url
+                              :strategy test-strategy
+                              :email-validator email-validator-in-set}
+                             (fn [jwks-url _] ; Mock unsign
+                               (is (= test-jwks-url jwks-url))
+                               {:email nil})) ; Token returns nil email
+              result (authenticator {:token test-token})]
+          (is (nil? result) "Should return nil if token email is nil")))
+
+      (testing "Successful authentication - :any strategy (confirms existing behavior)"
+        (tu/with-global-frozen-time (t/with-offset (t/offset-date-time 2023 10 10 11 11) 0)
+          (let [email-validator-any (authn.handler/make-email-validator {:strategy :any})
+                authenticator (authn.handler/make-id-token-authenticator
+                               {:jwks-url test-jwks-url
+                                :strategy test-strategy
+                                :email-validator email-validator-any}
+                               (fn [jwks-url _]
+                                 (is (= test-jwks-url jwks-url))
+                                 {:email "anyone@example.com"}))
+                result (authenticator {:token test-token})]
+            (is (some? result) "Should return an identity for any email with :any strategy")
+            (is (= "anyone@example.com" (:provider-identity result)))
+            (is (= #inst "2023-10-10T11:11:00.000-00:00" (:last-successful-at result)))))))))
 
 (deftest make-token-authorization-creator-test-new-actor
   (let [frozen-time (t/with-offset (t/offset-date-time 2024 4 27 10 0 0) 0)]
@@ -188,11 +249,10 @@
     (tu/with-inserted-data [::models/Identity (update existing-identity :provider db/->pg_enum)]
       (let [creator (authn.handler/make-token-authorization-creator
                      {:authenticator mock-authenticator-success})
-           ;; Call creator with a single map argument
+            ;; Call creator with a single map argument
             [message status] (creator {:token test-token :role "admin"})]
         (is (= 401 status))
         (is (= "Unable to assume role admin" message))))))
-
 
 (deftest make-authn-handler-test
   (testing "Successful authentication"
@@ -217,24 +277,24 @@
       (is (not (contains? (:headers response) "Set-Cookie"))
           "Should not set a cookie on failure")))
 
- (testing "Logout action"
-   (let [logout-session-id (random-uuid)]
-     ;; Ensure the actor exists for the foreign key constraint
-     (tu/with-inserted-data [::models/Identity (update existing-identity :provider db/->pg_enum)
-                             ::models/Actor {:id test-actor-id :enrollment-state "incomplete"}
-                             ::models/AppAuthorization
-                             {:id                logout-session-id
-                              :actor-id          test-actor-id ; Assuming test-actor-id exists or is created elsewhere
-                              :provider          #pg_enum test-strategy
-                              :provider-identity test-email
-                              :created-at        (t/instant)}]
-       (let [handler (authn.handler/make-authn-handler
-                      {:authorization-creator mock-auth-creator-success ; Not called for logout
-                       :cookie-name           test-cookie-name})
-             request {:cookies {test-cookie-name {:value (str logout-session-id)}} ; Add cookie header
-                      :body    {:action "logout"}} ; Logout request
-             response (handler request)]
-         (is (= 204 (:status response)))
-         (is (= {test-cookie-name {:value logout-session-id :max-age 1}} ; Correct max-age for expired cookie
-                (:cookies response)) ; Use :cookies directly as ring sets it this way
-             "Should set an expired session cookie"))))))
+  (testing "Logout action"
+    (let [logout-session-id (random-uuid)]
+      ;; Ensure the actor exists for the foreign key constraint
+      (tu/with-inserted-data [::models/Identity (update existing-identity :provider db/->pg_enum)
+                              ::models/Actor {:id test-actor-id :enrollment-state "incomplete"}
+                              ::models/AppAuthorization
+                              {:id                logout-session-id
+                               :actor-id          test-actor-id ; Assuming test-actor-id exists or is created elsewhere
+                               :provider          #pg_enum test-strategy
+                               :provider-identity test-email
+                               :created-at        (t/instant)}]
+        (let [handler (authn.handler/make-authn-handler
+                       {:authorization-creator mock-auth-creator-success ; Not called for logout
+                        :cookie-name           test-cookie-name})
+              request {:cookies {test-cookie-name {:value (str logout-session-id)}} ; Add cookie header
+                       :body    {:action "logout"}} ; Logout request
+              response (handler request)]
+          (is (= 204 (:status response)))
+          (is (= {test-cookie-name {:value logout-session-id :max-age 1}} ; Correct max-age for expired cookie
+                 (:cookies response)) ; Use :cookies directly as ring sets it this way
+              "Should set an expired session cookie"))))))

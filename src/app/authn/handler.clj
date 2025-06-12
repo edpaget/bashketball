@@ -8,8 +8,7 @@
    [java-time.api :as t]
    [malli.experimental :as me]
    [ring.util.response :as ring.response]
-   [clojure.tools.logging :as log]
-   [clojure.string :as str]))
+   [clojure.tools.logging :as log]))
 
 (registry/defschema ::authenticator
   [:=> [:cat :map] [:maybe ::models/Identity]])
@@ -17,20 +16,32 @@
 (registry/defschema ::jwt-unsign
   [:=> [:cat :string :string] [:map [:email :string]]])
 
+(registry/defschema ::email-validator
+  [:=> [:cat :string] :boolean])
+
+(me/defn make-email-validator :- ::email-validator
+  [opts :- [:map
+            [:strategy [:enum :any :in-set]]
+            [:strategy-args [:maybe [:vector :any]]]]]
+  (case (:strategy opts)
+    :any (constantly true)
+    :in-set (fn [email] (contains? (-> opts :strategy-args first) email))))
 
 (me/defn make-id-token-authenticator :- ::authenticator
   ([opts :- [:map
+             [:email-validator ::email-validator]
              [:jwks-url :string]
              [:strategy ::models/IdentityStrategy]]]
    (make-id-token-authenticator opts clj-jwt/unsign))
-  ([{:keys [jwks-url strategy]} :- [:map
-                                    [:jwks-url :string]
-                                    [:strategy ::models/IdentityStrategy]]
+  ([{:keys [jwks-url strategy email-validator]} :- [:map
+                                                    [:email-validator ::email-validator]
+                                                    [:jwks-url :string]
+                                                    [:strategy ::models/IdentityStrategy]]
     unsign :- ::jwt-unsign]
    (fn [{:keys [token]}]
      (try
        (when-let [email (get (unsign jwks-url token) :email)]
-         (when (str/ends-with? email "@gmail.com")
+         (when (email-validator email)
            (if (db/execute-one! {:select [true]
                                  :from   [(models/->table-name ::models/Identity)]
                                  :where  [:and
@@ -118,5 +129,6 @@
      {:cookie-name cookie-name
       :authorization-creator (make-token-authorization-creator
                               {:authenticator (make-id-token-authenticator
-                                               {:jwks-url google-jwks
+                                               {:email-validator (make-email-validator (-> config :auth :email-validator))
+                                                :jwks-url google-jwks
                                                 :strategy :identity-strategy/SIGN_IN_WITH_GOOGLE})})})))
