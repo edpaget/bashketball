@@ -13,6 +13,14 @@ locals {
     name      = "bashketball-container"
     essential = true
     image     = "${aws_ecr_repository.bashketball.repository_url}:main"
+    portMappings = [
+      {
+        containerPort = 3000 # Port the container listens on
+        protocol      = "tcp"
+        # hostPort is not specified for Fargate with awsvpc network mode when using ALB
+        # appProtocol can be set to "http", "http2", or "grpc" if needed by ALB features
+      }
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -50,9 +58,17 @@ module "bashketball_fargate_service" {
   desired_count = 1
 
   subnet_ids         = [module.vpc.private_subnet_ids[0], module.vpc.private_subnet_ids[1]]
-  security_group_ids = [aws_security_group.bashketball.id] # Assuming this SG is or will be named bashketball
+  # The Fargate service will use the target security group created by the load balancer module.
+  # This SG allows traffic from the LB to the tasks on the target port (3000).
+  security_group_ids = [module.load_balancer.target_security_group_id]
 
-  assign_public_ip = false
+  assign_public_ip = false # Tasks are in private subnets, accessed via LB
+
+  load_balancers = [{
+    target_group_arn = module.load_balancer.target_group_arn
+    container_name   = "bashketball-container" # Must match the name in container_definitions
+    container_port   = 3000                    # Must match a portMapping in container_definitions
+  }]
 
   # Using defaults for deployment percentages, but can be overridden
   # deployment_maximum_percent         = 100

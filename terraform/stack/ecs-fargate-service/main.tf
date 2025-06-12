@@ -32,6 +32,15 @@ resource "aws_ecs_service" "this" {
     assign_public_ip = var.assign_public_ip
   }
 
+  dynamic "load_balancer" {
+    for_each = var.load_balancers
+    content {
+      target_group_arn = load_balancer.value.target_group_arn
+      container_name   = load_balancer.value.container_name
+      container_port   = load_balancer.value.container_port
+    }
+  }
+
   # If track_latest_task_definition is true, we don't want Terraform to detect a diff
   # every time a new task definition revision is created outside of this specific apply.
   # The service will automatically pick up the latest "active" revision of the family.

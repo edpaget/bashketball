@@ -106,6 +106,16 @@ variable "track_latest_task_definition" {
   default     = true # Matches the original ecs.tf behavior
 }
 
+variable "load_balancers" {
+  description = "A list of load balancer configurations to associate with the service. Each object in the list should contain 'target_group_arn', 'container_name', and 'container_port'."
+  type = list(object({
+    target_group_arn = string
+    container_name   = string
+    container_port   = number
+  }))
+  default = [] # Default to no load balancers
+}
+
 variable "tags" {
   description = "A map of tags to assign to the resources."
   type        = map(string)
