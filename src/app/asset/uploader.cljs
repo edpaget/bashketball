@@ -1,0 +1,44 @@
+(ns app.asset.uploader
+  (:require
+   [app.graphql.client :as gql.client]
+   [app.models :as models]
+   [uix.core :as uix :refer [defui $]]
+   ["@headlessui/react" :as headless]))
+
+(defn convert-to-blob
+  [event mutate!]
+  (let [file (aget (.. event -target -files) 0)
+        reader (js/FileReader.)]
+    (set! (.-onload reader)
+          #(if-let [[_ mime-type base64-data] (re-matches #"^data:([^;]+);base64,(.+)$"
+                                                          (.. % -target -result))]
+             (mutate! {:mime-type mime-type
+                       :img-blob base64-data})
+             (throw (ex-info "cannot parse data url" {:data-url (.. % -target -result)}))))
+    (.readAsDataURL reader file)))
+
+(defn- use-create-asset
+  []
+  (let [[mutate! {:keys [loading data error]}] (gql.client/use-mutation {:Mutation/createAsset '([::models/GameAsset :id]
+                                                                                                 :mime-type :img-blob)}
+                                                                        "createNewCardImage"
+                                                                        [[:mime-type :string]
+                                                                         [:img-blob :string]])]
+    [(cond
+       loading {:state :loading}
+       error   {:state :error :value error}
+       data    {:state :finished :value (:id data)}
+       :else   {:state :initialized})
+     mutate!]))
+
+(defui asset-upload [{:keys [update-card-field]}]
+  (let [[asset-id mutate!] (use-create-asset)]
+    (uix/use-effect (fn [] (when (= :finished (:state asset-id))
+                             (update-card-field :game-asset-id (:value asset-id)))))
+    ($ headless/Field {:class "flex items-center mb-4"}
+       ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Image")
+       ($ headless/Input {:type "file"
+                          :accept "image/*"
+                          :name "card-img"
+                          :on-change #(convert-to-blob % mutate!)
+                          :class "flex-grow mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"}))))

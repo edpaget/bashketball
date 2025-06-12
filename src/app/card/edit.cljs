@@ -1,15 +1,9 @@
 (ns app.card.edit
   (:require
+   [app.asset.uploader :as a.uploader]
    [app.card.types :as card-types]
    [uix.core :as uix :refer [defui $]]
    ["@headlessui/react" :as headless]))
-
-(defn convert-to-blob
-  [event update-field]
-  (let [file (aget (.. event -target -files) 0)
-        reader (js/FileReader.)]
-    (set! (.-onload reader) #(update-field :img (.. % -target -result)))
-    (.readAsDataURL reader file)))
 
 (defui text-widget [{:keys [ui/label field card on-change ui/input-type] :or {input-type "text"}}]
   ($ headless/Field {:class "flex items-center mb-4"}
@@ -95,11 +89,5 @@
                         :field :name
                         :card card
                         :on-change update-card-field})
-        ($ headless/Field {:class "flex items-center mb-4"}
-           ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Image")
-           ($ headless/Input {:type "file"
-                              :accept "image/*"
-                              :name "card-img"
-                              :on-change #(convert-to-blob % update-card-field)
-                              :class "flex-grow mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"}))
+        ($ a.uploader/asset-upload {:update-card-field update-card-field})
         ($ card-fields {:card card :update-card-field update-card-field}))))

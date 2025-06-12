@@ -17,8 +17,7 @@
   "Handles the upload of a single asset by delegating to app.asset/create-game-card-asset-from-file!.
   Requires app.db/*datasource* to be bound (which is done in -main)."
   [card-name card-version file-path config s3-client]
-  (let [aws-opts       (get config :aws-opts {}) ; Passed to s3/create-client
-        file-to-upload (io/file file-path)]
+  (let [file-to-upload (io/file file-path)]
     (if-not s3-client
       (log/error "S3 client could not be created. Check S3 configuration in app-config.edn. Asset processing aborted.")
       (if-not (.exists file-to-upload)
