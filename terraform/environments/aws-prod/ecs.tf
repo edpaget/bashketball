@@ -15,10 +15,8 @@ locals {
     image     = "${aws_ecr_repository.bashketball.repository_url}:main"
     portMappings = [
       {
-        containerPort = 3000 # Port the container listens on
-        protocol      = "tcp"
-        # hostPort is not specified for Fargate with awsvpc network mode when using ALB
-        # appProtocol can be set to "http", "http2", or "grpc" if needed by ALB features
+        containerPort = 3000
+        protocol      = "http"
       }
     ]
     logConfiguration = {
@@ -31,14 +29,31 @@ locals {
     }
     secrets = [
       {
-        name      = "DISCORD_TOKEN"
-        valueFrom = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/prod.discord_bot_token"
+        name      = "DATABASE_URL"
+        valueFrom = aws_secretsmanager_secret.db_jdbc_url_secret.arn # Referencing the Secrets Manager secret ARN
       }
     ]
-    # Add portMappings if your container exposes ports
-    # portMappings = [
-    #   { containerPort = 8080, hostPort = 8080, protocol = "tcp" } # Example
-    # ]
+  },
+  {
+    name      = "bashketball-migrate-container"
+    essential = false
+    image     = "${aws_ecr_repository.bashketball.repository_url}:main"
+    command    = ["migrate"]
+    logConfiguration = { # Same log configuration as the main app
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = "/prod/bashketball"
+        awslogs-region        = data.aws_region.current.name
+        awslogs-stream-prefix = "ecs-migrate" # Different prefix for migration logs
+      }
+    }
+    secrets = [ # Same secrets as the main app for DB access
+      {
+        name      = "DATABASE_URL"
+        valueFrom = aws_secretsmanager_secret.db_jdbc_url_secret.arn
+      }
+    ]
+    # No portMappings needed for a migration task
   }])
 }
 
@@ -58,16 +73,14 @@ module "bashketball_fargate_service" {
   desired_count = 1
 
   subnet_ids         = [module.vpc.private_subnet_ids[0], module.vpc.private_subnet_ids[1]]
-  # The Fargate service will use the target security group created by the load balancer module.
-  # This SG allows traffic from the LB to the tasks on the target port (3000).
   security_group_ids = [module.load_balancer.target_security_group_id]
 
-  assign_public_ip = false # Tasks are in private subnets, accessed via LB
+  assign_public_ip = false
 
   load_balancers = [{
     target_group_arn = module.load_balancer.target_group_arn
-    container_name   = "bashketball-container" # Must match the name in container_definitions
-    container_port   = 3000                    # Must match a portMapping in container_definitions
+    container_name   = "bashketball-container"
+    container_port   = 3000
   }]
 
   # Using defaults for deployment percentages, but can be overridden

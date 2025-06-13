@@ -49,14 +49,36 @@ data "aws_iam_policy_document" "bashketball_ecs_execution_policy_doc" {
       "ssm:GetParameters",
     ]
     resources = [
-      "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/prod.discord_bot_token"
+      "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/prod.discord_bot_token" # Keeping existing SSM access if still needed for other params
+    ]
+  }
+
+  statement {
+    sid    = "GetJDBCSecretValue"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue"
+    ]
+    resources = [
+      aws_secretsmanager_secret.db_jdbc_url_secret.arn # ARN of the JDBC URL secret
     ]
   }
 }
 
 data "aws_iam_policy_document" "bashketball_ecs_task_policy_doc" {
   statement {
+    sid    = "AllowS3BucketAccess"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+    resources = [
+      module.s3_bucket.bucket_arn, # ARN for the bucket itself (e.g., for listing if needed, though not strictly for Get/PutObject)
+      "${module.s3_bucket.bucket_arn}/*" # ARN for objects within the bucket
+    ]
   }
+  # Add other statements here if the task role needs more permissions in the future
 }
 
 resource "aws_iam_policy" "bashketball_ecs_execution_policy" {
