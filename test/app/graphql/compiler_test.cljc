@@ -1,3 +1,5 @@
+
+
 (ns app.graphql.compiler-test
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
@@ -131,6 +133,9 @@
 (def MapTestRegisteredInterfaceSchema
   [:map {:graphql/interface "MapTestRegisteredInterface"}
    [:registry-common-field :string]])
+
+(registry/register-type! :app.models/Game Game)
+(registry/register-type! :app.graphql.compiler-test/MapTestRegisteredInterfaceSchema MapTestRegisteredInterfaceSchema)
 
 (def MapTestImplementingTypeViaRegistered
   [:merge ::MapTestRegisteredInterfaceSchema
@@ -623,8 +628,8 @@
         (registry/register-type! ::UnionMemberTwoSchema UnionMemberTwoSchema)
 
         (let [tagger-fn (sut/merge-tag-with-type TestUnionViaMultiSchema)
-              instance1 {:field-alpha "data for one"}   ; dispatch-fn returns ::UnionMemberOneSchema
-              instance2 {:field-beta true}]             ; dispatch-fn returns ::UnionMemberTwoSchema
+              instance1 {:field-alpha "data for one"} ; dispatch-fn returns ::UnionMemberOneSchema
+              instance2 {:field-beta true}] ; dispatch-fn returns ::UnionMemberTwoSchema
           (is (= :UnionMemberOne (tagger-fn instance1))
               "Tagger should return :UnionMemberOne for instance1 based on dispatch to ::UnionMemberOneSchema.")
           (is (= :UnionMemberTwo (tagger-fn instance2))
@@ -645,9 +650,9 @@
         (registry/register-type! ::TestInterfaceBase TestInterfaceBase) ;; Register for completeness if dispatch returns it.
 
         (let [tagger-fn (sut/merge-tag-with-type TestInterfaceMulti)
-              instanceA {:fieldA 123}       ; dispatch-fn returns ::TestConcreteTypeA
-              instanceB {:fieldB false}     ; dispatch-fn returns ::TestConcreteTypeB
-              instanceBase {:other true}]   ; dispatch-fn returns ::TestInterfaceBase
+              instanceA {:fieldA 123} ; dispatch-fn returns ::TestConcreteTypeA
+              instanceB {:fieldB false} ; dispatch-fn returns ::TestConcreteTypeB
+              instanceBase {:other true}] ; dispatch-fn returns ::TestInterfaceBase
 
           (is (= :TestConcreteTypeA (tagger-fn instanceA))
               "Tagger should return :TestConcreteTypeA for instanceA.")
@@ -876,3 +881,10 @@
         (finally
           ;; Restore original registry state
           (reset! registry/type-registry type-registry-value))))))
+
+(deftest ->mutation-test
+  (testing "should return a mutation with the given fields"
+    (let [[query] (sut/->mutation
+                   {:Mutation/createGame
+                    [:app.models/Game :id :status]})]
+      (is (= "mutation { createGame { id status } }" query)))))

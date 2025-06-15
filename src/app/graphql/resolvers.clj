@@ -1,7 +1,6 @@
 (ns app.graphql.resolvers
   (:require
    [app.registry :as registry]
-   [app.card.graphql.resolvers]
    [com.walmartlabs.lacinia.resolve :as lacinia.resolve]
    [malli.core :as mc]
    [app.graphql.transformer :as gql.transformer]
