@@ -65,7 +65,7 @@ module "rds_aurora_serverless" {
 
   # Aurora Serverless v2 specific settings (using defaults from your rds stack variables)
   instance_class             = "db.serverless"
-  serverless_v2_min_capacity = 0.5
+  serverless_v2_min_capacity = 0
   serverless_v2_max_capacity = 2.0 # Adjust as needed
   number_of_instances        = 1   # Typically 1 writer for Serverless v2, can be more
 
