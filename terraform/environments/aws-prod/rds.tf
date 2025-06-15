@@ -55,7 +55,7 @@ module "rds_aurora_serverless" {
   allowed_security_group_ids = [module.load_balancer.target_security_group_id]
 
   engine         = "aurora-postgresql"
-  engine_version = "15.5" # Or your desired version, matching stack default
+  engine_version = "16.1" # Or your desired version, matching stack default
   db_name        = "bashketballdb" # Initial database name
 
   master_username = "dbadmin"
@@ -74,7 +74,6 @@ module "rds_aurora_serverless" {
   skip_final_snapshot     = false # Recommended for prod
   deletion_protection     = true  # Recommended for prod
   storage_encrypted       = true
-  publicly_accessible     = false
 
   performance_insights_enabled = true
 

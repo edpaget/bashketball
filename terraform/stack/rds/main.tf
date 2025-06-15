@@ -66,7 +66,6 @@ resource "aws_rds_cluster" "this" {
   storage_encrypted               = var.storage_encrypted
   kms_key_id                      = var.kms_key_id
   deletion_protection             = var.deletion_protection
-  publicly_accessible             = var.publicly_accessible
   allow_major_version_upgrade     = true # Consider parameterizing
   apply_immediately               = false # Consider parameterizing, especially for production
 
@@ -105,7 +104,6 @@ resource "aws_rds_cluster_instance" "this" {
   engine             = aws_rds_cluster.this.engine # Must match cluster engine
   engine_version     = aws_rds_cluster.this.engine_version # Must match cluster engine version
   instance_class     = var.instance_class        # For Serverless v2, this is 'db.serverless'
-  publicly_accessible = var.publicly_accessible # Match cluster setting
 
   # Performance Insights settings for the instance
   # These are often inherited or controlled at the cluster level for Aurora,

@@ -84,12 +84,6 @@ variable "deletion_protection" {
   default     = false # Set to true for production
 }
 
-variable "publicly_accessible" {
-  description = "Bool to control if instance is publicly accessible. Default false."
-  type        = bool
-  default     = false
-}
-
 variable "storage_encrypted" {
   description = "Specifies whether the DB cluster is encrypted."
   type        = bool
