@@ -13,6 +13,7 @@
         com.pitch/uix.core {:mvn/version "1.3.0"}
         com.pitch/uix.dom {:mvn/version "1.3.0"}
         com.walmartlabs/lacinia {:mvn/version "1.2.2"}
+        dev.weavejester/ragtime {:mvn/version "0.11.0"}
         dk.emcken/aws-simple-sign {:mvn/version "2.1.0"}
         integrant/integrant {:mvn/version "0.13.1"}
         meta-merge/meta-merge {:mvn/version "1.0.0"}
@@ -30,7 +31,6 @@
  :paths ["src" "resources"]
  :aliases {:dev {:extra-deps {binaryage/devtools {:mvn/version "1.0.7"}
                               dev.weavejester/hashp {:mvn/version "0.3.0"}
-                              dev.weavejester/ragtime {:mvn/version "0.11.0"}
                               integrant/repl {:mvn/version "0.4.0"}
                               org.duct-framework/compiler.cljs.shadow {:mvn/version "0.1.2"}
                               thheller/shadow-cljs {:mvn/version "3.1.4"}}}
@@ -38,8 +38,7 @@
                    :jvm-opts ["-Djdk.attach.allowAttachSelf"]
                    :main-opts ["-m" "nrepl.cmdline" "--port" "7888"]}
            :test {:extra-paths ["test"]
-                  :extra-deps {eftest/eftest {:mvn/version "0.6.0"}
-                               dev.weavejester/ragtime {:mvn/version "0.11.0"}}
+                  :extra-deps {eftest/eftest {:mvn/version "0.6.0"}}
                   :jvm-opts    ["-Duser.timezone=UTC"] ; Ensure tests run in UTC
                   :exec-fn     runner/find-and-run-tests}
            :server {:main-opts ["-m" "app.server"]}
