@@ -290,6 +290,7 @@
               result (resolver-fn nil input-args nil)
               db-card (card/get-by-name (:name input-args) (:version input-args))]
           (is (some? result) "Result should not be nil")
+          (is (= ::models/PlayerCard (::schema/type-name (meta #p result))) "Result should be tagged with Lacinia type")
           (is (= expected-db-card (select-keys result (keys expected-db-card))))
           (is (some? db-card))
           (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -473,3 +474,103 @@
         (let [asset-id (java.util.UUID/randomUUID)
               update-count (card/set-game-asset-id "NonExistentCard" "v0" asset-id)]
           (is (= {:next.jdbc/update-count 0} update-count) "Should update zero rows as card does not exist"))))))
+
+(deftest update-card-mutations-test
+  (testing "Mutation/updatePlayerCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updatePlayerCard)
+          card-data {:name "Update Player Card"
+                     :version "upc0"
+                     :card-type (db/->pg_enum :card-type-enum/PLAYER_CARD)
+                     :deck-size 10
+                     :speed 5
+                     :size (db/->pg_enum :size-enum/SM)}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (testing "updates a single field"
+          (let [update-args {:name "Update Player Card", :version "upc0", :speed 6}
+                result (resolver-fn nil update-args nil)
+                db-card (card/get-by-name (:name card-data) (:version card-data))]
+            (is (some? result))
+            (is (= 6 (:speed result)))
+            (is (= 6 (:speed db-card)))
+            (is (= 10 (:deck-size db-card)))))
+        (testing "updates multiple fields"
+          (let [update-args {:name "Update Player Card", :version "upc0", :deck-size 12, :size :size-enum/LG}
+                result (resolver-fn nil update-args nil)
+                db-card (card/get-by-name (:name card-data) (:version card-data))]
+            (is (some? result))
+            (is (= 12 (:deck-size result)))
+            (is (= :size-enum/LG (:size result)))
+            (is (= 12 (:deck-size db-card)))
+            (is (= :size-enum/LG (:size db-card)))))
+        (testing "returns nil for non-existent card"
+          (is (nil? (resolver-fn nil {:name "Non-existent", :version "v0", :speed 10} nil))))
+        (testing "is tagged with correct Lacinia type"
+          (let [result (resolver-fn nil {:name "Update Player Card", :version "upc0", :speed 7} nil)]
+            (is (= ::models/PlayerCard (::schema/type-name (meta result)))))))))
+
+  (testing "Mutation/updateAbilityCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateAbilityCard)
+          card-data {:name "Update Ability Card", :version "uac0", :card-type (db/->pg_enum :card-type-enum/ABILITY_CARD), :abilities [:lift ["Initial"]]}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update Ability Card", :version "uac0", :abilities ["Updated"]}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= ["Updated"] (:abilities result)))
+          (is (= ["Updated"] (:abilities db-card)))
+          (is (= ::models/AbilityCard (::schema/type-name (meta result))))))))
+
+  (testing "Mutation/updateSplitPlayCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateSplitPlayCard)
+          card-data {:name "Update SPC", :version "uspc0", :card-type (db/->pg_enum :card-type-enum/SPLIT_PLAY_CARD), :fate 1, :offense "O1", :defense "D1"}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update SPC", :version "uspc0", :fate 2, :offense "O2"}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= 2 (:fate result)))
+          (is (= "O2" (:offense result)))
+          (is (= "D1" (:defense db-card))) ; Unchanged
+          (is (= ::models/SplitPlayCard (::schema/type-name (meta result))))))))
+
+  (testing "Mutation/updatePlayCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updatePlayCard)
+          card-data {:name "Update PC", :version "upc1", :card-type (db/->pg_enum :card-type-enum/PLAY_CARD), :play "Initial"}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update PC", :version "upc1", :play "Updated"}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= "Updated" (:play result)))
+          (is (= "Updated" (:play db-card)))
+          (is (= ::models/PlayCard (::schema/type-name (meta result))))))))
+
+  (testing "Mutation/updateCoachingCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateCoachingCard)
+          card-data {:name "Update CC", :version "ucc0", :card-type (db/->pg_enum :card-type-enum/COACHING_CARD), :coaching "Initial"}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update CC", :version "ucc0", :coaching "Updated"}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= "Updated" (:coaching result)))
+          (is (= "Updated" (:coaching db-card)))
+          (is (= ::models/CoachingCard (::schema/type-name (meta result))))))))
+
+  (testing "Mutation/updateStandardActionCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateStandardActionCard)
+          card-data {:name "Update SAC", :version "usac0", :card-type (db/->pg_enum :card-type-enum/STANDARD_ACTION_CARD), :defense "Initial"}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update SAC", :version "usac0", :defense "Updated"}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= "Updated" (:defense result)))
+          (is (= "Updated" (:defense db-card)))
+          (is (= ::models/StandardActionCard (::schema/type-name (meta result))))))))
+
+  (testing "Mutation/updateTeamAssetCard resolver"
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateTeamAssetCard)
+          card-data {:name "Update TAC", :version "utac0", :card-type (db/->pg_enum :card-type-enum/TEAM_ASSET_CARD), :asset-power "Initial"}]
+      (tu/with-inserted-data [::models/GameCard card-data]
+        (let [update-args {:name "Update TAC", :version "utac0", :asset-power "Updated"}
+              result (resolver-fn nil update-args nil)
+              db-card (card/get-by-name (:name card-data) (:version card-data))]
+          (is (= "Updated" (:asset-power result)))
+          (is (= "Updated" (:asset-power db-card)))
+          (is (= ::models/TeamAssetCard (::schema/type-name (meta result)))))))))

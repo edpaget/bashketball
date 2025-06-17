@@ -62,6 +62,20 @@
                                     :always vals)]
                     :returning   [:*]}))
 
+(me/defn update-db :- [:maybe ::models/GameCard]
+  "Updates a GameCard in thedatabase by name and version."
+  [card-name :- :string
+   card-version :- :string
+   input :- [:map-of :keyword :any]]
+  (when (not-empty input)
+    (db/execute-one! {:update    [(models/->table-name ::models/GameCard)]
+                      :set       (cond-> input
+                                   (:size input) (update :size db/->pg_enum)
+                                   (:abilities input) (update :abilities #(conj [:lift] %)))
+                      :where     [:and [:= :name card-name]
+                                  [:= :version card-version]]
+                      :returning [:*]})))
+
 ;; Schema for Query/card arguments
 (registry/defschema ::card-args
   [:map
@@ -138,7 +152,30 @@
   [:=> [:cat :any ::player-card-args :any]
    ::models/PlayerCard]
   [_context args _value]
-  (create (assoc args :card-type :card-type-enum/PLAYER_CARD)))
+  (schema/tag-with-type
+   (create (assoc args :card-type :card-type-enum/PLAYER_CARD))
+   ::models/PlayerCard))
+
+(registry/defschema ::update-player-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:deck-size {:optional true} :int]
+   [:sht {:optional true} :int]
+   [:pss {:optional true} :int]
+   [:def {:optional true} :int]
+   [:speed {:optional true} :int]
+   [:size {:optional true} ::models/PlayerSize]
+   [:abilities {:optional true} [:vector :string]]])
+
+(defresolver :Mutation/updatePlayerCard
+  "Update a PLAYER_CARD-typed card"
+  [:=> [:cat :any ::update-player-card-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/PlayerCard)))
 
 ;; --- AbilityCard ---
 (registry/defschema ::ability-card-args
@@ -156,6 +193,21 @@
   (schema/tag-with-type
    (create (assoc args :card-type :card-type-enum/ABILITY_CARD))
    ::models/AbilityCard))
+
+(registry/defschema ::update-ability-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:abilities {:optional true} [:vector :string]]])
+
+(defresolver :Mutation/updateAbilityCard
+  "Update an ABILITY_CARD-typed card"
+  [:=> [:cat :any ::update-ability-card-args :any]
+   [:maybe ::models/AbilityCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/AbilityCard)))
 
 ;; --- SplitPlayCard ---
 (registry/defschema ::split-play-card-args
@@ -176,6 +228,23 @@
    (create (assoc args :card-type :card-type-enum/SPLIT_PLAY_CARD))
    ::models/SplitPlayCard))
 
+(registry/defschema ::update-split-play-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true} :int]
+   [:offense {:optional true} :string]
+   [:defense {:optional true} :string]])
+
+(defresolver :Mutation/updateSplitPlayCard
+  "Update a SPLIT_PLAY_CARD-typed card"
+  [:=> [:cat :any ::update-split-play-card-args :any]
+   [:maybe ::models/SplitPlayCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/SplitPlayCard)))
+
 ;; --- PlayCard ---
 (registry/defschema ::play-card-args
   [:map
@@ -194,6 +263,22 @@
    (create (assoc args :card-type :card-type-enum/PLAY_CARD))
    ::models/PlayCard))
 
+(registry/defschema ::update-play-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true} :int]
+   [:play {:optional true} :string]])
+
+(defresolver :Mutation/updatePlayCard
+  "Update a PLAY_CARD-typed card"
+  [:=> [:cat :any ::update-play-card-args :any]
+   [:maybe ::models/PlayCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/PlayCard)))
+
 ;; --- CoachingCard ---
 (registry/defschema ::coaching-card-args
   [:map
@@ -211,6 +296,22 @@
   (schema/tag-with-type
    (create (assoc args :card-type :card-type-enum/COACHING_CARD))
    ::models/CoachingCard))
+
+(registry/defschema ::update-coaching-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true} :int]
+   [:coaching {:optional true} :string]])
+
+(defresolver :Mutation/updateCoachingCard
+  "Update a COACHING_CARD-typed card"
+  [:=> [:cat :any ::update-coaching-card-args :any]
+   [:maybe ::models/CoachingCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/CoachingCard)))
 
 ;; --- StandardActionCard ---
 (registry/defschema ::standard-action-card-args
@@ -231,6 +332,23 @@
    (create (assoc args :card-type :card-type-enum/STANDARD_ACTION_CARD))
    ::models/StandardActionCard))
 
+(registry/defschema ::update-standard-action-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true} :int]
+   [:offense {:optional true} :string]
+   [:defense {:optional true} :string]])
+
+(defresolver :Mutation/updateStandardActionCard
+  "Update a STANDARD_ACTION_CARD-typed card"
+  [:=> [:cat :any ::update-standard-action-card-args :any]
+   [:maybe ::models/StandardActionCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/StandardActionCard)))
+
 ;; --- TeamAssetCard ---
 (registry/defschema ::team-asset-card-args
   [:map
@@ -248,3 +366,19 @@
   (schema/tag-with-type
    (create (assoc args :card-type :card-type-enum/TEAM_ASSET_CARD))
    ::models/TeamAssetCard))
+
+(registry/defschema ::update-team-asset-card-args
+  [:map
+   [:name :string]
+   [:version :string]
+   [:game-asset-id {:optional true} [:maybe :uuid]]
+   [:fate {:optional true} :int]
+   [:asset-power {:optional true} :string]])
+
+(defresolver :Mutation/updateTeamAssetCard
+  "Update a TEAM_ASSET_CARD-typed card"
+  [:=> [:cat :any ::update-team-asset-card-args :any]
+   [:maybe ::models/TeamAssetCard]]
+  [_context {card-name :name, card-version :version, :as args} _value]
+  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
+    (schema/tag-with-type updated-card ::models/TeamAssetCard)))
