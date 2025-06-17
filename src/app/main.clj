@@ -29,7 +29,7 @@
 
 (defmethod handle-cmd [::server ::subcommand] [_ _ _]
   (i/with-system [{:keys [app.server/jetty]} "prod.edn"]
-    (.join jetty)))
+    (.join ^org.eclipse.jetty.server.Server jetty)))
 
 (defmethod handle-cmd [::db ::subcommand] [_ subcommand _]
   (i/with-system [{:keys [app.db/pool]} "migrate.edn"]

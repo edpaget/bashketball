@@ -57,7 +57,7 @@
   ([mutation-edn mutation-name mutation-args]
    (use-mutation mutation-edn mutation-name mutation-args nil))
   ([mutation-edn mutation-name mutation-args hook-options]
-   (let [[mutation-string type-mappings] (gql.compiler/->query mutation-edn mutation-name mutation-args)
+   (let [[mutation-string type-mappings] (gql.compiler/->mutation mutation-edn mutation-name mutation-args)
          gql-mutation (apollo.client/gql mutation-string)
          decode-data-fn (build-decode-response-data-fn type-mappings)
          [original-mutate-fn mutation-state-js] (apollo.client/useMutation gql-mutation (update-options hook-options))]

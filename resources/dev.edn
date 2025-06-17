@@ -12,7 +12,8 @@
                                    :s3-client #ig/ref :app.s3/client}
 
  :app.authn.handler/auth-handler  {:config #ig/ref :app.config/config}
- :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
+ :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers
+                                   :config #ig/ref :app.config/config}
  :app.graphql.server/resolvers    {}
  :dev.integrant/bound-pool                  {:db-pool #ig/ref :app.db/pool}
  :dev.integrant/bound-config                {:config #ig/ref :app.config/config}

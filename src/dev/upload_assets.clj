@@ -1,11 +1,11 @@
 (ns dev.upload-assets
   (:require
    [app.asset :as app-asset]
+   [app.integrant :as i]
    [app.db :as db]
    [app.s3 :as s3]
    [clojure.java.io :as io]
    [clojure.tools.logging :as log]
-   [dev.integrant :as i]
    [app.card :as card])
   (:import
    [java.nio.file Files])

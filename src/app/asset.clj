@@ -12,7 +12,9 @@
 (me/defn create :- ::models/GameAsset
   "Create a new GameAsset with it's status as pending. It should generate a signed s3 url
    that allows the client to upload the asset to s3"
-  [{:keys [mime-type asset-path]} :- [:map [:mime-type :string]]]
+  [{:keys [mime-type asset-path]} :- [:map
+                                      [:asset-path :string]
+                                      [:mime-type :string]]]
   (db/execute-one! {:insert-into [(models/->table-name ::models/GameAsset)]
                     :columns     [:mime-type :img-url :status]
                     :values      [[mime-type asset-path (db/->pg_enum :game-asset-status-enum/PENDING)]]
@@ -68,6 +70,7 @@
         :any]
    ::models/GameAsset]
   [{:keys [config]} {:keys [mime-type img-blob]} _]
-  (let [asset-path (-> config :game-assets :asset-path)]
+  (if-let [asset-path (-> config :game-assets :asset-path)]
     (create-and-upload-asset asset-path mime-type
-                             (.decode (Base64/getDecoder) img-blob))))
+                             (.decode (Base64/getDecoder) img-blob))
+    (throw (ex-info "Missing asset config" {:config config}))))

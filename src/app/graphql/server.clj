@@ -50,23 +50,23 @@
   [handler]
   (fn [{:keys [body] :as req}]
     (let [{:keys [query variables]} body]
-      (log/debug {:query query :variables variables :test "Test"})
+      (log/debug {:query query :test "Test"})
       (handler (assoc req ::query query ::variables variables)))))
 
 (defn handle-graphql
   "Handles a ring request with ::query and ::variables in the request objects"
-  [schema]
+  [schema {:keys [config]}]
   (fn [{:keys [app.graphql.server/query
                app.graphql.server/variables]
         :as req}]
-    (-> (lacina/execute schema query variables {:request req})
+    (-> (lacina/execute schema query variables {:request req :config config})
         ring.response/response
         (ring.response/status 200)
         (ring.response/content-type "application/json"))))
 
-(defmethod ig/init-key ::handler [_ {:keys [resolvers]}]
+(defmethod ig/init-key ::handler [_ {:keys [resolvers] :as system}]
   (-> (build-graphql-schema resolvers)
-      handle-graphql
+      (handle-graphql system)
       wrap-graphql-request))
 
 (defmethod ig/init-key ::resolvers [_ _]

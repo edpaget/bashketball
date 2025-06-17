@@ -12,8 +12,8 @@
     (set! (.-onload reader)
           #(if-let [[_ mime-type base64-data] (re-matches #"^data:([^;]+);base64,(.+)$"
                                                           (.. % -target -result))]
-             (mutate! {:mime-type mime-type
-                       :img-blob base64-data})
+             (mutate! {:variables {:mime-type mime-type
+                                   :img-blob base64-data}})
              (throw (ex-info "cannot parse data url" {:data-url (.. % -target -result)}))))
     (.readAsDataURL reader file)))
 
