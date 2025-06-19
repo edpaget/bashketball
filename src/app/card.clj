@@ -152,9 +152,9 @@
   [:=> [:cat :any ::player-card-args :any]
    ::models/PlayerCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/PLAYER_CARD))
-   ::models/PlayerCard))
+  (->> (create (assoc args :card-type :card-type-enum/PLAYER_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-player-card-args
   [:map
@@ -174,8 +174,9 @@
   [:=> [:cat :any ::update-player-card-args :any]
    [:maybe ::models/PlayerCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/PlayerCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- AbilityCard ---
 (registry/defschema ::ability-card-args
@@ -190,9 +191,9 @@
   [:=> [:cat :any ::ability-card-args :any]
    ::models/AbilityCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/ABILITY_CARD))
-   ::models/AbilityCard))
+  (->> (create (assoc args :card-type :card-type-enum/ABILITY_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-ability-card-args
   [:map
@@ -206,8 +207,9 @@
   [:=> [:cat :any ::update-ability-card-args :any]
    [:maybe ::models/AbilityCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/AbilityCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- SplitPlayCard ---
 (registry/defschema ::split-play-card-args
@@ -224,9 +226,9 @@
   [:=> [:cat :any ::split-play-card-args :any]
    ::models/SplitPlayCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/SPLIT_PLAY_CARD))
-   ::models/SplitPlayCard))
+  (->> (create (assoc args :card-type :card-type-enum/SPLIT_PLAY_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-split-play-card-args
   [:map
@@ -242,8 +244,9 @@
   [:=> [:cat :any ::update-split-play-card-args :any]
    [:maybe ::models/SplitPlayCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/SplitPlayCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- PlayCard ---
 (registry/defschema ::play-card-args
@@ -259,9 +262,9 @@
   [:=> [:cat :any ::play-card-args :any]
    ::models/PlayCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/PLAY_CARD))
-   ::models/PlayCard))
+  (->> (create (assoc args :card-type :card-type-enum/PLAY_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-play-card-args
   [:map
@@ -276,8 +279,9 @@
   [:=> [:cat :any ::update-play-card-args :any]
    [:maybe ::models/PlayCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/PlayCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- CoachingCard ---
 (registry/defschema ::coaching-card-args
@@ -293,9 +297,9 @@
   [:=> [:cat :any ::coaching-card-args :any]
    ::models/CoachingCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/COACHING_CARD))
-   ::models/CoachingCard))
+  (->> (create (assoc args :card-type :card-type-enum/COACHING_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-coaching-card-args
   [:map
@@ -310,8 +314,9 @@
   [:=> [:cat :any ::update-coaching-card-args :any]
    [:maybe ::models/CoachingCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/CoachingCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- StandardActionCard ---
 (registry/defschema ::standard-action-card-args
@@ -328,9 +333,9 @@
   [:=> [:cat :any ::standard-action-card-args :any]
    ::models/StandardActionCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/STANDARD_ACTION_CARD))
-   ::models/StandardActionCard))
+  (->> (create (assoc args :card-type :card-type-enum/STANDARD_ACTION_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-standard-action-card-args
   [:map
@@ -346,8 +351,9 @@
   [:=> [:cat :any ::update-standard-action-card-args :any]
    [:maybe ::models/StandardActionCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/StandardActionCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))
 
 ;; --- TeamAssetCard ---
 (registry/defschema ::team-asset-card-args
@@ -363,9 +369,9 @@
   [:=> [:cat :any ::team-asset-card-args :any]
    ::models/TeamAssetCard]
   [_context args _value]
-  (schema/tag-with-type
-   (create (assoc args :card-type :card-type-enum/TEAM_ASSET_CARD))
-   ::models/TeamAssetCard))
+  (->> (create (assoc args :card-type :card-type-enum/TEAM_ASSET_CARD))
+       game-card-tag-and-transform
+       (apply schema/tag-with-type)))
 
 (registry/defschema ::update-team-asset-card-args
   [:map
@@ -380,5 +386,6 @@
   [:=> [:cat :any ::update-team-asset-card-args :any]
    [:maybe ::models/TeamAssetCard]]
   [_context {card-name :name, card-version :version, :as args} _value]
-  (when-let [updated-card (update-db card-name card-version (dissoc args :name :version))]
-    (schema/tag-with-type updated-card ::models/TeamAssetCard)))
+  (some->> (update-db card-name card-version (dissoc args :name :version))
+           game-card-tag-and-transform
+           (apply schema/tag-with-type)))

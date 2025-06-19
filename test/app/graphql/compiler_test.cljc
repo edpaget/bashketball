@@ -812,9 +812,7 @@
       (let [[query-str types-map] (sut/->query
                                    {:Query/userById (list [Actor :id :user-name] :userId)} ; Field `userById` takes arg `userId`
                                    "GetUserByIdOp" ; Operation name
-                                   [[:userId :string] [:limit :int]])] ; Operation variables, :userId matches field arg, :limit is extra
-        ;; Expected query structure: query GetUserByIdOp($userId: !String, $limit: !Int) { userById(userId: $userId) { id userName } }
-        ;; The order of $userId and $limit in the var definition part can vary.
+                                   [[:userId :string] [:limit [:maybe :int]]])] ; Operation variables, :userId matches field arg, :limit is extra
         (is (str/starts-with? query-str "query GetUserByIdOp("))
         (is (str/ends-with? query-str ") { userById(userId: $userId) { id userName } }"))
 
@@ -826,7 +824,7 @@
                                        (> (count query-str) (+ (count prefix) (count suffix))))
                               (subs query-str (count prefix) (- (count query-str) (count suffix))))]
           (is (some? var-defs-part) "Query string structure should allow extraction of variable definitions.")
-          (is (= "$userId: String!, $limit: Int!" var-defs-part)))
+          (is (= "$userId: String!, $limit: Int" var-defs-part)))
         (is (= {"Actor" Actor} types-map)
             "Types map should be correctly generated."))))
 

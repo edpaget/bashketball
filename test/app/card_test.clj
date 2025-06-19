@@ -287,11 +287,20 @@
       (testing "with valid arguments"
         (let [input-args base-valid-args
               expected-db-card (assoc input-args :card-type :card-type-enum/PLAYER_CARD)
+              expected-gql-card {:name "Mutation Player Card"
+                                 :version "mpc0"
+                                 :deckSize 10
+                                 :sht 2
+                                 :pss 3
+                                 :def 1
+                                 :speed 5
+                                 :size :size-enum/SM
+                                 :abilities ["Fast Runner"]}
               result (resolver-fn nil input-args nil)
               db-card (card/get-by-name (:name input-args) (:version input-args))]
           (is (some? result) "Result should not be nil")
-          (is (= ::models/PlayerCard (::schema/type-name (meta #p result))) "Result should be tagged with Lacinia type")
-          (is (= expected-db-card (select-keys result (keys expected-db-card))))
+          (is (= ::models/PlayerCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+          (is (= expected-gql-card (select-keys result (keys expected-gql-card))))
           (is (some? db-card))
           (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
       (testing "with invalid arguments"
@@ -394,12 +403,16 @@
                       :fate 0
                       :asset-power "Team Power Boost"}
           expected-db-card (assoc input-args :card-type :card-type-enum/TEAM_ASSET_CARD)
+          expected-gql-card {:name "Mutation Team Asset Card"
+                             :version "mtac0"
+                             :fate 0
+                             :assetPower "Team Power Boost"}
           expected-gql-type ::models/TeamAssetCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
       (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= expected-gql-card (select-keys result (keys expected-gql-card))))
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card)))))))
@@ -498,7 +511,7 @@
                 result (resolver-fn nil update-args nil)
                 db-card (card/get-by-name (:name card-data) (:version card-data))]
             (is (some? result))
-            (is (= 12 (:deck-size result)))
+            (is (= 12 (:deckSize result)))
             (is (= :size-enum/LG (:size result)))
             (is (= 12 (:deck-size db-card)))
             (is (= :size-enum/LG (:size db-card)))))
@@ -571,6 +584,6 @@
         (let [update-args {:name "Update TAC", :version "utac0", :asset-power "Updated"}
               result (resolver-fn nil update-args nil)
               db-card (card/get-by-name (:name card-data) (:version card-data))]
-          (is (= "Updated" (:asset-power result)))
+          (is (= "Updated" (:assetPower result)))
           (is (= "Updated" (:asset-power db-card)))
           (is (= ::models/TeamAssetCard (::schema/type-name (meta result)))))))))

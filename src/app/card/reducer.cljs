@@ -1,6 +1,8 @@
 (ns app.card.reducer
   (:require
-   [app.card.types :as card-types]))
+   [app.models :as models]
+   [app.card.types :as card-types]
+   [app.graphql.transformer :as gql.transformer]))
 
 ;; -------- Dispatch Methods -----------
 
@@ -16,7 +18,7 @@
 ;; -------- Reducer Methods ------------
 
 (defmulti card-state-field-reducer
-  (fn [_ {:keys [type]}] type))
+  (fn [_ {:keys [field]}] field))
 
 (defmethod card-state-field-reducer :card-type
   [_ {:keys [value]}]
@@ -25,6 +27,10 @@
                (remove (comp nil? second))
                (into {}))
       {:card-type :card-type-enum/INVALID}))
+
+(defmethod card-state-field-reducer :fate
+  [state {:keys [field value]}]
+  (assoc state field (js/parseInt value)))
 
 (defmethod card-state-field-reducer :default
   [state {:keys [field value]}]

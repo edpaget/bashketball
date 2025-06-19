@@ -27,14 +27,15 @@
     [(cond
        loading {:state :loading}
        error   {:state :error :value error}
-       data    {:state :finished :value (:id data)}
+       data    {:state :finished :value (-> data :createAsset :id)}
        :else   {:state :initialized})
      mutate!]))
 
 (defui asset-upload [{:keys [update-card-field]}]
   (let [[asset-id mutate!] (use-create-asset)]
     (uix/use-effect (fn [] (when (= :finished (:state asset-id))
-                             (update-card-field :game-asset-id (:value asset-id)))))
+                             (update-card-field :game-asset-id (:value asset-id))))
+                    [update-card-field asset-id])
     ($ headless/Field {:class "flex items-center mb-4"}
        ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Image")
        ($ headless/Input {:type "file"

@@ -1,5 +1,6 @@
 (ns app.graphql.client
   (:require
+   [uix.core :as uix :refer [defhook]]
    [clojure.walk :as walk]
    [app.graphql.transformer :as gql.transformer]
    [app.graphql.compiler :as gql.compiler]
@@ -59,16 +60,19 @@
   ([mutation-edn mutation-name mutation-args hook-options]
    (let [[mutation-string type-mappings] (gql.compiler/->mutation mutation-edn mutation-name mutation-args)
          gql-mutation (apollo.client/gql mutation-string)
-         decode-data-fn (build-decode-response-data-fn type-mappings)
+         decode-data-fn (uix/use-callback (fn [& args] (apply (build-decode-response-data-fn type-mappings) args))
+                                          [type-mappings])
          [original-mutate-fn mutation-state-js] (apollo.client/useMutation gql-mutation (update-options hook-options))]
-     [(fn call-mutation
-        ([] (call-mutation nil))
-        ([execution-options] ; e.g., {:variables {:foo-bar "baz"}, :on-completed ..., :update ...}
-         (.then (original-mutate-fn (update-options execution-options))
-                (fn [response]
-                  (-> response
-                      (js->clj :keywordize-keys true)
-                      (update :data decode-data-fn))))))
+     [(uix/use-callback
+       (fn call-mutation
+         ([] (call-mutation nil))
+         ([execution-options]
+          (.then (original-mutate-fn (update-options execution-options))
+                 (fn [response]
+                   (-> response
+                       (js->clj :keywordize-keys true)
+                       (update :data decode-data-fn))))))
+       [original-mutate-fn decode-data-fn])
       (-> mutation-state-js
           (js->clj :keywordize-keys true)
           (update :data decode-data-fn))])))

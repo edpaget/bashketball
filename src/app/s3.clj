@@ -20,7 +20,6 @@
   Example: (create-client {:region \"us-east-1\"})"
   [bucket-name :- :string
    opts :- :map]
-  (prn opts)
   {:client (aws/client (merge {:api :s3} opts))
    :bucket-name bucket-name})
 

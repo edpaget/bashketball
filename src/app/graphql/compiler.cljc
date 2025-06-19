@@ -138,8 +138,8 @@
 (defn- pop-object!
   "Remove an object from the bound set of objects and return its fields"
   [object-name]
-  (let [fields (get-in @*type-collector* [:objects object-name])]
-    (swap! *type-collector* update :objects dissoc object-name)
+  (let [fields (get-in @*type-collector* [*object-type* object-name])]
+    (swap! *type-collector* update *object-type* dissoc object-name)
     (:fields fields)))
 
 (defn- compile-function
@@ -148,16 +148,15 @@
   (fn
     [schema _ children _]
     (case (mc/type schema)
-      :=> (let [[[_ field-args] return-type] children
-                field-args (cond-> field-args
-                             (keyword? field-args) pop-object!)]
+      :=> (let [[field-args return-type] children]
             (cond-> {:type (mc/walk return-type ->graphql-type)}
               field-args (assoc :args field-args)))
-      :cat (cond
-             (not= 3 (count children)) (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)}))
-             (= type :Mutation) (binding [*object-type* :input-objects]
-                                  (mc/walk (second children) ->graphql-type))
-             :else (mc/walk (second children) ->graphql-type))
+      :cat  (binding [*object-type* (if (= type :Mutation) :input-objects :objects)]
+              (let [[_ field-args] (if-not (= 3 (count children))
+                                     (throw (ex-info "field resolvers must be 3-arity fns" {:arg-count (count children)}))
+                                     (mc/walk (second children) ->graphql-type))]
+                (cond-> field-args
+                  (keyword? field-args) pop-object!)))
       schema)))
 
 (defn name->tuple->graphql-schema
@@ -210,14 +209,16 @@
               'non-null ""
               ::end-null "!"
               (name node)))]
-    (loop [cs (into [] children)
-           accum ""]
-      (if (empty? cs)
-        accum
-        (recur (cond-> (subvec cs 1)
-                 (= 'non-null (first cs)) (conj ::end-null)
-                 (= 'list (first cs)) (conj ::end-list))
-               (str accum (node->str (first cs))))))))
+    (if-not (seq? children)
+      (node->str children)
+      (loop [cs (into [] children)
+             accum ""]
+        (if (empty? cs)
+          accum
+          (recur (cond-> (subvec cs 1)
+                   (= 'non-null (first cs)) (conj ::end-null)
+                   (= 'list (first cs)) (conj ::end-list))
+                 (str accum (node->str (first cs)))))))))
 
 (defn- ->graphql-argument-template
   [[query-key gql-type]]

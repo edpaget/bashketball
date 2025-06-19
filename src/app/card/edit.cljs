@@ -70,24 +70,33 @@
                                 :on-change update-card-field}
                                field))))))
 
-(defui edit-card [{:keys [card update-card-field]}]
-  (prn card)
+(defui edit-card [{:keys [card update-card-field new?]}]
   ($ :div {:class "p-6 bg-white shadow-lg rounded-lg max-w-2xl mx-auto my-8"}
      ($ :form {:class "space-y-6"}
-        ($ :h1 {:class "text-3xl font-bold text-gray-900 mb-6 text-center"} "Edit Card")
+        ($ :h1 {:class "text-3xl font-bold text-gray-900 mb-6 text-center"} (if new? "Create Card" "Edit Card"))
         ($ headless/Field {:class "flex items-center mb-4"}
            ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Type")
-           ($ headless/Select {:name "card-type"
-                               :aria-label "Card type select"
-                               :on-change #(update-card-field :card-type (keyword :card-type-enum (.. % -target -value)))
-                               :value (name (get card :card-type ""))
-                               :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
-              ($ :option {:value ""} "Select Card Type")
-              (for [[type type-label] card-types/->type-label]
-                ($ :option {:key (name type) :value (name type)} type-label))))
-        ($ text-widget {:ui/label "Card Name"
-                        :field :name
-                        :card card
-                        :on-change update-card-field})
+           (if new?
+             ($ headless/Select {:name "card-type"
+                                 :aria-label "Card type select"
+                                 :on-change #(update-card-field :card-type (keyword :card-type-enum (.. % -target -value)))
+                                 :value (name (get card :card-type ""))
+                                 :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
+                ($ :option {:value ""} "Select Card Type")
+                (for [[type type-label] card-types/->type-label]
+                  ($ :option {:key (name type) :value (name type)} type-label)))
+             ($ :div {:class "flex-grow mt-1 block w-full px-3 py-2 text-gray-500 sm:text-sm bg-gray-100 rounded-md"}
+                (get card-types/->type-label (get card :card-type)))))
+        (if new?
+          ($ :<>
+             ($ text-widget {:ui/label "Card Name"
+                             :field :name
+                             :card card
+                             :on-change update-card-field}))
+          ($ :<>
+             ($ headless/Field {:class "flex items-center mb-4"}
+                ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Name")
+                ($ :div {:class "flex-grow mt-1 block w-full px-3 py-2 text-gray-500 sm:text-sm bg-gray-100 rounded-md"}
+                   (get card :name)))))
         ($ a.uploader/asset-upload {:update-card-field update-card-field})
         ($ card-fields {:card card :update-card-field update-card-field}))))
