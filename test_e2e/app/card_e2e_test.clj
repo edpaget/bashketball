@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [etaoin.api :as e]
+   [etaoin.keys :as e.keys]
    [e2e.fixtures :as fx]
    [app.models :as models]
    [app.db :as db]
@@ -65,10 +66,10 @@
             (is (= initial-sht-value (e/get-element-text fx/*driver* sht-display-selector)) "Initial SHT value in display is correct"))
 
           (testing "Update the SHT value"
-            (e/clear fx/*driver* sht-input-selector)
+            (e/fill fx/*driver* sht-input-selector e.keys/backspace)
             (e/fill fx/*driver* sht-input-selector new-sht-value)
             ;; Wait for debounce (500ms) and auto-save to complete
-            (e/wait 30))
+            (e/wait 1))
 
           (testing "Verify updated value is reflected on the page"
             (is (e/wait-has-text fx/*driver* sht-display-selector new-sht-value) "Display SHT value should update after edit"))

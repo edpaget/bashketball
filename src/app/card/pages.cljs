@@ -44,8 +44,6 @@
                                  :created-at
                                  :game-asset
                                  :__typename)]
-         (prn card-to-compare)
-         (prn last-synced)
          (cond
            ;; Don't run on initial mount
            @is-initial-mount

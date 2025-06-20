@@ -5,14 +5,18 @@
    [uix.core :as uix :refer [defui $]]
    ["@headlessui/react" :as headless]))
 
+(defn- maybe-parse-int
+  [input-type value]
+  (when (not-empty value)
+    (cond-> value (= input-type "number") js/parseInt)))
+
 (defui text-widget [{:keys [ui/label field card on-change ui/input-type] :or {input-type "text"}}]
   ($ headless/Field {:class "flex items-center mb-4"}
      ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} label)
      ($ headless/Input {:value (get card field "")
                         :type input-type
                         :name (name field)
-                        :on-change #(on-change field (cond-> (.. % -target -value)
-                                                       (= input-type "number") js/parseInt))
+                        :on-change #(on-change field (maybe-parse-int input-type (.. % -target -value)))
                         :class "flex-grow mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})))
 
 (defui multi-text [{:keys [name ui/label field card on-change]}]
