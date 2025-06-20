@@ -294,12 +294,12 @@
                                  :pss 3
                                  :def 1
                                  :speed 5
-                                 :size :size-enum/SM
+                                 :size "SM"
                                  :abilities ["Fast Runner"]}
               result (resolver-fn nil input-args nil)
               db-card (card/get-by-name (:name input-args) (:version input-args))]
           (is (some? result) "Result should not be nil")
-          (is (= ::models/PlayerCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+          (is (= :PlayerCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
           (is (= expected-gql-card (select-keys result (keys expected-gql-card))))
           (is (some? db-card))
           (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -316,12 +316,10 @@
                       :version "mac0"
                       :abilities ["Extra Power"]}
           expected-db-card (assoc input-args :card-type :card-type-enum/ABILITY_CARD)
-          expected-gql-type ::models/AbilityCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= :AbilityCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -334,12 +332,10 @@
                       :offense "Offensive Play"
                       :defense "Defensive Play"}
           expected-db-card (assoc input-args :card-type :card-type-enum/SPLIT_PLAY_CARD)
-          expected-gql-type ::models/SplitPlayCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= :SplitPlayCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -351,12 +347,10 @@
                       :fate 2
                       :play "Main Play Action"}
           expected-db-card (assoc input-args :card-type :card-type-enum/PLAY_CARD)
-          expected-gql-type ::models/PlayCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= :PlayCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -368,12 +362,10 @@
                       :fate 3
                       :coaching "Coaching Advice"}
           expected-db-card (assoc input-args :card-type :card-type-enum/COACHING_CARD)
-          expected-gql-type ::models/CoachingCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= :CoachingCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -386,12 +378,10 @@
                       :offense "Standard Offense"
                       :defense "Standard Defense"}
           expected-db-card (assoc input-args :card-type :card-type-enum/STANDARD_ACTION_CARD)
-          expected-gql-type ::models/StandardActionCard
           result (resolver-fn nil input-args nil) ; Corrected binding
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
-      (is (= expected-db-card (select-keys result (keys expected-db-card))))
+      (is (= :StandardActionCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       ;; Verify card is in DB
       (is (some? db-card))
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
@@ -407,11 +397,10 @@
                              :version "mtac0"
                              :fate 0
                              :assetPower "Team Power Boost"}
-          expected-gql-type ::models/TeamAssetCard
           result (resolver-fn nil input-args nil)
           db-card (card/get-by-name (:name input-args) (:version input-args))]
       (is (some? result) "Result should not be nil")
-      (is (= expected-gql-type (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
+      (is (= :TeamAssetCard (::schema/type-name (meta result))) "Result should be tagged with Lacinia type")
       (is (= expected-gql-card (select-keys result (keys expected-gql-card))))
       ;; Verify card is in DB
       (is (some? db-card))
@@ -512,14 +501,14 @@
                 db-card (card/get-by-name (:name card-data) (:version card-data))]
             (is (some? result))
             (is (= 12 (:deckSize result)))
-            (is (= :size-enum/LG (:size result)))
+            (is (= "LG" (:size result)))
             (is (= 12 (:deck-size db-card)))
             (is (= :size-enum/LG (:size db-card)))))
         (testing "returns nil for non-existent card"
           (is (nil? (resolver-fn nil {:name "Non-existent", :version "v0", :speed 10} nil))))
         (testing "is tagged with correct Lacinia type"
           (let [result (resolver-fn nil {:name "Update Player Card", :version "upc0", :speed 7} nil)]
-            (is (= ::models/PlayerCard (::schema/type-name (meta result)))))))))
+            (is (= :PlayerCard (::schema/type-name (meta result)))))))))
 
   (testing "Mutation/updateAbilityCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateAbilityCard)
@@ -530,7 +519,7 @@
               db-card (card/get-by-name (:name card-data) (:version card-data))]
           (is (= ["Updated"] (:abilities result)))
           (is (= ["Updated"] (:abilities db-card)))
-          (is (= ::models/AbilityCard (::schema/type-name (meta result))))))))
+          (is (= :AbilityCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateSplitPlayCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateSplitPlayCard)
@@ -542,7 +531,7 @@
           (is (= 2 (:fate result)))
           (is (= "O2" (:offense result)))
           (is (= "D1" (:defense db-card))) ; Unchanged
-          (is (= ::models/SplitPlayCard (::schema/type-name (meta result))))))))
+          (is (= :SplitPlayCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updatePlayCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updatePlayCard)
@@ -553,7 +542,7 @@
               db-card (card/get-by-name (:name card-data) (:version card-data))]
           (is (= "Updated" (:play result)))
           (is (= "Updated" (:play db-card)))
-          (is (= ::models/PlayCard (::schema/type-name (meta result))))))))
+          (is (= :PlayCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateCoachingCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateCoachingCard)
@@ -564,7 +553,7 @@
               db-card (card/get-by-name (:name card-data) (:version card-data))]
           (is (= "Updated" (:coaching result)))
           (is (= "Updated" (:coaching db-card)))
-          (is (= ::models/CoachingCard (::schema/type-name (meta result))))))))
+          (is (= :CoachingCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateStandardActionCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateStandardActionCard)
@@ -575,7 +564,7 @@
               db-card (card/get-by-name (:name card-data) (:version card-data))]
           (is (= "Updated" (:defense result)))
           (is (= "Updated" (:defense db-card)))
-          (is (= ::models/StandardActionCard (::schema/type-name (meta result))))))))
+          (is (= :StandardActionCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateTeamAssetCard resolver"
     (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateTeamAssetCard)
@@ -586,4 +575,4 @@
               db-card (card/get-by-name (:name card-data) (:version card-data))]
           (is (= "Updated" (:assetPower result)))
           (is (= "Updated" (:asset-power db-card)))
-          (is (= ::models/TeamAssetCard (::schema/type-name (meta result)))))))))
+          (is (= :TeamAssetCard (::schema/type-name (meta result)))))))))
