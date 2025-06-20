@@ -26,24 +26,55 @@
           "New Card"))))
 
 (defui card-autoupdate [{:keys [card dispatch-card!]}]
-  (let [[update-card! {:keys [data]}] (card.hooks/use-card-update (:card-type card))
-        debounced-card (card.hooks/use-debounce (dissoc card
-                                                        :updated-at
-                                                        :created-at
-                                                        :game-asset)
-                                                500)
-        is-initial-mount (uix/use-ref true)]
+  (let [[update-card! {:keys [data loading]}] (card.hooks/use-card-update (:card-type card))
+        debounced-card (card.hooks/use-debounce card 500)
+        is-initial-mount (uix/use-ref true)
+        last-synced-card (uix/use-ref card)]
+
     (uix/use-effect
      (fn []
-       (if @is-initial-mount
-         (reset! is-initial-mount false)
-         (update-card! {:variables debounced-card})))
-     [debounced-card update-card!])
+       ;; Prepare card data for comparison by removing server-set fields
+       (let [card-to-compare (dissoc debounced-card
+                                     :updated-at
+                                     :created-at
+                                     :game-asset
+                                     :__typename)
+             last-synced (dissoc @last-synced-card
+                                 :updated-at
+                                 :created-at
+                                 :game-asset
+                                 :__typename)]
+         (prn card-to-compare)
+         (prn last-synced)
+         (cond
+           ;; Don't run on initial mount
+           @is-initial-mount
+           (reset! is-initial-mount false)
+
+           ;; Don't run if a mutation is already in flight
+           loading
+           nil
+
+           ;; Don't run if the user's debounced changes match the last synced state
+           (= card-to-compare last-synced)
+           nil
+
+           ;; Otherwise, perform the update, sending only the necessary fields
+           :else
+           (do
+             (reset! last-synced-card card-to-compare)
+             (update-card! {:variables card-to-compare})))))
+     ;; Dependencies for this effect
+     [debounced-card loading update-card!])
+
+    ;; Effect to update local state when the server responds with new data
     (uix/use-effect
      (fn []
        (when-let [updated-card (-> data vals first)]
+         ;; Update the main state via the reducer
          (card-reducer/reset-state! dispatch-card! updated-card)))
      [dispatch-card! data]))
+
   ($ edit-card {:card card
                 :new? false
                 :update-card-field (card-reducer/update-field-dispatch dispatch-card!)}))

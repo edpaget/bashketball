@@ -11,7 +11,8 @@
      ($ headless/Input {:value (get card field "")
                         :type input-type
                         :name (name field)
-                        :on-change #(on-change field (.. % -target -value))
+                        :on-change #(on-change field (cond-> (.. % -target -value)
+                                                       (= input-type "number") js/parseInt))
                         :class "flex-grow mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})))
 
 (defui multi-text [{:keys [name ui/label field card on-change]}]

@@ -184,6 +184,7 @@
       (authn.handler/make-token-authorization-creator
        {:authenticator (authn.handler/make-id-token-authenticator
                         {:jwks-url ""
+                         :email-validator (constantly true)
                          :strategy :identity-strategy/INVALID}
                         (fn [_jwks-url token]
                           (when (= "test-user-token" token)

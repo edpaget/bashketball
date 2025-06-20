@@ -32,7 +32,7 @@
     [:pss [:maybe :int]]
     [:def [:maybe :int]]
     [:speed [:maybe :int]]
-    [:size [:maybe :string]]
+    [:size [:maybe ::models/PlayerSize]]
     [:abilities [:maybe [:vector :string]]]]
    :card-type-enum/ABILITY_CARD
    [[:name :string]
