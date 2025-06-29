@@ -1,4 +1,4 @@
-(ns app.asset-test
+(ns app.asset.resolvers-test
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [clojure.string :as str]

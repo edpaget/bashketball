@@ -1,4 +1,4 @@
-(ns app.actor-test
+(ns app.actor.resolvers-test
   (:require
    [app.actor]
    [app.graphql.resolvers :as gql.resolvers]

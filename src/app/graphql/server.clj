@@ -2,9 +2,9 @@
   "Take a map of graphql queries and mutations and convert them into a lacina schema"
   (:require
    ;; require namespaces with resolvers
-   [app.actor]
-   [app.asset]
-   [app.card]
+   [app.actor.resolvers]
+   [app.asset.resolvers]
+   [app.card.resolvers]
 
    ;; deps
    [app.graphql.compiler :as gql.compiler]
@@ -32,7 +32,6 @@
 
 (defn- build-graphql-schema
   [resolvers-map]
-  (clojure.pprint/pprint (gql.compiler/name->tuple->graphql-schema resolvers-map))
   (-> (gql.compiler/name->tuple->graphql-schema resolvers-map)
       date-scalar
       uuid-scalar

@@ -1,4 +1,4 @@
-(ns app.asset
+(ns app.asset.resolvers
   (:require
    [app.db :as db]
    [app.graphql.resolvers :as gql.resolvers]

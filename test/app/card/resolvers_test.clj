@@ -1,4 +1,4 @@
-(ns app.card-test
+(ns app.card.resolvers-test
   (:require
    [clojure.test :refer [deftest is use-fixtures testing]]
    [app.card :as card]

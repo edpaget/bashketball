@@ -1,4 +1,4 @@
-(ns app.actor
+(ns app.actor.resolvers
   (:require
    [app.models :as models]
    [app.graphql.resolvers :as gql]))
