@@ -58,6 +58,12 @@
 (def ComplexInputTypeTest [:map {:graphql/type "ComplexInputTypeTest"} [:filter :string] [:count :int]])
 (def ComplexInputQueryResult [:map {:graphql/type "ComplexInputQueryResult"} [:status :boolean]])
 
+;; Schema for registered operation arguments test
+(def RegisteredOperationArgs
+  [:map
+   [:arg1 :string]
+   [:arg2 [:maybe :int]]])
+
 ;; --- Local Schemas for Inline Fragment Test ---
 
 (def TestInterfaceBase
@@ -893,6 +899,53 @@
         (finally
           ;; Restore original registry state
           (reset! registry/type-registry type-registry-value))))))
+
+(deftest ->query-and-mutation-with-var-or-registered-args-test
+  (testing "->query with a var holding an args schema"
+    (let [[query-str types-map] (sut/->query
+                                 {:Query/someQuery (list [SimpleObject :id] :arg1 :arg2)}
+                                 "SomeQueryWithVarargs"
+                                 RegisteredOperationArgs)]
+      (is (= "query SomeQueryWithVarargs($arg1: String!, $arg2: Int) { someQuery(arg1: $arg1, arg2: $arg2) { id } }" query-str)
+          "Should correctly compile a query using a var for operation arguments.")
+      (is (= {"SimpleObject" SimpleObject} types-map))))
+
+  (testing "->query with registered schema for operation arguments"
+    (let [type-registry-backup @registry/type-registry]
+      (try
+        (registry/register-type! ::RegisteredOperationArgs RegisteredOperationArgs)
+        (let [[query-str types-map] (sut/->query
+                                     {:Query/someQuery (list [SimpleObject :id] :arg1 :arg2)}
+                                     "SomeQueryWithRegisteredArgs"
+                                     ::RegisteredOperationArgs)]
+          (is (= "query SomeQueryWithRegisteredArgs($arg1: String!, $arg2: Int) { someQuery(arg1: $arg1, arg2: $arg2) { id } }" query-str)
+              "Should correctly compile a query using a registered schema for operation arguments.")
+          (is (= {"SimpleObject" SimpleObject} types-map)))
+        (finally
+          (reset! registry/type-registry type-registry-backup)))))
+
+  (testing "->mutation with a var holding an args schema"
+    (let [[mutation-str types-map] (sut/->mutation
+                                     {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
+                                     "SomeMutationWithVarargs"
+                                     RegisteredOperationArgs)]
+      (is (= "mutation SomeMutationWithVarargs($arg1: String!, $arg2: Int) { someMutation(arg1: $arg1, arg2: $arg2) { name } }" mutation-str)
+          "Should correctly compile a mutation using a var for operation arguments.")
+      (is (= {"SimpleObject" SimpleObject} types-map))))
+
+  (testing "->mutation with registered schema for operation arguments"
+    (let [type-registry-backup @registry/type-registry]
+      (try
+        (registry/register-type! ::RegisteredOperationArgs RegisteredOperationArgs)
+        (let [[mutation-str types-map] (sut/->mutation
+                                         {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
+                                         "SomeMutationWithRegisteredArgs"
+                                         ::RegisteredOperationArgs)]
+          (is (= "mutation SomeMutationWithRegisteredArgs($arg1: String!, $arg2: Int) { someMutation(arg1: $arg1, arg2: $arg2) { name } }" mutation-str)
+              "Should correctly compile a mutation using a registered schema for operation arguments.")
+          (is (= {"SimpleObject" SimpleObject} types-map)))
+        (finally
+          (reset! registry/type-registry type-registry-backup))))))
 
 (deftest ->mutation-test
   (testing "should return a mutation with the given fields"

@@ -329,7 +329,10 @@
   [arguments]
   (when arguments
     (let [schema (mc/schema arguments)]
-      (when (= :map (mc/type schema))
+      (case (mc/type schema)
+        ::mc/schema
+        (compile-operation-arguments (mc/deref schema))
+        :map
         (for [[var-name _ var-type] (mc/children schema)]
           [(csk/->camelCaseString (name var-name))
            (->graphql-type-string (mc/walk var-type ->graphql-type))])))))
