@@ -1,7 +1,7 @@
 (ns app.card.resolvers
   (:refer-clojure :exclude [list])
   (:require
-   [app.asset :as asset]
+   [app.asset.resolvers :as asset]
    [app.card.graphql-types :as card-gql-types]
    [app.db :as db]
    [app.graphql.compiler :as gql.compiler]

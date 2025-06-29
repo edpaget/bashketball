@@ -1,12 +1,12 @@
 (ns dev.upload-assets
   (:require
-   [app.asset :as app-asset]
-   [app.integrant :as i]
+   [app.asset.resolvers :as asset]
+   [app.card.resolvers :as card]
    [app.db :as db]
+   [app.integrant :as i]
    [app.s3 :as s3]
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
-   [app.card :as card])
+   [clojure.tools.logging :as log])
   (:import
    [java.nio.file Files])
   (:gen-class))
@@ -23,7 +23,7 @@
       (if-not (.exists file-to-upload)
         (log/errorf "File not found: %s. Asset processing aborted." file-path)
         (binding [s3/*s3-client* s3-client]
-          (->> (app-asset/create-and-upload-asset (-> config :game-assets :asset-path)
+          (->> (asset/create-and-upload-asset (-> config :game-assets :asset-path)
                                                   (Files/probeContentType (.toPath file-to-upload))
                                                   (Files/readAllBytes (.toPath file-to-upload)))
                (card/set-game-asset-id card-name card-version)))))))

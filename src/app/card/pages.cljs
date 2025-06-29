@@ -8,7 +8,9 @@
    [app.card.hooks :as card.hooks]
    [app.card.reducer :as card-reducer]
    [app.card.show :refer [show-card]]
-   [app.models :as models]))
+   [app.models :as models]
+   ["@headlessui/react" :as headless]
+   [app.card.graphql-types :as card.gql-types]))
 
 (defui cards-index []
   (let [{:keys [loading data]} (gql.client/use-query {:Query/cards [::models/Card]} "getAllCards")]
@@ -31,19 +33,12 @@
         is-initial-mount (uix/use-ref true)
         last-synced-card (uix/use-ref card)]
 
+    ;; Effect to send updates to the server
     (uix/use-effect
      (fn []
        ;; Prepare card data for comparison by removing server-set fields
-       (let [card-to-compare (dissoc debounced-card
-                                     :updated-at
-                                     :created-at
-                                     :game-asset
-                                     :__typename)
-             last-synced (dissoc @last-synced-card
-                                 :updated-at
-                                 :created-at
-                                 :game-asset
-                                 :__typename)]
+       (let [card-to-compare (dissoc debounced-card :updated-at :created-at :game-asset :__typename)
+             last-synced (dissoc @last-synced-card :updated-at :created-at :game-asset :__typename)]
          (cond
            ;; Don't run on initial mount
            @is-initial-mount
@@ -59,9 +54,7 @@
 
            ;; Otherwise, perform the update, sending only the necessary fields
            :else
-           (do
-             (reset! last-synced-card card-to-compare)
-             (update-card! {:variables card-to-compare})))))
+           (update-card! {:variables card-to-compare}))))
      ;; Dependencies for this effect
      [debounced-card loading update-card!])
 
@@ -69,6 +62,8 @@
     (uix/use-effect
      (fn []
        (when-let [updated-card (-> data vals first)]
+         ;; Update our reference to the last synced state
+         (reset! last-synced-card updated-card)
          ;; Update the main state via the reducer
          (card-reducer/reset-state! dispatch-card! updated-card)))
      [dispatch-card! data]))
@@ -90,7 +85,7 @@
                                             [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
                                            :name)}
                         "getMostRecentCardVersionByName"
-                        [[:name :string]]
+                        ::card.gql-types/card-args
                         {:name card-id})
         [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})]
     (uix/use-effect (fn []
@@ -106,7 +101,14 @@
                ($ card-autoupdate {:card card :dispatch-card! dispatch-card!})))))))
 
 (defui cards-new []
-  (let [[card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})]
+  (let [[card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})
+        [create-card! {:keys [data loading]}] (card.hooks/use-card-create (:card-type card))
+        handle-submit #(create-card! {:variables card})]
+    (uix/use-effect
+     (fn []
+       (when-let [new-card (-> data vals first)]
+         (router/navigate! :cards-show {:id (:name new-card)})))
+     [data])
     ;; Wrap content in a styled container, similar to cards-show
     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
        ($ :div {} ; Column for showing the card preview
@@ -115,4 +117,10 @@
           ($ authn/login-required {:show-prompt false}
              ($ edit-card {:card card
                            :new? true
-                           :update-card-field (card-reducer/update-field-dispatch dispatch-card!)}))))))
+                           :update-card-field (card-reducer/update-field-dispatch dispatch-card!)})
+             ($ :div {:class "mt-6 flex justify-end max-w-2xl mx-auto"}
+                ($ headless/Button {:type "button"
+                                    :on-click handle-submit
+                                    :disabled (or loading (not create-card!))
+                                    :class "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"}
+                   (if loading "Creating..." "Create Card"))))))))

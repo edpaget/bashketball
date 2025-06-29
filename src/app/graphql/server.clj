@@ -7,16 +7,16 @@
    [app.card.resolvers]
 
    ;; deps
+   [app.authz.middleware :as authz]
    [app.graphql.compiler :as gql.compiler]
    [app.graphql.resolvers :as gql.resolvers]
-   [java-time.api :as t]
    [clojure.tools.logging :as log]
    [com.walmartlabs.lacinia :as lacina]
    [com.walmartlabs.lacinia.schema :as lacina.schema]
    [com.walmartlabs.lacinia.util :as lacina.util]
-   [ring.util.response :as ring.response]
    [integrant.core :as ig]
-   [app.authz.middleware :as authz]))
+   [java-time.api :as t]
+   [ring.util.response :as ring.response]))
 
 (defn- date-scalar
   [schema]
@@ -70,6 +70,8 @@
       wrap-graphql-request))
 
 (defmethod ig/init-key ::resolvers [_ _]
-  (merge (gql.resolvers/ns-gql-resolvers 'app.actor)
-         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.asset) authz/wrap-require-login)
-         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.card) authz/wrap-require-login)))
+  (merge (gql.resolvers/ns-gql-resolvers 'app.actor.resolvers)
+         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.asset.resolvers)
+           authz/wrap-require-login)
+         (with-middleware (gql.resolvers/ns-gql-resolvers 'app.card.resolvers)
+           authz/wrap-require-login)))

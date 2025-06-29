@@ -41,13 +41,13 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:deck-size {:optional true} :int]
-   [:sht {:optional true} :int]
-   [:pss {:optional true} :int]
-   [:def {:optional true} :int]
-   [:speed {:optional true} :int]
-   [:size {:optional true} ::models/PlayerSize]
-   [:abilities {:optional true} [:vector :string]]])
+   [:deck-size {:optional true} [:maybe :int]]
+   [:sht {:optional true} [:maybe :int]]
+   [:pss {:optional true} [:maybe :int]]
+   [:def {:optional true} [:maybe :int]]
+   [:speed {:optional true} [:maybe :int]]
+   [:size {:optional true} [:maybe ::models/PlayerSize]]
+   [:abilities {:optional true} [:maybe [:vector :string]]]])
 
 ;; --- AbilityCard ---
 (registry/defschema ::ability-card-args
@@ -62,7 +62,7 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:abilities {:optional true} [:vector :string]]])
+   [:abilities {:optional true} [:maybe [:vector :string]]]])
 
 ;; --- SplitPlayCard ---
 (registry/defschema ::split-play-card-args
@@ -79,9 +79,9 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} :int]
-   [:offense {:optional true} :string]
-   [:defense {:optional true} :string]])
+   [:fate {:optional true} [:maybe :int]]
+   [:offense {:optional true} [:maybe :string]]
+   [:defense {:optional true} [:maybe :string]]])
 
 ;; --- PlayCard ---
 (registry/defschema ::play-card-args
@@ -97,8 +97,8 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} :int]
-   [:play {:optional true} :string]])
+   [:fate {:optional true} [:maybe :int]]
+   [:play {:optional true} [:maybe :string]]])
 
 ;; --- CoachingCard ---
 (registry/defschema ::coaching-card-args
@@ -114,8 +114,8 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} :int]
-   [:coaching {:optional true} :string]])
+   [:fate {:optional true} [:maybe :int]]
+   [:coaching {:optional true} [:maybe :string]]])
 
 ;; --- StandardActionCard ---
 (registry/defschema ::standard-action-card-args
@@ -132,9 +132,9 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} :int]
-   [:offense {:optional true} :string]
-   [:defense {:optional true} :string]])
+   [:fate {:optional true} [:maybe :int]]
+   [:offense {:optional true} [:maybe :string]]
+   [:defense {:optional true} [:maybe :string]]])
 
 ;; --- TeamAssetCard ---
 (registry/defschema ::team-asset-card-args
@@ -150,5 +150,5 @@
    [:name :string]
    [:version :string]
    [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} :int]
-   [:asset-power {:optional true} :string]])
+   [:fate {:optional true} [:maybe :int]]
+   [:asset-power {:optional true} [:maybe :string]]])

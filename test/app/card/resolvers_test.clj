@@ -1,7 +1,7 @@
 (ns app.card.resolvers-test
   (:require
    [clojure.test :refer [deftest is use-fixtures testing]]
-   [app.card :as card]
+   [app.card.resolvers :as card]
    [app.db :as db]
    [app.models :as models]
    [app.test-utils :as tu]
@@ -228,7 +228,7 @@
 
 (deftest query-card-resolver-test
   (testing "Query/card resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Query/card)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Query/card)
           card-data-v0 {:name "Resolver Test Card"
                         :version "0"
                         :card-type (db/->pg_enum :card-type-enum/PLAYER_CARD)
@@ -274,7 +274,7 @@
 
 (deftest create-card-mutations-test
   (testing "Mutation/createPlayerCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createPlayerCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createPlayerCard)
           base-valid-args {:name "Mutation Player Card"
                            :version "mpc0"
                            :deck-size 10
@@ -311,7 +311,7 @@
                          [:resolved-value :data])))))))
 
   (testing "Mutation/createAbilityCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createAbilityCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createAbilityCard)
           input-args {:name "Mutation Ability Card"
                       :version "mac0"
                       :abilities ["Extra Power"]}
@@ -325,7 +325,7 @@
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
 
   (testing "Mutation/createSplitPlayCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createSplitPlayCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createSplitPlayCard)
           input-args {:name "Mutation SplitPlay Card"
                       :version "mspc0"
                       :fate 1
@@ -341,7 +341,7 @@
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
 
   (testing "Mutation/createPlayCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createPlayCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createPlayCard)
           input-args {:name "Mutation Play Card"
                       :version "mpc1"
                       :fate 2
@@ -356,7 +356,7 @@
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
 
   (testing "Mutation/createCoachingCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createCoachingCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createCoachingCard)
           input-args {:name "Mutation Coaching Card"
                       :version "mcc0"
                       :fate 3
@@ -371,7 +371,7 @@
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
 
   (testing "Mutation/createStandardActionCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createStandardActionCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createStandardActionCard)
           input-args {:name "Mutation Standard Action Card"
                       :version "msac0"
                       :fate 1
@@ -387,7 +387,7 @@
       (is (= expected-db-card (select-keys db-card (keys expected-db-card))))))
 
   (testing "Mutation/createTeamAssetCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/createTeamAssetCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/createTeamAssetCard)
           input-args {:name "Mutation Team Asset Card"
                       :version "mtac0"
                       :fate 0
@@ -479,7 +479,7 @@
 
 (deftest update-card-mutations-test
   (testing "Mutation/updatePlayerCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updatePlayerCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updatePlayerCard)
           card-data {:name "Update Player Card"
                      :version "upc0"
                      :card-type (db/->pg_enum :card-type-enum/PLAYER_CARD)
@@ -511,7 +511,7 @@
             (is (= :PlayerCard (::schema/type-name (meta result)))))))))
 
   (testing "Mutation/updateAbilityCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateAbilityCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updateAbilityCard)
           card-data {:name "Update Ability Card", :version "uac0", :card-type (db/->pg_enum :card-type-enum/ABILITY_CARD), :abilities [:lift ["Initial"]]}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update Ability Card", :version "uac0", :abilities ["Updated"]}
@@ -522,7 +522,7 @@
           (is (= :AbilityCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateSplitPlayCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateSplitPlayCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updateSplitPlayCard)
           card-data {:name "Update SPC", :version "uspc0", :card-type (db/->pg_enum :card-type-enum/SPLIT_PLAY_CARD), :fate 1, :offense "O1", :defense "D1"}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update SPC", :version "uspc0", :fate 2, :offense "O2"}
@@ -534,7 +534,7 @@
           (is (= :SplitPlayCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updatePlayCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updatePlayCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updatePlayCard)
           card-data {:name "Update PC", :version "upc1", :card-type (db/->pg_enum :card-type-enum/PLAY_CARD), :play "Initial"}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update PC", :version "upc1", :play "Updated"}
@@ -545,7 +545,7 @@
           (is (= :PlayCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateCoachingCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateCoachingCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updateCoachingCard)
           card-data {:name "Update CC", :version "ucc0", :card-type (db/->pg_enum :card-type-enum/COACHING_CARD), :coaching "Initial"}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update CC", :version "ucc0", :coaching "Updated"}
@@ -556,7 +556,7 @@
           (is (= :CoachingCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateStandardActionCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateStandardActionCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updateStandardActionCard)
           card-data {:name "Update SAC", :version "usac0", :card-type (db/->pg_enum :card-type-enum/STANDARD_ACTION_CARD), :defense "Initial"}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update SAC", :version "usac0", :defense "Updated"}
@@ -567,7 +567,7 @@
           (is (= :StandardActionCard (::schema/type-name (meta result))))))))
 
   (testing "Mutation/updateTeamAssetCard resolver"
-    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card :Mutation/updateTeamAssetCard)
+    (let [resolver-fn (gql.resolvers/get-resolver-fn 'app.card.resolvers :Mutation/updateTeamAssetCard)
           card-data {:name "Update TAC", :version "utac0", :card-type (db/->pg_enum :card-type-enum/TEAM_ASSET_CARD), :asset-power "Initial"}]
       (tu/with-inserted-data [::models/GameCard card-data]
         (let [update-args {:name "Update TAC", :version "utac0", :asset-power "Updated"}

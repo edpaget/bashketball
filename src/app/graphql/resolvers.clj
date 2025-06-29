@@ -1,10 +1,10 @@
 (ns app.graphql.resolvers
   (:require
+   [app.graphql.transformer :as gql.transformer]
    [app.registry :as registry]
+   [clojure.tools.logging :as log]
    [com.walmartlabs.lacinia.resolve :as lacinia.resolve]
    [malli.core :as mc]
-   [app.graphql.transformer :as gql.transformer]
-   [clojure.tools.logging :as log]
    [malli.error :as merr]))
 
 (defn register-resolver! [target-ns graphql-operation schema fn-sym & {:keys [doc-string]}]

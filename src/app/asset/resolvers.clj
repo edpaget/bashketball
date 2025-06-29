@@ -1,11 +1,12 @@
 (ns app.asset.resolvers
   (:require
+   [app.asset.graphql-types :as asset.gql-types]
    [app.db :as db]
    [app.graphql.resolvers :as gql.resolvers]
    [app.models :as models]
    [app.s3 :as s3]
-   [malli.experimental :as me]
-   [clojure.tools.logging :as log])
+   [clojure.tools.logging :as log]
+   [malli.experimental :as me])
   (:import
    [java.util Base64]))
 
@@ -64,9 +65,7 @@
         [:map
          [:config [:map [:game-assets [:map [:asset-path :string]]]]]
          [:s3-client ::s3/client]]
-        [:map
-         [:mime-type :string]
-         [:img-blob :string]]
+        ::asset.gql-types/create-asset-args
         :any]
    ::models/GameAsset]
   [{:keys [config]} {:keys [mime-type img-blob]} _]

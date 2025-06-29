@@ -33,7 +33,8 @@
                               dev.weavejester/hashp {:mvn/version "0.3.0"}
                               integrant/repl {:mvn/version "0.4.0"}
                               org.duct-framework/compiler.cljs.shadow {:mvn/version "0.1.2"}
-                              thheller/shadow-cljs {:mvn/version "3.1.4"}}}
+                              thheller/shadow-cljs {:mvn/version "3.1.4"}}
+                 :extra-paths ["dev"]}
            :nrepl {:extra-deps {nrepl/nrepl {:mvn/version "1.3.1"}}
                    :jvm-opts ["-Djdk.attach.allowAttachSelf"]
                    :main-opts ["-m" "nrepl.cmdline" "--port" "7888"]}

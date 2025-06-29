@@ -1,14 +1,14 @@
 (ns app.asset.resolvers-test
   (:require
-   [clojure.test :refer [deftest testing is use-fixtures]]
-   [clojure.string :as str]
-   [app.asset]
-   [app.s3 :as s3]
+   [app.asset.resolvers]
    [app.db :as db]
-   [app.test-utils :as tu]
-   [app.test-utils.s3 :as tu.s3]
    [app.graphql.resolvers :as gql.resolvers]
    [app.models :as models]
+   [app.s3 :as s3]
+   [app.test-utils :as tu]
+   [app.test-utils.s3 :as tu.s3]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest testing is use-fixtures]]
    [cognitect.aws.client.api :as aws]) ; Added for aws/client
   (:import
    [java.util Base64]))
@@ -16,7 +16,7 @@
 (use-fixtures :once tu.s3/s3-test-fixture tu/db-fixture)
 (use-fixtures :each tu/rollback-fixture)
 
-(def ^:private resolver-fn (gql.resolvers/get-resolver-fn 'app.asset :Mutation/createAsset))
+(def ^:private resolver-fn (gql.resolvers/get-resolver-fn 'app.asset.resolvers :Mutation/createAsset))
 (def ^:private test-asset-base-path "test-assets")
 (def ^:private mock-config {:game-assets {:asset-path test-asset-base-path}})
 

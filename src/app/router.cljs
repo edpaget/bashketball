@@ -48,3 +48,8 @@
 (defn href
   [page & args]
   (apply rfe/href page args))
+
+(defn navigate!
+  [page & args]
+  (.push js/window.history (apply href page args))
+  )

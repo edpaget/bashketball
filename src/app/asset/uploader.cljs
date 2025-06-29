@@ -1,9 +1,11 @@
 (ns app.asset.uploader
   (:require
+   ["@headlessui/react" :as headless]
+
+   [app.asset.graphql-types :as asset.gql-types]
    [app.graphql.client :as gql.client]
    [app.models :as models]
-   [uix.core :as uix :refer [defui $]]
-   ["@headlessui/react" :as headless]))
+   [uix.core :as uix :refer [defui $]]))
 
 (defn convert-to-blob
   [event mutate!]
@@ -22,8 +24,7 @@
   (let [[mutate! {:keys [loading data error]}] (gql.client/use-mutation {:Mutation/createAsset '([::models/GameAsset :id]
                                                                                                  :mime-type :img-blob)}
                                                                         "createNewCardImage"
-                                                                        [[:mime-type :string]
-                                                                         [:img-blob :string]])]
+                                                                        ::asset.gql-types/create-asset-args)]
     [(cond
        loading {:state :loading}
        error   {:state :error :value error}

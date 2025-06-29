@@ -1,11 +1,11 @@
 (ns app.actor.resolvers-test
   (:require
-   [app.actor]
+   [app.actor.resolvers]
    [app.graphql.resolvers :as gql.resolvers]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]))
 
-(def current-actor (gql.resolvers/get-resolver-fn 'app.actor :Query/me))
+(def current-actor (gql.resolvers/get-resolver-fn 'app.actor.resolvers :Query/me))
 
 (deftest current-actor-test
   (testing "when current-actor exists in request context"
