@@ -1,7 +1,7 @@
 (ns app.actor.resolvers
   (:require
-   [app.models :as models]
-   [app.graphql.resolvers :as gql]))
+   [app.graphql.resolvers :as gql]
+   [app.models :as models]))
 
 (gql/defresolver :Query/me
   "Graphql query to get the current actor of a request"

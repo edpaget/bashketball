@@ -3,8 +3,8 @@
   (:require
    [app.models]
    [camel-snake-kebab.core :as csk]
-   [malli.core :as mc]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [malli.core :as mc]))
 
 (def ^:dynamic *type-collector* "atom that is bound to collect new types" nil)
 (def ^:dynamic *object-type* "Switches what type of object is " :objects)
