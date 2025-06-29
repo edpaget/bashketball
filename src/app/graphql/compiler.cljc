@@ -325,6 +325,22 @@
    :form form
    :field (csk/->camelCaseKeyword (name form))})
 
+(defn- compile-operation-arguments
+  [arguments]
+  (when arguments
+    (let [schema (mc/schema arguments)]
+      (when (= :map (mc/type schema))
+        (for [[var-name _ var-type] (mc/children schema)]
+          [(csk/->camelCaseString (name var-name))
+           (->graphql-type-string (mc/walk var-type ->graphql-type))])))))
+
+(defn- build-type-map
+  [ast]
+  (let [types (keep :schema (tree-seq #(or (seq? %) (map? %))
+                                    #(or (:children %) (seq %))
+                                    ast))]
+    (zipmap (map (comp name ->graphql-type-name) types) types)))
+
 (defn ->query
   "Constructs a GraphQL query string and a map of __typename to Malli schemas.
 
@@ -361,11 +377,10 @@
   2. `operation-name` (String, optional):
      An optional name for the GraphQL operation (e.g., \"GetUserQuery\").
 
-  3. `operation-args` (Vector of pairs, optional):
-     Defines variables for the GraphQL operation. Each pair is `[:variableName malli-type]`.
-     - `:variableName`: Keyword for the variable (e.g., :userId).
-     - `malli-type`: Malli schema for the variable's type (e.g., :string, :int, [:maybe :uuid]).
-       A non-maybe type implies a non-null GraphQL type (e.g., String!).
+  3. `operation-args` (Malli `:map` schema, optional):
+     Defines variables for the GraphQL operation from a Malli `:map` schema.
+     For example, `[:map [:userId :uuid]]` defines a variable `$userId` of type `Uuid!`.
+     A non-maybe type implies a non-null GraphQL type.
 
   Returns:
   A tuple: `[query-string, typename->schema-map]`
@@ -386,14 +401,14 @@
   ;; Query with an operation name and operation arguments
   (->query {:Query/userById [:app.models/User :id :email]}
            \"GetUser\"
-           [[:userId :uuid]]) ; :uuid implies Uuid!
+           [:map [:userId :uuid]]) ; :uuid implies Uuid!
   ; => [\"query GetUser($userId: Uuid!) { userById { id email } }\",
   ;     {\"User\" :app.models/User}]
 
   ;; Query with field arguments (linking to operation arguments)
   (->query '({:Query/userSearch [:app.models/User :name]} :searchTerm) ; Field arg
            \"SearchUsers\"
-           [[:searchTerm [:maybe :string]]]) ; Operation arg, [:maybe :string] implies String
+           [:map [:searchTerm [:maybe :string]]]) ; Operation arg, [:maybe :string] implies String
   ; => [\"query SearchUsers($searchTerm: String) { userSearch(searchTerm: $searchTerm) { name } }\",
   ;     {\"User\" :app.models/User}]
 
@@ -421,19 +436,55 @@
    (let [ast {:type ::root
               :children (->query-ast query)
               :name operation-name
-              :arguments (when arguments
-                           (map (fn [[gql-var gql-type]]
-                                  [(csk/->camelCaseString (name gql-var))
-                                   (->graphql-type-string (mc/walk gql-type ->graphql-type))])
-                                arguments))}
-
-         types (keep :schema (tree-seq #(or (seq? %) (map? %))
-                                       #(or (:children %) (seq %))
-                                       ast))]
+              :arguments (compile-operation-arguments arguments)}]
      [(->graphql-string ast {})
-      (zipmap (map (comp name ->graphql-type-name) types) types)])))
+      (build-type-map ast)])))
 
 (defn ->mutation
+  "Constructs a GraphQL mutation string and a map of __typename to Malli schemas.
+
+  This function is analogous to `->query`, but generates a `mutation` operation.
+  It accepts the same arguments and follows the same structure for describing
+  the selection set on the mutation's return payload.
+
+  The function can be called with one, two, or three arguments:
+  - `(->mutation mutation-desc)`
+  - `(->mutation mutation-desc operation-name)`
+  - `(->mutation mutation-desc operation-name operation-args)`
+
+  1. `mutation-desc` (Map):
+     Describes the GraphQL selection set for the mutation.
+     - Keys: GraphQL mutation names (e.g., :Mutation/createUser).
+     - Values: Vectors defining the selection for that mutation's return payload.
+       The format is identical to `->query`'s `query-desc`.
+
+     Selection Vector Format: `[malli-schema :field1 :field2 ...]`
+
+  2. `operation-name` (String, optional):
+     An optional name for the GraphQL mutation operation (e.g., \"CreateUserMutation\").
+
+  3. `operation-args` (Malli `:map` schema, optional):
+     Defines variables for the GraphQL mutation operation from a Malli `:map` schema.
+     The format is identical to `->query`'s `operation-args`.
+
+  Returns:
+  A tuple: `[mutation-string, typename->schema-map]`
+  - `mutation-string`: The generated GraphQL mutation string.
+  - `typename->schema-map`: A map from GraphQL __typename (string) to its Malli schema.
+
+  Examples:
+
+  ;; Basic mutation for specific fields in the return payload
+  (->mutation {:Mutation/createGame [:app.models/Game :id :status]})
+  ; => [\"mutation { createGame { id status } }\", {\"Game\" :app.models/Game}]
+
+  ;; Mutation with an operation name and arguments, returning a selection set.
+  (->mutation '{:Mutation/createPost ([:app.models/Post :id :title] :title :content)}
+              \"CreatePost\"
+              [:map [:title :string] [:content :string]])
+  ; => [\"mutation CreatePost($title: String!, $content: String!) { createPost(title: $title, content: $content) { id title } }\",
+  ;     {\"Post\" :app.models/Post}]
+  "
   ([query]
    (->mutation query nil nil))
   ([query operation-name] (->mutation query operation-name nil))
@@ -442,17 +493,9 @@
               :operation-type :mutation
               :children (->query-ast query)
               :name operation-name
-              :arguments (when arguments
-                           (map (fn [[gql-var gql-type]]
-                                  [(csk/->camelCaseString (name gql-var))
-                                   (->graphql-type-string (mc/walk gql-type ->graphql-type))])
-                                arguments))}
-
-         types (keep :schema (tree-seq #(or (seq? %) (map? %))
-                                       #(or (:children %) (seq %))
-                                       ast))]
+              :arguments (compile-operation-arguments arguments)}]
      [(->graphql-string ast {})
-      (zipmap (map (comp name ->graphql-type-name) types) types)])))
+      (build-type-map ast)])))
 
 (comment
   (->query {:Query/me [:app.models/Actor :id :useName]})

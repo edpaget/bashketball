@@ -1,12 +1,10 @@
-
-
 (ns app.graphql.compiler-test
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing] :include-macros true])
    [app.graphql.compiler :as sut]
-   [clojure.string :as str]
    [app.registry :as registry]
+   [clojure.string :as str]
    [malli.core :as mc]))
 
 ;; --- Test Data ---
@@ -751,7 +749,7 @@
                                  {:Query/user [Actor :id :user-name]} ; Query body
                                  "GetUserWithVars" ; Operation name
                                  ;; Variable definitions: var-name (keyword) -> malli-type-schema
-                                 [[:userId :string] [:limit :int]])]
+                                 [:map [:userId :string] [:limit :int]])]
       (is (str/starts-with? query-str "query GetUserWithVars("))
       (is (str/ends-with? query-str ") { user { id userName } }"))
 
@@ -773,7 +771,7 @@
     (let [[query-str types-map] (sut/->query
                                  {:Query/processComplex (list [ComplexInputQueryResult :status] :payload)} ; Query body, field takes :payload arg
                                  "ProcessComplexDataOp" ; Operation name
-                                 [[:payload ComplexInputTypeTest]])] ; Operation variable :payload of complex type
+                                 [:map [:payload ComplexInputTypeTest]])] ; Operation variable :payload of complex type
       ;; Expected: query ProcessComplexDataOp($payload: !ComplexInputTypeTest) { processComplex(payload: $payload) { status } }
       (is (= "query ProcessComplexDataOp($payload: ComplexInputTypeTest!) { processComplex(payload: $payload) { status } }" query-str)
           "Should correctly format operation variable of complex input type and use it in field argument.")
@@ -827,7 +825,7 @@
     (let [[query-str types-map] (sut/->query
                                  {:Query/userById (list [Actor :id :user-name] :userId)} ; Field `userById` takes arg `userId`
                                  "GetUserByIdOp" ; Operation name
-                                 [[:userId :string] [:limit [:maybe :int]]])] ; Operation variables, :userId matches field arg, :limit is extra
+                                 [:map [:userId :string] [:limit [:maybe :int]]])] ; Operation variables, :userId matches field arg, :limit is extra
       (is (str/starts-with? query-str "query GetUserByIdOp("))
       (is (str/ends-with? query-str ") { userById(userId: $userId) { id userName } }"))
 
