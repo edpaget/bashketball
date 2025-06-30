@@ -10,7 +10,8 @@
    [app.card.show :refer [show-card]]
    [app.models :as models]
    ["@headlessui/react" :as headless]
-   [app.card.graphql-types :as card.gql-types]))
+   [app.card.graphql-types :as card.gql-types]
+   [app.card.state :as card-state]))
 
 (defui cards-index []
   (let [{:keys [loading data]} (gql.client/use-query {:Query/cards [::models/Card]} "getAllCards")]
@@ -28,49 +29,10 @@
           "New Card"))))
 
 (defui card-autoupdate [{:keys [card dispatch-card!]}]
-  (let [[update-card! {:keys [data loading]}] (card.hooks/use-card-update (:card-type card))
-        debounced-card (card.hooks/use-debounce card 500)
-        is-initial-mount (uix/use-ref true)
-        last-synced-card (uix/use-ref card)]
-
-    ;; Effect to send updates to the server
-    (uix/use-effect
-     (fn []
-       ;; Prepare card data for comparison by removing server-set fields
-       (let [card-to-compare (dissoc debounced-card :updated-at :created-at :game-asset :__typename)
-             last-synced (dissoc @last-synced-card :updated-at :created-at :game-asset :__typename)]
-         (cond
-           ;; Don't run on initial mount
-           @is-initial-mount
-           (reset! is-initial-mount false)
-
-           ;; Don't run if a mutation is already in flight
-           loading
-           nil
-
-           ;; Don't run if the user's debounced changes match the last synced state
-           (= card-to-compare last-synced)
-           nil
-
-           ;; Otherwise, perform the update, sending only the necessary fields
-           :else
-           (update-card! {:variables card-to-compare}))))
-     ;; Dependencies for this effect
-     [debounced-card loading update-card!])
-
-    ;; Effect to update local state when the server responds with new data
-    (uix/use-effect
-     (fn []
-       (when-let [updated-card (-> data vals first)]
-         ;; Update our reference to the last synced state
-         (reset! last-synced-card updated-card)
-         ;; Update the main state via the reducer
-         (card-reducer/reset-state! dispatch-card! updated-card)))
-     [dispatch-card! data]))
-
-  ($ edit-card {:card card
-                :new? false
-                :update-card-field (card-reducer/update-field-dispatch dispatch-card!)}))
+  (let [card-state (card-state/use-card-state card :auto-save? true :debounce-ms 500)]
+    ($ edit-card {:card (:card card-state)
+                  :new? false
+                  :update-card-field (:update-field card-state)}))
 
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
