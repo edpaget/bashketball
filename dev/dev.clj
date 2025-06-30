@@ -14,6 +14,7 @@
 (integrant.repl/set-prep! app.i/prep)
 
 (defn cljs-repl
+  "Connect to the running dev shadow-cljs"
   []
   (shadow/repl :dev.integrant/fe-app))
 
