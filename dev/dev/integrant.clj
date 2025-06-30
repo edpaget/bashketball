@@ -3,7 +3,7 @@
   (:require
    [integrant.core :as ig]))
 
-(derive ::fe-app :duct.compiler.cljs.shadow/server)
+(derive ::fe-app :dev.shadow-cljs/server)
 
 (defonce dev-db-pool (atom nil))
 (defonce dev-config (atom nil))
