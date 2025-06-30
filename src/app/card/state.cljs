@@ -150,8 +150,10 @@
         validation-card (card.hooks/use-debounce current-card validate-debounce-ms)
 
         ;; Get mutation hook for this card type
-        [update-card! {:keys [data loading error]}]
-        (card.hooks/use-card-update (:card-type current-card))
+        ;; Get unified mutations for this card type
+        mutations (card.hooks/use-card-mutations (:card-type current-card))
+        {:keys [update]} mutations
+        {:keys [data loading error]} (:state mutations)
 
         ;; Track initial mount and last synced state
         is-initial-mount (uix/use-ref true)
@@ -211,8 +213,8 @@
              :else
              (do
                (dispatch {:type :set-loading :fields (keys card-to-compare)})
-               (update-card! {:variables card-to-compare}))))))
-     [debounced-card loading update-card! auto-save? errors])
+               (update {:variables card-to-compare}))))))
+     [debounced-card loading update auto-save? errors])
 
     ;; Handle server response
     (uix/use-effect
@@ -299,3 +301,4 @@
                         (get validation-errors field-key))
      :has-field-error? (fn [field-key]
                          (contains? validation-errors field-key))}))
+

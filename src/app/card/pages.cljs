@@ -1,17 +1,16 @@
 (ns app.card.pages
   (:require
-   [uix.core :as uix :refer [defui $]]
-   [app.router :as router]
-   [app.graphql.client :as gql.client]
+   ["@headlessui/react" :as headless]
    [app.authn.provider :as authn]
    [app.card.edit :refer [edit-card]]
-   [app.card.hooks :as card.hooks]
-   [app.card.reducer :as card-reducer]
-   [app.card.show :refer [show-card]]
-   [app.models :as models]
-   ["@headlessui/react" :as headless]
    [app.card.graphql-types :as card.gql-types]
-   [app.card.state :as card-state]))
+   [app.card.hooks :as card.hooks]
+   [app.card.show :refer [show-card]]
+   [app.card.state :as card-state]
+   [app.graphql.client :as gql.client]
+   [app.models :as models]
+   [app.router :as router]
+   [uix.core :as uix :refer [defui $]]))
 
 (defui cards-index []
   (let [{:keys [loading data]} (gql.client/use-query {:Query/cards [::models/Card]} "getAllCards")]
@@ -28,12 +27,6 @@
               :className "inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"} ; Styled "New Card" link as a button
           "New Card"))))
 
-(defui card-autoupdate [{:keys [card dispatch-card!]}]
-  (let [card-state (card-state/use-card-state card :auto-save? true :debounce-ms 500)]
-    ($ edit-card {:card (:card card-state)
-                  :new? false
-                  :update-card-field (:update-field card-state)})))
-
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)
         {:keys [data]} (gql.client/use-query
@@ -49,40 +42,79 @@
                         "getMostRecentCardVersionByName"
                         ::card.gql-types/card-args
                         {:name card-id})
-        [card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})]
-    (uix/use-effect (fn []
-                      (when-let [new-card (:card data)]
-                        (card-reducer/reset-state! dispatch-card! new-card))) [data])
-  ;; Wrap content in a styled container
-    ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
-       ($ :div {} ; Column for showing the card
-          ($ show-card card))
-       ($ :div {} ; Column for edit form (conditionally rendered)
-          ($ authn/login-required {:show-prompt false}
-             (when (not-empty card)
-               ($ card-autoupdate {:card card :dispatch-card! dispatch-card!})))))))
 
-(defui cards-new []
-  (let [[card dispatch-card!] (uix/use-reducer card-reducer/card-state-reducer {})
-        [create-card! {:keys [data loading]}] (card.hooks/use-card-create (:card-type card))
-        handle-submit #(create-card! {:variables card})]
+        ;; Use loaded card as initial state for unified state management
+        card (:card data)
+        card-state (card-state/use-card-state card :auto-save? true :debounce-ms 500)]
+
+    ;; Update card state when new data is loaded
     (uix/use-effect
      (fn []
-       (when-let [new-card (-> data vals first)]
+       (when card
+         ((:reset-card card-state) card)))
+     [card])
+
+    ;; Wrap content in a styled container
+    ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
+       ($ :div {} ; Column for showing the card
+          ($ show-card (:card card-state)))
+       ($ :div {} ; Column for edit form (conditionally rendered)
+          ($ authn/login-required {:show-prompt false}
+             (when (:card card-state)
+               ($ edit-card {:card (:card card-state)
+                             :new? false
+                             :update-card-field (:update-field card-state)})))))))
+
+(defui cards-new []
+  (let [;; Initialize with basic card structure
+        initial-card {:card-type :card-type-enum/PLAYER_CARD
+                      :name ""
+                      :fate 1}
+
+        ;; Use unified state management
+        card-state (card-state/use-card-state initial-card
+                                              :auto-save? false
+                                              :validate-on-change? true)
+
+        ;; Get unified mutations
+        mutations (card.hooks/use-card-mutations (:card-type (:card card-state)))
+
+        ;; Handle form submission
+        handle-submit (fn []
+                        (when-not (:has-errors? card-state)
+                          ((:create mutations) {:variables (:card card-state)})))]
+
+    ;; Navigate to card after creation
+    (uix/use-effect
+     (fn []
+       (when-let [new-card (-> (:state mutations) :data vals first)]
          (router/navigate! :cards-show {:id (:name new-card)})))
-     [data])
+     [(:state mutations)])
+
     ;; Wrap content in a styled container, similar to cards-show
     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
        ($ :div {} ; Column for showing the card preview
-          ($ show-card card))
+          ($ show-card (:card card-state)))
        ($ :div {} ; Column for edit form
           ($ authn/login-required {:show-prompt false}
-             ($ edit-card {:card card
+             ($ edit-card {:card (:card card-state)
                            :new? true
-                           :update-card-field (card-reducer/update-field-dispatch dispatch-card!)})
+                           :update-card-field (:update-field card-state)})
+
+             ;; Error display
+             (when (:has-errors? card-state)
+               ($ :div {:class "mt-4 p-3 bg-red-50 border border-red-200 rounded-md max-w-2xl mx-auto"}
+                  ($ :h4 {:class "text-red-800 font-medium mb-2"} "Please fix the following errors:")
+                  ($ :ul {:class "text-red-700 text-sm list-disc list-inside"}
+                     (for [[field error] (:errors card-state)]
+                       ($ :li {:key field} (str (name field) ": " error))))))
+
+             ;; Submit button
              ($ :div {:class "mt-6 flex justify-end max-w-2xl mx-auto"}
                 ($ headless/Button {:type "button"
                                     :on-click handle-submit
-                                    :disabled (or loading (not create-card!))
+                                    :disabled (or (:is-creating? mutations)
+                                                  (:has-errors? card-state)
+                                                  (empty? (get-in card-state [:card :name])))
                                     :class "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"}
-                   (if loading "Creating..." "Create Card"))))))))
+                   (if (:is-creating? mutations) "Creating..." "Create Card"))))))))

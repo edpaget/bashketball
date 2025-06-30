@@ -85,3 +85,65 @@
                            mutation-args)}
      (name mutation-name)
      mutation-args-schema)))
+
+(defhook use-card-mutations
+  "Unified hook providing all card mutations for a specific card type.
+   Returns map with :update, :create, :delete functions and shared state."
+  [card-type]
+  (let [;; Get mutation configurations
+        update-mutation-name (->mutation-name card-type)
+        create-mutation-name (->create-mutation-name card-type)
+        model-type (->model-type card-type)
+        update-args-schema (->update-mutation-args-schema card-type)
+        create-args-schema (->create-mutation-args-schema card-type)
+
+        ;; Extract argument lists
+        update-args (->> update-args-schema mc/schema mc/deref mc/children (map first))
+        create-args (->> create-args-schema mc/schema mc/deref mc/children (map first))
+
+        ;; Create individual mutation hooks
+        [update-fn update-state] (gql.client/use-mutation
+                                  {update-mutation-name
+                                   (list* [model-type :app.graphql.compiler/all-fields
+                                           {:gameAsset [::models/GameAsset]}]
+                                          update-args)}
+                                  (name update-mutation-name)
+                                  update-args-schema)
+
+        [create-fn create-state] (gql.client/use-mutation
+                                  {create-mutation-name
+                                   (list* [model-type :app.graphql.compiler/all-fields]
+                                          create-args)}
+                                  (name create-mutation-name)
+                                  create-args-schema)
+
+        ;; Request deduplication cache
+        pending-requests (uix/use-ref #{})]
+
+    ;; Unified mutation interface
+    {:update (fn [options]
+               (let [request-key [:update (:variables options)]]
+                 (when-not (contains? @pending-requests request-key)
+                   (swap! pending-requests conj request-key)
+                   (-> (update-fn options)
+                       (.finally #(swap! pending-requests disj request-key))))))
+
+     :create (fn [options]
+               (let [request-key [:create (:variables options)]]
+                 (when-not (contains? @pending-requests request-key)
+                   (swap! pending-requests conj request-key)
+                   (-> (create-fn options)
+                       (.finally #(swap! pending-requests disj request-key))))))
+
+     ;; Combined state information
+     :state {:loading (or (:loading update-state) (:loading create-state))
+             :error (or (:error update-state) (:error create-state))
+             :data (or (:data update-state) (:data create-state))
+             :update-state update-state
+             :create-state create-state}
+
+     ;; Utility functions
+     :is-updating? (:loading update-state)
+     :is-creating? (:loading create-state)
+     :has-error? (boolean (or (:error update-state) (:error create-state)))
+     :get-error (or (:error update-state) (:error create-state))}))
