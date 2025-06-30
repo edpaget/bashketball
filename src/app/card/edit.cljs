@@ -1,9 +1,10 @@
 (ns app.card.edit
   (:require
+   ["@headlessui/react" :as headless]
+
    [app.asset.uploader :as a.uploader]
    [app.card.types :as card-types]
-   [uix.core :as uix :refer [defui $]]
-   ["@headlessui/react" :as headless]))
+   [uix.core :as uix :refer [defui $]]))
 
 (defn- maybe-parse-int
   [input-type value]

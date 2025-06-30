@@ -32,7 +32,7 @@
   (let [card-state (card-state/use-card-state card :auto-save? true :debounce-ms 500)]
     ($ edit-card {:card (:card card-state)
                   :new? false
-                  :update-card-field (:update-field card-state)}))
+                  :update-card-field (:update-field card-state)})))
 
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)

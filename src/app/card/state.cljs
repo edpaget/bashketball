@@ -142,6 +142,8 @@
   (let [[state dispatch] (uix/use-reducer card-state-reducer
                                           (initial-card-state initial-card))
 
+        {:keys [card/errors card/dirty]} state
+
         ;; Extract current card data for debouncing
         current-card (:card/data state)
         debounced-card (card.hooks/use-debounce current-card debounce-ms)
@@ -160,7 +162,7 @@
     (uix/use-effect
      (fn []
        (when validate-on-change?
-         (let [dirty-fields (:card/dirty state)
+         (let [dirty-fields dirty
                card-type (:card-type validation-card)]
            (when (seq dirty-fields)
              ;; Mark fields as validating
@@ -184,7 +186,7 @@
            (js/setTimeout
             #(dispatch {:type :set-validating :fields #{}})
             100))))
-     [validation-card validate-on-change? (:card/dirty state)])
+     [validation-card validate-on-change? dirty])
 
     ;; Auto-save effect when auto-save is enabled
     (uix/use-effect
@@ -203,14 +205,14 @@
              nil
 
              ;; Don't save if there are validation errors
-             (seq (:card/errors state))
+             (seq errors)
              nil
 
              :else
              (do
                (dispatch {:type :set-loading :fields (keys card-to-compare)})
                (update-card! {:variables card-to-compare}))))))
-     [debounced-card loading update-card! auto-save? (:card/errors state)])
+     [debounced-card loading update-card! auto-save? errors])
 
     ;; Handle server response
     (uix/use-effect
