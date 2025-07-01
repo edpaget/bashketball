@@ -3,8 +3,8 @@
    [app.card.graphql-types :as card.gql-types]
    [app.graphql.client :as gql.client]
    [app.models :as models]
-   [uix.core :as uix :refer [defhook]]
-   [malli.core :as mc]))
+   [malli.core :as mc]
+   [uix.core :as uix :refer [defhook]]))
 
 (def ^:private ->mutation-name
   {:card-type-enum/PLAYER_CARD :Mutation/updatePlayerCard
@@ -85,6 +85,23 @@
                            mutation-args)}
      (name mutation-name)
      mutation-args-schema)))
+
+(defhook use-card-query
+  "Hook for loading a card by name and version"
+  [card-name & [card-version]]
+  (let [variables {:name card-name
+                   :version (or card-version "0")}]
+    (gql.client/use-query {:Query/card (list [::models/GameCard
+                                              [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/SplitPlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/PlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                              [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
+                                             :name)} :card
+                          ::card.gql-types/card-args
+                          variables)))
 
 (defhook use-card-mutations
   "Unified hook providing all card mutations for a specific card type.

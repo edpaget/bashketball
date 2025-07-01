@@ -68,10 +68,12 @@
    :card/errors {}
    :card/loading #{}
    :card/optimistic {}
-   :card/conflicts {}})
+   :card/conflicts {}
+   :card/loading-card? false
+   :card/load-error nil})
 
 (defn card-state-reducer
-  "Reducer for card state management with validation support"
+  "Reducer for card state management with validation and loading support"
   [state action]
   (prn (:type action))
   (case (:type action)
@@ -94,6 +96,31 @@
           (assoc :card/errors {})
           (assoc :card/validating #{})
           (assoc :card/conflicts {})))
+
+    :loading-card
+    (-> state
+        (assoc :card/loading-card? true)
+        (assoc :card/load-error nil))
+
+    :card-loaded
+    (let [{:keys [card]} action]
+      (-> state
+          (assoc :card/data card)
+          (assoc :card/pristine card)
+          (assoc :card/dirty #{})
+          (assoc :card/loading #{})
+          (assoc :card/optimistic {})
+          (assoc :card/errors {})
+          (assoc :card/validating #{})
+          (assoc :card/conflicts {})
+          (assoc :card/loading-card? false)
+          (assoc :card/load-error nil)))
+
+    :card-load-error
+    (let [{:keys [error]} action]
+      (-> state
+          (assoc :card/loading-card? false)
+          (assoc :card/load-error error)))
 
     :set-loading
     (let [{:keys [fields]} action]
@@ -135,8 +162,8 @@
     state))
 
 (defhook use-card-state
-  "Unified card state management with automatic sync and validation"
-  [initial-card & {:keys [auto-save? debounce-ms validate-on-change? validate-debounce-ms]
+  "Unified card state management with automatic sync, validation, and optional card loading"
+  [initial-card & {:keys [auto-save? debounce-ms validate-on-change? validate-debounce-ms card-name card-version]
                    :or {auto-save? true
                         debounce-ms 500
                         validate-on-change? true
@@ -145,6 +172,10 @@
                                           (initial-card-state initial-card))
 
         {:keys [card/errors card/dirty]} state
+
+        ;; Card loading hook (only when card-name is provided)
+        card-query-result (when card-name
+                            (card.hooks/use-card-query card-name card-version))
 
         ;; Extract current card data for debouncing
         current-card (:card/data state)
@@ -160,6 +191,23 @@
         is-initial-mount (uix/use-ref true)
         last-synced-card (uix/use-ref initial-card)
         validation-cache (uix/use-ref {})]
+
+    ;; Card loading effect
+    (uix/use-effect
+     (fn []
+       (when card-name
+         (let [{:keys [loading data error]} card-query-result]
+           (cond
+             loading
+             (dispatch {:type :loading-card})
+
+             error
+             (dispatch {:type :card-load-error :error (str error)})
+
+             data
+             (when-let [loaded-card (:card data)]
+               (dispatch {:type :card-loaded :card loaded-card}))))))
+     [card-query-result])
 
     ;; Validation effect for changed fields
     (uix/use-effect
@@ -257,11 +305,13 @@
                       (dispatch {:type :set-conflicts :conflicts conflicts}))
      :is-dirty? (boolean (seq (:card/dirty state)))
      :is-loading? loading
+     :is-loading-card? (:card/loading-card? state)
      :is-validating? (boolean (seq (:card/validating state)))
      :has-errors? (boolean (seq (:card/errors state)))
      :has-conflicts? (boolean (seq (:card/conflicts state)))
      :errors (:card/errors state)
      :conflicts (:card/conflicts state)
+     :card-load-error (:card/load-error state)
      :card (:card/data state)}))
 
 (defhook use-card-field
