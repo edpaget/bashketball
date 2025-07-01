@@ -5,64 +5,6 @@
    [clojure.string :as str]
    [uix.core :as uix :refer [defui $]]))
 
-(defmacro defcard-component
-  "Generates type-safe component with proper field validation for a specific card type.
-
-   Usage:
-   (defcard-component my-player-card-editor :card-type-enum/PLAYER_CARD
-     [card-state]
-     ($ :div
-        ($ card-field {:field-key :sht :card-state card-state})
-        ($ card-field {:field-key :name :card-state card-state})))
-
-   Benefits:
-   - Compile-time validation of field usage
-   - Auto-generated field validation
-   - Self-documenting components
-   - IDE support for field names"
-  [component-name card-type params & body]
-  (let [valid-fields (case card-type
-                       :card-type-enum/PLAYER_CARD #{:name :sht :pss :def :speed :size :fate :offense :defense :abilities :card-type :game-asset-id}
-                       :card-type-enum/ABILITY_CARD #{:name :fate :abilities :card-type :game-asset-id}
-                       :card-type-enum/SPLIT_PLAY_CARD #{:name :fate :offense :play :abilities :card-type :game-asset-id}
-                       :card-type-enum/PLAY_CARD #{:name :fate :play :abilities :card-type :game-asset-id}
-                       :card-type-enum/COACHING_CARD #{:name :fate :coaching :abilities :card-type :game-asset-id}
-                       :card-type-enum/STANDARD_ACTION_CARD #{:name :fate :abilities :card-type :game-asset-id}
-                       :card-type-enum/TEAM_ASSET_CARD #{:name :fate :abilities :card-type :game-asset-id}
-                       #{:name :fate :abilities :card-type :game-asset-id}) ; fallback
-
-        ;; Extract field usage from body (simplified analysis)
-        field-usage (atom #{})
-
-        ;; Helper function to validate field usage at compile time
-        validate-body (fn validate-body [form]
-                        (when (and (seq? form) (= (first form) 'card-field))
-                          (let [field-key (get-in form [1 :field-key])]
-                            (when (keyword? field-key)
-                              (swap! field-usage conj field-key)
-                              (when-not (contains? valid-fields field-key)
-                                (throw (ex-info (str "Invalid field " field-key " for card type " card-type ". Valid fields: " valid-fields)
-                                                {:field field-key
-                                                 :card-type card-type
-                                                 :valid-fields valid-fields}))))))
-                        (when (coll? form)
-                          (doseq [child form]
-                            (validate-body child))))]
-
-    ;; Validate body at compile time
-    (doseq [form body]
-      (validate-body form))
-
-    `(defui ~component-name ~params
-       ;; Runtime validation that card matches expected type
-       (let [card-state# (first ~params)
-             card# (:card card-state#)]
-         (when (and card# (not= (:card-type card#) ~card-type))
-           (js/console.warn "Card type mismatch: expected" ~card-type "got" (:card-type card#))))
-
-       ;; Component body with validation context
-       ~@body)))
-
 (defui card-label
   [{:keys [display-label is-loading? is-validating?]}]
   ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-1"}
@@ -106,6 +48,8 @@
               "Use Server")))))
 
 (defui multi-text [{:keys [value update-value]}]
+  (prn value)
+  (prn update-value)
   (let [[widget-state set-widget-state!] (uix/use-state (or value [""]))]
     (uix/use-effect
      (fn []
@@ -208,3 +152,72 @@
                            :resolve-conflict-with-server resolve-conflict-with-server
                            :value value
                            :conflict-value conflict-value})))))
+
+ ;; Example card components for each type
+
+(defui player-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :sht :card-state card-state :label "Shot"})
+     ($ card-field {:field-key :pss :card-state card-state :label "Pass"})
+     ($ card-field {:field-key :def :card-state card-state :label "Defense"})
+     ($ card-field {:field-key :speed :card-state card-state :label "Speed"})
+     ($ card-field {:field-key :size :card-state card-state :label "Size" :type "select"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :offense :card-state card-state :label "Offense" :type "textarea"})
+     ($ card-field {:field-key :defense :card-state card-state :label "Defense Text" :type "textarea"})
+     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+
+(defui ability-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+
+(defui play-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+
+(defui split-play-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :offense :card-state card-state :label "Offense" :type "textarea"})
+     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+
+(defui coaching-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :coaching :card-state card-state :label "Coaching" :type "textarea"})))
+
+(defui standard-action-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+
+(defui team-asset-card-editor
+  [card-state]
+  ($ :div {:class "space-y-4"}
+     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
+     ($ card-field {:field-key :asset-power :card-state card-state :label "Asset Power" :type "textarea"})))
+
+;; Component registry mapping card types to their editors
+(def card-type-components
+  {:card-type-enum/PLAYER_CARD player-card-editor
+   :card-type-enum/ABILITY_CARD ability-card-editor
+   :card-type-enum/PLAY_CARD play-card-editor
+   :card-type-enum/SPLIT_PLAY_CARD split-play-card-editor
+   :card-type-enum/COACHING_CARD coaching-card-editor
+   :card-type-enum/STANDARD_ACTION_CARD standard-action-card-editor
+   :card-type-enum/TEAM_ASSET_CARD team-asset-card-editor})

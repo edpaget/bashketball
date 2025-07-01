@@ -73,9 +73,11 @@
 (defn card-state-reducer
   "Reducer for card state management with validation support"
   [state action]
+  (prn (:type action))
   (case (:type action)
     :update-field
     (let [{:keys [field value]} action]
+      (prn field value)
       (-> state
           (assoc-in [:card/data field] value)
           (update :card/dirty conj field)
@@ -151,9 +153,8 @@
 
         ;; Get mutation hook for this card type
         ;; Get unified mutations for this card type
-        mutations (card.hooks/use-card-mutations (:card-type current-card))
-        {:keys [update]} mutations
-        {:keys [data loading error]} (:state mutations)
+        {:keys [update] {:keys [[data loading error]]} :state}
+        (card.hooks/use-card-mutations (:card-type current-card))
 
         ;; Track initial mount and last synced state
         is-initial-mount (uix/use-ref true)
@@ -234,14 +235,22 @@
 
     ;; Return comprehensive state and actions
     {:state state
-     :update-field (fn [field value]
-                     (dispatch {:type :update-field :field field :value value}))
-     :validate-field (fn [field]
-                       (dispatch {:type :validate-field :field field}))
-     :clear-errors (fn []
-                     (dispatch {:type :clear-errors}))
-     :reset-card (fn [card]
-                   (dispatch {:type :reset-pristine :card card}))
+     :update-field (uix/use-callback
+                    (fn [field value]
+                      (dispatch {:type :update-field :field field :value value}))
+                    [])
+     :validate-field (uix/use-callback
+                      (fn [field]
+                        (dispatch {:type :validate-field :field field}))
+                      [])
+     :clear-errors (uix/use-callback
+                    (fn []
+                      (dispatch {:type :clear-errors}))
+                    [])
+     :reset-card (uix/use-callback
+                  (fn [card]
+                    (dispatch {:type :reset-pristine :card card}))
+                  [])
      :resolve-conflict (fn [field resolution]
                          (dispatch {:type :resolve-conflict :field field :resolution resolution}))
      :set-conflicts (fn [conflicts]
@@ -267,6 +276,7 @@
         field-error (get-in state [:card/errors field-key])
         has-conflict? (contains? (:card/conflicts state) field-key)
         conflict-value (get-in state [:card/conflicts field-key])]
+    (prn value)
 
     {:value value
      :pristine-value pristine-value
@@ -301,4 +311,3 @@
                         (get validation-errors field-key))
      :has-field-error? (fn [field-key]
                          (contains? validation-errors field-key))}))
-

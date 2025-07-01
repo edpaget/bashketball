@@ -1,108 +1,74 @@
 (ns app.card.edit
   (:require
    ["@headlessui/react" :as headless]
-
    [app.asset.uploader :as a.uploader]
+   [app.card.components :as card.components]
+   [app.card.state :as card.state]
    [app.card.types :as card-types]
    [uix.core :as uix :refer [defui $]]))
 
-(defn- maybe-parse-int
-  [input-type value]
-  (when (not-empty value)
-    (cond-> value (= input-type "number") js/parseInt)))
+(defui card-type-selector
+  [{:keys [selected-type on-type-change]}]
+  ($ headless/Field {:class "mb-6"}
+     ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-2"} "Card Type")
+     ($ headless/Select {:value (name (or selected-type ""))
+                         :on-change #(on-type-change (keyword :card-type-enum (.. % -target -value)))
+                         :class "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"}
+        ($ :option {:value ""} "Select Card Type")
+        (for [[type type-label] card-types/->type-label]
+          ($ :option {:key (name type) :value (name type)} type-label)))))
 
-(defui text-widget [{:keys [ui/label field card on-change ui/input-type] :or {input-type "text"}}]
-  ($ headless/Field {:class "flex items-center mb-4"}
-     ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} label)
-     ($ headless/Input {:value (get card field "")
-                        :type input-type
-                        :name (name field)
-                        :on-change #(on-change field (maybe-parse-int input-type (.. % -target -value)))
-                        :class "flex-grow mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})))
+(defui edit-card
+  [{:keys [card new?]}]
+  (let [card-state (card.state/use-card-state card
+                                              :auto-save? true
+                                              :debounce-ms 500
+                                              :validate-on-change? true)
 
-(defui multi-text [{:keys [name ui/label field card on-change]}]
-  (let [for-value (str name "-input")
-        [widget-state set-widget-state!] (uix/use-state (field card [""]))]
+        ;; Extract card and state functions
+        current-card (:card card-state)
+        update-field (:update-field card-state)
+
+        ;; Track selected card type for new cards
+        [selected-type set-selected-type] (uix/use-state (:card-type current-card))
+
+        ;; Get the appropriate editor component for the selected type
+        editor-component (get card.components/card-type-components selected-type)
+        reset-fn (:reset-card card-state)]
+
     (uix/use-effect
      (fn []
-       (on-change field widget-state))
-     [on-change field widget-state])
-    ($ headless/Field {:key field :name name :class "mb-4"}
-       ($ headless/Label {:for for-value :class "block text-sm font-medium text-gray-700 mb-1"} label)
-       ($ :div {:id for-value :class "mt-1 flex flex-col flex-grow"} ;; This div remains for structure
-          (for [[idx item] (map-indexed vector widget-state)]
-            ($ :span {:key (str "ability-" idx) :class "flex items-center mb-2"} ;; Span remains for layout
-               ($ headless/Textarea {:value item
-                                     :name for-value ;; Consider if this name needs to be unique per textarea if submitting as a traditional form
-                                     :on-change #(set-widget-state! (assoc widget-state idx (.. % -target -value)))
-                                     :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
-               ($ headless/Button {:type "button"
-                                   :on-click #(set-widget-state! (into (subvec widget-state 0 idx)
-                                                                       (subvec widget-state (+ idx 1))))
-                                   :class "px-3 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium"}
-                  "-")))
-          ($ headless/Button {:type "button"
-                              :on-click #(set-widget-state! (conj widget-state ""))
-                              :class "mt-2 px-3 py-2 border border-green-500 text-green-500 rounded-md hover:bg-green-50 text-sm font-medium self-start"}
-             "+")))))
+       (when card
+         (reset-fn card)))
+     [reset-fn card])
 
-(defui card-fields [{:keys [card update-card-field]}]
-  ($ :<>
-     (for [field (card-types/->field-defs card)
-           :when (:ui/auto-widget field)]
-       (case (:ui/input-type field)
-         "select" ($ headless/Field {:key (:field field) :class "flex items-center mb-4"}
-                     ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} (:ui/label field))
-                     ($ headless/Select {:name (:name field)
-                                         :on-change #(update-card-field (:field field) (.. % -target -value))
-                                         :value (name (get card (:field field) ""))
-                                         :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
-                        ($ :option {:value ""} (:ui/select-label field))
-                        (for [[option-value option-label] (:ui/options field)]
-                          ($ :option {:key option-value :value option-value} option-label))))
-         "textarea" ($ headless/Field {:key (:field field) :class "flex items-center mb-4"}
-                       ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} (:ui/label field))
-                       ($ headless/Textarea {:value (get card (:field field) "")
-                                             :name (:name field)
-                                             :on-change #(update-card-field (:field field) (.. % -target -value))
-                                             :class "flex-grow mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"}))
-         "multitext" ($ multi-text (merge {:key (:field field)
-                                           :card card
-                                           :on-change update-card-field}
-                                          field))
-         ;; Default case, assuming text-widget handles other simple inputs
-         ($ text-widget (merge {:key (:field field)
-                                :card card
-                                :on-change update-card-field}
-                               field))))))
+    ($ :div {:class "p-6 bg-white shadow-lg rounded-lg max-w-2xl mx-auto my-8"}
+       ($ :div {:class "space-y-6"}
+          ($ :h1 {:class "text-3xl font-bold text-gray-900 mb-6 text-center"}
+             (if new? "Create Card" "Edit Card"))
 
-(defui edit-card [{:keys [card update-card-field new?]}]
-  ($ :div {:class "p-6 bg-white shadow-lg rounded-lg max-w-2xl mx-auto my-8"}
-     ($ :form {:class "space-y-6"}
-        ($ :h1 {:class "text-3xl font-bold text-gray-900 mb-6 text-center"} (if new? "Create Card" "Edit Card"))
-        ($ headless/Field {:class "flex items-center mb-4"}
-           ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Type")
-           (if new?
-             ($ headless/Select {:name "card-type"
-                                 :aria-label "Card type select"
-                                 :on-change #(update-card-field :card-type (keyword :card-type-enum (.. % -target -value)))
-                                 :value (name (get card :card-type ""))
-                                 :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
-                ($ :option {:value ""} "Select Card Type")
-                (for [[type type-label] card-types/->type-label]
-                  ($ :option {:key (name type) :value (name type)} type-label)))
-             ($ :div {:class "flex-grow mt-1 block w-full px-3 py-2 text-gray-500 sm:text-sm bg-gray-100 rounded-md"}
-                (get card-types/->type-label (get card :card-type)))))
-        (if new?
-          ($ :<>
-             ($ text-widget {:ui/label "Card Name"
-                             :field :name
-                             :card card
-                             :on-change update-card-field}))
-          ($ :<>
-             ($ headless/Field {:class "flex items-center mb-4"}
-                ($ headless/Label {:class "w-32 text-sm font-medium text-gray-700 mr-2"} "Card Name")
-                ($ :div {:class "flex-grow mt-1 block w-full px-3 py-2 text-gray-500 sm:text-sm bg-gray-100 rounded-md"}
-                   (get card :name)))))
-        ($ a.uploader/asset-upload {:update-card-field update-card-field})
-        ($ card-fields {:card card :update-card-field update-card-field}))))
+          ;; Card type selection (for new cards) or display (for existing cards)
+          (if new?
+            ($ card-type-selector {:selected-type selected-type
+                                   :on-type-change (fn [new-type]
+                                                     (set-selected-type new-type)
+                                                     (update-field :card-type new-type))})
+            ($ headless/Field {:class "mb-6"}
+               ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-2"} "Card Type")
+               ($ :div {:class "w-full px-3 py-2 text-gray-500 bg-gray-100 rounded-md"}
+                  (get card-types/->type-label (:card-type current-card) "Unknown Type"))))
+
+          ;; Asset uploader
+          ($ a.uploader/asset-upload {:update-card-field update-field})
+
+          ;; Render the appropriate card editor component based on type
+          (when editor-component
+            ($ editor-component card-state))
+
+          ;; Show message if no editor available for the selected type
+          (when (and selected-type (not editor-component))
+            ($ :div {:class "p-4 bg-yellow-50 border border-yellow-200 rounded-md"}
+               ($ :p {:class "text-sm text-yellow-800"}
+                  "No editor available for card type: " (name selected-type))))))))
+
+;; Remove unused components

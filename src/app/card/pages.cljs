@@ -44,30 +44,20 @@
                         {:name card-id})
 
         ;; Use loaded card as initial state for unified state management
-        card (:card data)
-        card-state (card-state/use-card-state card :auto-save? true :debounce-ms 500)]
-
-    ;; Update card state when new data is loaded
-    (uix/use-effect
-     (fn []
-       (when card
-         ((:reset-card card-state) card)))
-     [card])
+        card (:card data)]
 
     ;; Wrap content in a styled container
-    ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
-       ($ :div {} ; Column for showing the card
-          ($ show-card (:card card-state)))
-       ($ :div {} ; Column for edit form (conditionally rendered)
-          ($ authn/login-required {:show-prompt false}
-             (when (:card card-state)
-               ($ edit-card {:card (:card card-state)
-                             :new? false
-                             :update-card-field (:update-field card-state)})))))))
+    (when card
+      ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
+         ($ :div {} ; Column for showing the card
+            ($ show-card card))
+         ($ :div {} ; Column for edit form (conditionally rendered)
+            ($ authn/login-required {:show-prompt false}
+               ($ edit-card {:card card :new? false})))))))
 
 (defui cards-new []
   (let [;; Initialize with basic card structure
-        initial-card {:card-type :card-type-enum/PLAYER_CARD
+        initial-card {:card-type :card-type-enum/INVALID
                       :name ""
                       :fate 1}
 
@@ -77,19 +67,19 @@
                                               :validate-on-change? true)
 
         ;; Get unified mutations
-        mutations (card.hooks/use-card-mutations (:card-type (:card card-state)))
+        {:keys [is-creating? create state]} (card.hooks/use-card-mutations (:card-type (:card card-state)))
 
         ;; Handle form submission
         handle-submit (fn []
                         (when-not (:has-errors? card-state)
-                          ((:create mutations) {:variables (:card card-state)})))]
+                          (create {:variables (:card card-state)})))]
 
     ;; Navigate to card after creation
     (uix/use-effect
      (fn []
-       (when-let [new-card (-> (:state mutations) :data vals first)]
+       (when-let [new-card (-> state :data vals first)]
          (router/navigate! :cards-show {:id (:name new-card)})))
-     [(:state mutations)])
+     [state])
 
     ;; Wrap content in a styled container, similar to cards-show
     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
@@ -113,8 +103,8 @@
              ($ :div {:class "mt-6 flex justify-end max-w-2xl mx-auto"}
                 ($ headless/Button {:type "button"
                                     :on-click handle-submit
-                                    :disabled (or (:is-creating? mutations)
+                                    :disabled (or is-creating?
                                                   (:has-errors? card-state)
                                                   (empty? (get-in card-state [:card :name])))
                                     :class "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"}
-                   (if (:is-creating? mutations) "Creating..." "Create Card"))))))))
+                   (if is-creating? "Creating..." "Create Card"))))))))
