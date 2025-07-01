@@ -21,9 +21,9 @@
     name :- :string
     version :- :string]
    (db/execute-one! {:select cols
-                     :from   [(models/->table-name ::models/GameCard)]
-                     :where  [:and [:= :name name]
-                              [:= :version version]]})))
+                     :from [(models/->table-name ::models/GameCard)]
+                     :where [:and [:= :name name]
+                             [:= :version version]]})))
 
 (me/defn list :- ::models/GameCard
   "Lists game cards with pagination using HoneySQL. Relies on dynamic db binding. "
@@ -31,11 +31,11 @@
    (list [:*] pagination-opts))
   ([cols :- [:vector :keyword]
     {:keys [limit offset] :or {limit 100 offset 0}} :- ::card-gql-types/pagination-opts]
-   (db/execute! {:select    cols
-                 :from     [(models/->table-name ::models/GameCard)]
+   (db/execute! {:select cols
+                 :from [(models/->table-name ::models/GameCard)]
                  :order-by [:name :version]
-                 :limit    limit
-                 :offset   offset})))
+                 :limit limit
+                 :offset offset})))
 
 (me/defn set-game-asset-id :- :int
   [card-name :- :string
@@ -50,12 +50,12 @@
   "Save a GameCard model to the database"
   [input :- ::models/GameCard]
   (db/execute-one! {:insert-into [(models/->table-name ::models/GameCard)]
-                    :columns     (keys input)
-                    :values      [(cond-> (update input :card-type db/->pg_enum)
-                                    (:size input) (update :size db/->pg_enum)
-                                    (:abilities input) (update :abilities #(conj [:lift] %))
-                                    :always vals)]
-                    :returning   [:*]}))
+                    :columns (keys input)
+                    :values [(cond-> (update input :card-type db/->pg_enum)
+                               (:size input) (update :size db/->pg_enum)
+                               (:abilities input) (update :abilities #(conj [:lift] %))
+                               :always vals)]
+                    :returning [:*]}))
 
 (me/defn update-db :- [:maybe ::models/GameCard]
   "Updates a GameCard in thedatabase by name and version."
@@ -63,14 +63,13 @@
    card-version :- :string
    input :- [:map-of :keyword :any]]
   (when (not-empty input)
-    (db/execute-one! {:update    [(models/->table-name ::models/GameCard)]
-                      :set       (cond-> input
-                                   (:size input) (update :size db/->pg_enum)
-                                   (:abilities input) (update :abilities #(conj [:lift] %)))
-                      :where     [:and [:= :name card-name]
-                                  [:= :version card-version]]
+    (db/execute-one! {:update [(models/->table-name ::models/GameCard)]
+                      :set (cond-> input
+                             (:size input) (update :size db/->pg_enum)
+                             (:abilities input) (update :abilities #(conj [:lift] %)))
+                      :where [:and [:= :name card-name]
+                              [:= :version card-version]]
                       :returning [:*]})))
-
 
 (def ^:private tagger (gql.compiler/merge-tag-with-type ::models/GameCard))
 
@@ -247,3 +246,188 @@
   (some->> (update-db card-name card-version (dissoc args :name :version))
            game-card-tag-and-transform
            (apply schema/tag-with-type)))
+
+;; =============================================================================
+;; Field-Based Update Resolvers
+;; =============================================================================
+
+(defn- update-field-with-validation
+  "Generic field update with card-type validation"
+  [card-name card-version field-name field-value valid-card-types]
+  (when-let [card (get-by-name card-name card-version)]
+    (when (contains? valid-card-types (:card-type card))
+      (update-db card-name card-version {field-name field-value}))))
+
+(defresolver :Mutation/updateCardGameAsset
+  "Update game-asset-id for any card type"
+  [:=> [:cat :any ::card-gql-types/update-game-asset-args :any]
+   [:maybe ::models/GameCard]]
+  [_context {:keys [input game-asset-id]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :game-asset-id game-asset-id
+              #{:card-type-enum/PLAYER_CARD :card-type-enum/ABILITY_CARD
+                :card-type-enum/SPLIT_PLAY_CARD :card-type-enum/PLAY_CARD
+                :card-type-enum/COACHING_CARD :card-type-enum/STANDARD_ACTION_CARD
+                :card-type-enum/TEAM_ASSET_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardDeckSize
+  "Update deck-size for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-deck-size-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input deck-size]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :deck-size deck-size
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardSht
+  "Update sht field for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-sht-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input sht]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :sht sht
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardPss
+  "Update pss field for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-pss-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input pss]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :pss pss
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardDef
+  "Update def field for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-def-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input def]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :def def
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardSpeed
+  "Update speed field for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-speed-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input speed]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :speed speed
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardSize
+  "Update size field for PlayerCard only"
+  [:=> [:cat :any ::card-gql-types/update-size-args :any]
+   [:maybe ::models/PlayerCard]]
+  [_context {:keys [input size]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :size size
+              #{:card-type-enum/PLAYER_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardAbilities
+  "Update abilities field for PlayerCard and AbilityCard"
+  [:=> [:cat :any ::card-gql-types/update-abilities-args :any]
+   [:maybe ::models/GameCard]]
+  [_context {:keys [input abilities]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :abilities abilities
+              #{:card-type-enum/PLAYER_CARD :card-type-enum/ABILITY_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardFate
+  "Update fate field for fate-based cards"
+  [:=> [:cat :any ::card-gql-types/update-fate-args :any]
+   [:maybe ::models/GameCard]]
+  [_context {:keys [input fate]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :fate fate
+              #{:card-type-enum/SPLIT_PLAY_CARD :card-type-enum/PLAY_CARD
+                :card-type-enum/COACHING_CARD :card-type-enum/STANDARD_ACTION_CARD
+                :card-type-enum/TEAM_ASSET_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardOffense
+  "Update offense field for SplitPlayCard and StandardActionCard"
+  [:=> [:cat :any ::card-gql-types/update-offense-args :any]
+   [:maybe ::models/GameCard]]
+  [_context {:keys [input offense]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :offense offense
+              #{:card-type-enum/SPLIT_PLAY_CARD :card-type-enum/STANDARD_ACTION_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardDefense
+  "Update defense field for SplitPlayCard and StandardActionCard"
+  [:=> [:cat :any ::card-gql-types/update-defense-args :any]
+   [:maybe ::models/GameCard]]
+  [_context {:keys [input defense]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :defense defense
+              #{:card-type-enum/SPLIT_PLAY_CARD :card-type-enum/STANDARD_ACTION_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardPlay
+  "Update play field for PlayCard only"
+  [:=> [:cat :any ::card-gql-types/update-play-args :any]
+   [:maybe ::models/PlayCard]]
+  [_context {:keys [input play]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :play play
+              #{:card-type-enum/PLAY_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardCoaching
+  "Update coaching field for CoachingCard only"
+  [:=> [:cat :any ::card-gql-types/update-coaching-args :any]
+   [:maybe ::models/CoachingCard]]
+  [_context {:keys [input coaching]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :coaching coaching
+              #{:card-type-enum/COACHING_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+
+(defresolver :Mutation/updateCardAssetPower
+  "Update asset-power field for TeamAssetCard only"
+  [:=> [:cat :any ::card-gql-types/update-asset-power-args :any]
+   [:maybe ::models/TeamAssetCard]]
+  [_context {:keys [input asset-power]} _value]
+  (let [{:keys [name version]} input]
+    (some->> (update-field-with-validation
+              name version :asset-power asset-power
+              #{:card-type-enum/TEAM_ASSET_CARD})
+             game-card-tag-and-transform
+             (apply schema/tag-with-type))))
+

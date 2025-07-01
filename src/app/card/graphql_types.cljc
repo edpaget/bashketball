@@ -152,3 +152,85 @@
    [:game-asset-id {:optional true} [:maybe :uuid]]
    [:fate {:optional true} [:maybe :int]]
    [:asset-power {:optional true} [:maybe :string]]])
+
+;; =============================================================================
+;; Field-Based Mutation Schemas
+;; =============================================================================
+
+;; Base input type for card identification
+(registry/defschema ::card-identifier
+  [:map
+   [:name :string]
+   [:version :string]])
+
+;; Field-specific mutation input types
+(registry/defschema ::update-game-asset-args
+  [:map
+   [:input ::card-identifier]
+   [:game-asset-id [:maybe :uuid]]])
+
+(registry/defschema ::update-deck-size-args
+  [:map
+   [:input ::card-identifier]
+   [:deck-size :int]])
+
+(registry/defschema ::update-sht-args
+  [:map
+   [:input ::card-identifier]
+   [:sht :int]])
+
+(registry/defschema ::update-pss-args
+  [:map
+   [:input ::card-identifier]
+   [:pss :int]])
+
+(registry/defschema ::update-def-args
+  [:map
+   [:input ::card-identifier]
+   [:def :int]])
+
+(registry/defschema ::update-speed-args
+  [:map
+   [:input ::card-identifier]
+   [:speed :int]])
+
+(registry/defschema ::update-size-args
+  [:map
+   [:input ::card-identifier]
+   [:size ::models/PlayerSize]])
+
+(registry/defschema ::update-abilities-args
+  [:map
+   [:input ::card-identifier]
+   [:abilities [:vector :string]]])
+
+(registry/defschema ::update-fate-args
+  [:map
+   [:input ::card-identifier]
+   [:fate :int]])
+
+(registry/defschema ::update-offense-args
+  [:map
+   [:input ::card-identifier]
+   [:offense :string]])
+
+(registry/defschema ::update-defense-args
+  [:map
+   [:input ::card-identifier]
+   [:defense :string]])
+
+(registry/defschema ::update-play-args
+  [:map
+   [:input ::card-identifier]
+   [:play :string]])
+
+(registry/defschema ::update-coaching-args
+  [:map
+   [:input ::card-identifier]
+   [:coaching :string]])
+
+(registry/defschema ::update-asset-power-args
+  [:map
+   [:input ::card-identifier]
+   [:asset-power :string]])
+
