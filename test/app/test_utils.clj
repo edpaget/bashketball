@@ -124,6 +124,10 @@
      (do-global-frozen-time
       (fn [] ~@body))))
 
+(defn wrap-lift
+  [accum key]
+  (update accum key #(vector :lift %1)))
+
 (defmacro with-inserted-data
   "Inserts data into specified tables before executing the body,
    then deletes the inserted rows afterwards. Ensures cleanup even if body throws.
@@ -144,8 +148,13 @@
         ;; Generate let bindings for insertion
         let-bindings (mapcat (fn [[model-kw data-map] id-sym]
                                `[~id-sym (let [table# (models/->table-name ~model-kw)
-                                               cols# (vec (keys ~data-map))
-                                               vals# (vec (vals ~data-map))]
+                                               lift-keys# (models/->set-lift ~model-kw)
+                                               data-map# (reduce wrap-lift
+                                                                 ~data-map
+                                                                 lift-keys#)
+                                               cols# (vec (keys data-map#))
+                                               vals# (vec (vals data-map#))]
+                                           (prn lift-keys#)
                                            (log/debug "Inserting into" table# "with data:" ~data-map)
                                            (db/execute-one! {:insert-into table#
                                                              :columns     cols#

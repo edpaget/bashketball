@@ -3,9 +3,9 @@
      (:require-macros
       [app.registry :as registry]))
   (:require
-   [malli.core :as mc]
    [app.registry :as registry]
-   [camel-snake-kebab.core :as csk]))
+   [camel-snake-kebab.core :as csk]
+   [malli.core :as mc]))
 
 (registry/defschema ::IdentityStrategy
   [:enum {:graphql/type "IdentityStrategy"} :identity-strategy/SIGN_IN_WITH_GOOGLE :identity-strategy/INVALID])
@@ -239,3 +239,22 @@
   "Return the primary key of the model as a vector"
   [type]
   (or (-> type mc/deref-recursive mc/properties ::pk) [:id]))
+
+(defn ->set-lift
+  "Return columns that need to be :lifted in honeysql as a set"
+  [type]
+  (let [schema (mc/deref-recursive type)]
+    (condp = (mc/type schema)
+      :multi (->> schema
+                  mc/children
+                  (map last)
+                  (mapcat ->set-lift)
+                  (into #{}))
+      ;; default case for map, merge, etc.
+      (if-let [entries (mc/children schema)]
+        (do (prn entries)
+          (->> entries
+               (filter (fn [[_ _ child-schema]] (= :vector (mc/type child-schema))))
+               (map first)
+               (into #{})))
+        #{}))))

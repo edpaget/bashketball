@@ -124,15 +124,6 @@
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
 
-(defresolver :Mutation/updatePlayerCard
-  "Update a PLAYER_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-player-card-args :any]
-   [:maybe ::models/PlayerCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
-
 ;; --- AbilityCard ---
 (defresolver :Mutation/createAbilityCard
   "Create an ABILITY_CARD-typed card"
@@ -142,15 +133,6 @@
   (->> (create (assoc args :card-type :card-type-enum/ABILITY_CARD))
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
-
-(defresolver :Mutation/updateAbilityCard
-  "Update an ABILITY_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-ability-card-args :any]
-   [:maybe ::models/AbilityCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
 
 ;; --- SplitPlayCard ---
 (defresolver :Mutation/createSplitPlayCard
@@ -162,15 +144,6 @@
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
 
-(defresolver :Mutation/updateSplitPlayCard
-  "Update a SPLIT_PLAY_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-split-play-card-args :any]
-   [:maybe ::models/SplitPlayCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
-
 ;; --- PlayCard ---
 (defresolver :Mutation/createPlayCard
   "Create a PLAY_CARD-typed card"
@@ -180,15 +153,6 @@
   (->> (create (assoc args :card-type :card-type-enum/PLAY_CARD))
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
-
-(defresolver :Mutation/updatePlayCard
-  "Update a PLAY_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-play-card-args :any]
-   [:maybe ::models/PlayCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
 
 ;; --- CoachingCard ---
 (defresolver :Mutation/createCoachingCard
@@ -200,15 +164,6 @@
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
 
-(defresolver :Mutation/updateCoachingCard
-  "Update a COACHING_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-coaching-card-args :any]
-   [:maybe ::models/CoachingCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
-
 ;; --- StandardActionCard ---
 (defresolver :Mutation/createStandardActionCard
   "Create a STANDARD_ACTION_CARD-typed card"
@@ -219,15 +174,6 @@
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
 
-(defresolver :Mutation/updateStandardActionCard
-  "Update a STANDARD_ACTION_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-standard-action-card-args :any]
-   [:maybe ::models/StandardActionCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
-
 ;; --- TeamAssetCard ---
 (defresolver :Mutation/createTeamAssetCard
   "Create a TEAM_ASSET_CARD-typed card"
@@ -237,15 +183,6 @@
   (->> (create (assoc args :card-type :card-type-enum/TEAM_ASSET_CARD))
        game-card-tag-and-transform
        (apply schema/tag-with-type)))
-
-(defresolver :Mutation/updateTeamAssetCard
-  "Update a TEAM_ASSET_CARD-typed card"
-  [:=> [:cat :any ::card-gql-types/update-team-asset-card-args :any]
-   [:maybe ::models/TeamAssetCard]]
-  [_context {card-name :name, card-version :version, :as args} _value]
-  (some->> (update-db card-name card-version (dissoc args :name :version))
-           game-card-tag-and-transform
-           (apply schema/tag-with-type)))
 
 ;; =============================================================================
 ;; Field-Based Update Resolvers
