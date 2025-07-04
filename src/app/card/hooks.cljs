@@ -29,6 +29,7 @@
 (def ^:private field-mutation-schemas
   "Maps field names to their argument schemas for field-based mutations"
   {:game-asset-id ::card.gql-types/update-game-asset-args
+   :name ::card.gql-types/update-name-args
    :deck-size ::card.gql-types/update-deck-size-args
    :sht ::card.gql-types/update-sht-args
    :pss ::card.gql-types/update-pss-args
@@ -106,9 +107,11 @@
    Returns [update-fn state] where update-fn takes card identifier and field value."
   [field-name]
   (let [mutation-name (field-mutations field-name)
-        mutation-schema (field-mutation-schemas field-name)]
+        mutation-schema (field-mutation-schemas field-name)
+        mutation-args (->> mutation-schema mc/schema mc/deref mc/children (map first))]
     (gql.client/use-mutation
-     {mutation-name [::models/GameCard :app.graphql.compiler/all-fields
-                     {:gameAsset [::models/GameAsset]}]}
+     {mutation-name (list* [::models/GameCard :app.graphql.compiler/all-fields
+                            {:gameAsset [::models/GameAsset]}]
+                           mutation-args)}
      (name mutation-name)
      mutation-schema)))

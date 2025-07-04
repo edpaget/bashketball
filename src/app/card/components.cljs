@@ -7,7 +7,7 @@
    [uix.core :as uix :refer [defui $]]))
 
 (defui card-label
-  [{:keys [display-label loading? ]}]
+  [{:keys [display-label loading?]}]
   ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-1"}
      display-label
      (when loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))))
@@ -29,7 +29,7 @@
                                 :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
           ($ headless/Button {:type "button"
                               :on-click #(update-value (into (subvec value 0 idx)
-                                                                  (subvec value (+ idx 1))))
+                                                             (subvec value (+ idx 1))))
                               :class "px-3 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium"}
              "-")))
      ($ headless/Button {:type "button"
@@ -64,10 +64,10 @@
 
 (defui card-field
   "Self-managing card field component with automatic validation and styling"
-  [{:keys [field-key card-state label type class-name placeholder]}]
+  [{:keys [field-key label type class-name placeholder]}]
   (let [field-state (card.state/use-card-field field-key)
         {:keys [value update-value dirty? loading?
-                has-error? error ]} field-state
+                has-error? error]} field-state
 
         ;; Determine input type
         input-type (or type
@@ -105,68 +105,63 @@
                        :dirty? dirty?})
        ;; Error display
        (when error
-         ($ :p {:class "mt-1 text-sm text-red-600"} error))
-       )))
+         ($ :p {:class "mt-1 text-sm text-red-600"} error)))))
 
- ;; Example card components for each type
+;; Example card components for each type
 
 (defui player-card-editor
-  [{:keys [update-field] :as card-state}]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
      ($ a.uploader/asset-upload {:update-card-field update-field})
-     ($ card-field {:field-key :sht :card-state card-state :label "Shot"})
-     ($ card-field {:field-key :pss :card-state card-state :label "Pass"})
-     ($ card-field {:field-key :def :card-state card-state :label "Defense"})
-     ($ card-field {:field-key :speed :card-state card-state :label "Speed"})
-     ($ card-field {:field-key :size :card-state card-state :label "Size" :type "select"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :offense :card-state card-state :label "Offense" :type "textarea"})
-     ($ card-field {:field-key :defense :card-state card-state :label "Defense Text" :type "textarea"})
-     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+     ($ card-field {:field-key :sht :label "Shot"})
+     ($ card-field {:field-key :pss :label "Pass"})
+     ($ card-field {:field-key :def :label "Defense"})
+     ($ card-field {:field-key :speed :label "Speed"})
+     ($ card-field {:field-key :size :label "Size" :type "select"})
+     ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui ability-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui play-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui split-play-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :offense :card-state card-state :label "Offense" :type "textarea"})
-     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :offense :label "Offense" :type "textarea"})
+     ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui coaching-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :coaching :card-state card-state :label "Coaching" :type "textarea"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :coaching :label "Coaching" :type "textarea"})))
 
 (defui standard-action-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :abilities :card-state card-state :label "Abilities" :type "multitext"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui team-asset-card-editor
-  [card-state]
+  [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
-     ($ card-field {:field-key :fate :card-state card-state :label "Fate"})
-     ($ card-field {:field-key :asset-power :card-state card-state :label "Asset Power" :type "textarea"})))
+     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-field {:field-key :fate :label "Fate"})
+     ($ card-field {:field-key :asset-power :label "Asset Power" :type "textarea"})))
 
 ;; Component registry mapping card types to their editors
 (def card-type-components

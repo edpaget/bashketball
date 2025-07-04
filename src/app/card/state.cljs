@@ -199,17 +199,16 @@
              (dispatch {:type :field-update-loading
                         :field field-key
                         :loading? true})
-             (prn {:input {:name card-name
-                                        :version card-version}
-                                field-key current-value})
              (doto (save-field {:variables {:input {:name card-name
                                                     :version card-version}
                                             field-key current-value}})
                (.then #(do
+                         (prn %)
                          (swap! last-auto-saved assoc field-key current-value)
                          (dispatch {:type :field-update-success
                                     :field field-key
-                                    :updated-card (:data %)})))
+                                    ;; TODO: Extract from correct operation name
+                                    :updated-card (-> % :data vals first)})))
                (.catch #(dispatch {:type :field-update-error
                                    :field field-key
                                    :error %})))))))
