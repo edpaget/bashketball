@@ -8,7 +8,9 @@
    [malli.core :as mc]))
 
 (registry/defschema ::IdentityStrategy
-  [:enum {:graphql/type "IdentityStrategy"} :identity-strategy/SIGN_IN_WITH_GOOGLE :identity-strategy/INVALID])
+  [:enum {:graphql/type "IdentityStrategy"}
+   :identity-strategy/SIGN_IN_WITH_GOOGLE
+   :identity-strategy/INVALID])
 
 (registry/defschema ::Identity
   [:map {::pk [:provider :provider_identity]}
@@ -258,3 +260,13 @@
                (map first)
                (into #{})))
         #{}))))
+
+(def ->model-type
+  "Map of card enum to card model"
+  {:card-type-enum/PLAYER_CARD ::PlayerCard
+   :card-type-enum/ABILITY_CARD ::AbilityCard
+   :card-type-enum/SPLIT_PLAY_CARD ::SplitPlayCard
+   :card-type-enum/PLAY_CARD ::PlayCard
+   :card-type-enum/COACHING_CARD ::CoachingCard
+   :card-type-enum/STANDARD_ACTION_CARD ::StandardActionCard
+   :card-type-enum/TEAM_ASSET_CARD ::TeamAssetCard})

@@ -1,51 +1,26 @@
 (ns app.card.components
   (:require
    ["@headlessui/react" :as headless]
+   [app.asset.uploader :as a.uploader]
    [app.card.state :as card.state]
    [clojure.string :as str]
    [uix.core :as uix :refer [defui $]]))
 
 (defui card-label
-  [{:keys [display-label is-loading? is-validating?]}]
+  [{:keys [display-label loading? validating?]}]
   ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-1"}
      display-label
-     (when is-loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))
-     (when is-validating? ($ :span {:class "text-yellow-600 ml-2"} "🔍"))))
+     (when loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))
+     (when validating? ($ :span {:class "text-yellow-600 ml-2"} "🔍"))))
 
 (defui card-status
-  [{:keys [is-dirty? is-validating? is-loading?]}]
+  [{:keys [dirty? validating? loading?]}]
   ($ :div {:class "mt-1 flex items-center text-xs space-x-2"}
-     (when is-dirty?
+     (when dirty?
        ($ :span {:class "text-blue-600"} "📝 Modified"))
-     (when is-validating?
-       ($ :span {:class "text-yellow-600"} "🔍 Validating..."))
-     (when is-loading?
+     (when loading?
        ($ :span {:class "text-purple-600"} "💾 Saving..."))))
 
-(defui card-conflict
-  [{:keys [value resolve-conflict-with-local conflict-value resolve-conflict-with-server]}]
-  ($ :div {:class "mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md"}
-     ($ :p {:class "text-sm font-medium text-orange-800 mb-2"}
-        "⚠️ Conflict Detected")
-     ($ :p {:class "text-xs text-orange-700 mb-3"}
-        "Your changes conflict with server updates:")
-
-     ($ :div {:class "space-y-2"}
-        ($ :div {:class "flex items-center justify-between p-2 bg-white rounded border"}
-           ($ :div
-              ($ :p {:class "text-sm font-medium"} "Your Version:")
-              ($ :p {:class "text-xs text-gray-600"} (str value)))
-           $ headless/Button {:class "px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-                              :on-click resolve-conflict-with-local}
-           "Keep Mine")
-
-        ($ :div {:class "flex items-center justify-between p-2 bg-white rounded border"}
-           ($ :div
-              ($ :p {:class "text-sm font-medium"} "Server Version:")
-              ($ :p {:class "text-xs text-gray-600"} (str conflict-value)))
-           ($ headless/Button {:class "px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
-                               :on-click resolve-conflict-with-server}
-              "Use Server")))))
 
 (defui multi-text [{:keys [value update-value]}]
   (prn value)
@@ -99,10 +74,9 @@
 (defui card-field
   "Self-managing card field component with automatic validation and styling"
   [{:keys [field-key card-state label type class-name placeholder]}]
-  (let [field-state (card.state/use-card-field card-state field-key)
-        {:keys [value update-value is-dirty? is-loading? is-validating?
-                has-error? error has-conflict? conflict-value
-                resolve-conflict-with-local resolve-conflict-with-server]} field-state
+  (let [field-state (card.state/use-card-field field-key)
+        {:keys [value update-value dirty? loading? validating?
+                has-error? error ]} field-state
 
         ;; Determine input type
         input-type (or type
@@ -117,18 +91,17 @@
         ;; Build CSS classes
         base-classes "w-full px-3 py-2 border rounded-md transition-colors"
         status-classes (cond
-                         has-conflict? "border-orange-500 bg-orange-50"
                          has-error? "border-red-500 bg-red-50"
-                         is-validating? "border-yellow-500 bg-yellow-50"
-                         is-dirty? "border-blue-500 bg-blue-50"
+                         validating? "border-yellow-500 bg-yellow-50"
+                         dirty? "border-blue-500 bg-blue-50"
                          :else "border-gray-300")
         final-classes (str base-classes " " status-classes " " (or class-name ""))]
 
     ($ headless/Field {:class "mb-4"}
        ;; Label
        ($ card-label {:display-label display-label
-                      :is-loading? is-loading?
-                      :is-validating? is-validating?})
+                      :loading? loading?
+                      :validating? validating?})
 
        ;; Input field
        ($ card-input {:input-type input-type
@@ -139,26 +112,21 @@
                       :final-classes final-classes})
 
        ;; Status indicators
-       ($ card-status {:is-loading? is-loading?
-                       :is-validating? is-validating?
-                       :is-dirty? is-dirty?})
+       ($ card-status {:loading? loading?
+                       :validating? validating?
+                       :dirty? dirty?})
        ;; Error display
        (when error
          ($ :p {:class "mt-1 text-sm text-red-600"} error))
-
-       ;; Conflict resolution UI
-       (when has-conflict?
-         ($ card-conflict {:resolve-conflict-with-local resolve-conflict-with-local
-                           :resolve-conflict-with-server resolve-conflict-with-server
-                           :value value
-                           :conflict-value conflict-value})))))
+       )))
 
  ;; Example card components for each type
 
 (defui player-card-editor
-  [card-state]
+  [{:keys [update-field] :as card-state}]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :name :card-state card-state :label "Card Name"})
+     ($ a.uploader/asset-upload {:update-card-field update-field})
      ($ card-field {:field-key :sht :card-state card-state :label "Shot"})
      ($ card-field {:field-key :pss :card-state card-state :label "Pass"})
      ($ card-field {:field-key :def :card-state card-state :label "Defense"})

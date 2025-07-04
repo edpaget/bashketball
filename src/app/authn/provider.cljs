@@ -1,16 +1,17 @@
 (ns app.authn.provider
   (:require
-   [app.models :as models]
-   [app.graphql.client :as gql.client]
-   [uix.core :as uix :refer [defui $]]
    ;; npm
    ["@headlessui/react" :as headless]
-   ["@react-oauth/google" :as gauth]))
+   ["@react-oauth/google" :as gauth]
+
+   [app.graphql.client :as gql.client]
+   [app.models :as models]
+   [uix.core :as uix :refer [defui $]]))
 
 (def client-id
   "964961527303-t0l0f6a8oa42p8c15928b4f4vavvbj9v.apps.googleusercontent.com")
 
-(def auth-provider (uix/create-context {}))
+(def ^:private auth-provider (uix/create-context {}))
 
 (def ^:private get-me {:Query/me [::models/Actor :id]})
 

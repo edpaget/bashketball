@@ -211,7 +211,7 @@
               (name node)))]
     (if-not (seq? children)
       (node->str children)
-      (loop [cs (into [] children)
+      (loop [cs (into [] (flatten children))
              accum ""]
         (if (empty? cs)
           accum

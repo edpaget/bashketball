@@ -6,32 +6,42 @@
    [malli.core :as mc]
    [uix.core :as uix :refer [defhook]]))
 
-(def ^:private ->mutation-name
-  {:card-type-enum/PLAYER_CARD :Mutation/updatePlayerCard
-   :card-type-enum/ABILITY_CARD :Mutation/updateAbilityCard
-   :card-type-enum/SPLIT_PLAY_CARD :Mutation/updateSplitPlayCard
-   :card-type-enum/PLAY_CARD :Mutation/updatePlayCard
-   :card-type-enum/COACHING_CARD :Mutation/updateCoachingCard
-   :card-type-enum/STANDARD_ACTION_CARD :Mutation/updateStandardActionCard
-   :card-type-enum/TEAM_ASSET_CARD :Mutation/updateTeamAssetCard})
+;; === FIELD-BASED MUTATION SYSTEM ===
 
-(def ^:private ->model-type
-  {:card-type-enum/PLAYER_CARD ::models/PlayerCard
-   :card-type-enum/ABILITY_CARD ::models/AbilityCard
-   :card-type-enum/SPLIT_PLAY_CARD ::models/SplitPlayCard
-   :card-type-enum/PLAY_CARD ::models/PlayCard
-   :card-type-enum/COACHING_CARD ::models/CoachingCard
-   :card-type-enum/STANDARD_ACTION_CARD ::models/StandardActionCard
-   :card-type-enum/TEAM_ASSET_CARD ::models/TeamAssetCard})
+(def ^:private field-mutations
+  "Maps field names to their corresponding field-based GraphQL mutations"
+  {:game-asset-id :Mutation/updateCardGameAsset
+   :deck-size :Mutation/updateCardDeckSize
+   :name :Mutation/updateCardName
+   :sht :Mutation/updateCardSht
+   :pss :Mutation/updateCardPss
+   :def :Mutation/updateCardDef
+   :speed :Mutation/updateCardSpeed
+   :size :Mutation/updateCardSize
+   :abilities :Mutation/updateCardAbilities
+   :fate :Mutation/updateCardFate
+   :offense :Mutation/updateCardOffense
+   :defense :Mutation/updateCardDefense
+   :play :Mutation/updateCardPlay
+   :coaching :Mutation/updateCardCoaching
+   :asset-power :Mutation/updateCardAssetPower})
 
-(def ^:private ->update-mutation-args-schema
-  {:card-type-enum/PLAYER_CARD ::card.gql-types/update-player-card-args
-   :card-type-enum/ABILITY_CARD ::card.gql-types/update-ability-card-args
-   :card-type-enum/SPLIT_PLAY_CARD ::card.gql-types/update-split-play-card-args
-   :card-type-enum/PLAY_CARD ::card.gql-types/update-play-card-args
-   :card-type-enum/COACHING_CARD ::card.gql-types/update-coaching-card-args
-   :card-type-enum/STANDARD_ACTION_CARD ::card.gql-types/update-standard-action-card-args
-   :card-type-enum/TEAM_ASSET_CARD ::card.gql-types/update-team-asset-card-args})
+(def ^:private field-mutation-schemas
+  "Maps field names to their argument schemas for field-based mutations"
+  {:game-asset-id ::card.gql-types/update-game-asset-args
+   :deck-size ::card.gql-types/update-deck-size-args
+   :sht ::card.gql-types/update-sht-args
+   :pss ::card.gql-types/update-pss-args
+   :def ::card.gql-types/update-def-args
+   :speed ::card.gql-types/update-speed-args
+   :size ::card.gql-types/update-size-args
+   :abilities ::card.gql-types/update-abilities-args
+   :fate ::card.gql-types/update-fate-args
+   :offense ::card.gql-types/update-offense-args
+   :defense ::card.gql-types/update-defense-args
+   :play ::card.gql-types/update-play-args
+   :coaching ::card.gql-types/update-coaching-args
+   :asset-power ::card.gql-types/update-asset-power-args})
 
 (def ^:private ->create-mutation-name
   {:card-type-enum/PLAYER_CARD :Mutation/createPlayerCard
@@ -51,19 +61,6 @@
    :card-type-enum/STANDARD_ACTION_CARD ::card.gql-types/standard-action-card-args
    :card-type-enum/TEAM_ASSET_CARD ::card.gql-types/team-asset-card-args})
 
-(defhook use-card-update
-  "Returns a graphql mutation hook [update-fn state] based on the type of card passed"
-  [type]
-  (let [mutation-name (->mutation-name type)
-        model-type (->model-type type)
-        mutation-args-schema (->update-mutation-args-schema type)
-        mutation-args (->> mutation-args-schema mc/schema mc/deref mc/children (map first))]
-    (gql.client/use-mutation
-     {mutation-name (list* [model-type :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                           mutation-args)}
-     (name mutation-name)
-     mutation-args-schema)))
-
 (defhook use-debounce [value delay]
   (let [[debounced-value set-debounced-value] (uix/use-state value)]
     (uix/use-effect
@@ -77,7 +74,7 @@
   "Returns a graphql mutation hook [create-fn state] based on the type of card passed"
   [type]
   (let [mutation-name (->create-mutation-name type)
-        model-type (->model-type type)
+        model-type (models/->model-type type)
         mutation-args-schema (->create-mutation-args-schema type)
         mutation-args (->> mutation-args-schema mc/schema mc/deref mc/children (map first))]
     (gql.client/use-mutation
@@ -99,68 +96,19 @@
                                               [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
                                               [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
                                               [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
-                                             :name)} :card
+                                             :name)}
+                          "getCardByName"
                           ::card.gql-types/card-args
                           variables)))
 
-(defhook use-card-mutations
-  "Unified hook providing all card mutations for a specific card type.
-   Returns map with :update, :create, :delete functions and shared state."
-  [card-type]
-  (let [;; Get mutation configurations
-        update-mutation-name (->mutation-name card-type)
-        create-mutation-name (->create-mutation-name card-type)
-        model-type (->model-type card-type)
-        update-args-schema (->update-mutation-args-schema card-type)
-        create-args-schema (->create-mutation-args-schema card-type)
-
-        ;; Extract argument lists
-        update-args (->> update-args-schema mc/schema mc/deref mc/children (map first))
-        create-args (->> create-args-schema mc/schema mc/deref mc/children (map first))
-
-        ;; Create individual mutation hooks
-        [update-fn update-state] (gql.client/use-mutation
-                                  {update-mutation-name
-                                   (list* [model-type :app.graphql.compiler/all-fields
-                                           {:gameAsset [::models/GameAsset]}]
-                                          update-args)}
-                                  (name update-mutation-name)
-                                  update-args-schema)
-
-        [create-fn create-state] (gql.client/use-mutation
-                                  {create-mutation-name
-                                   (list* [model-type :app.graphql.compiler/all-fields]
-                                          create-args)}
-                                  (name create-mutation-name)
-                                  create-args-schema)
-
-        ;; Request deduplication cache
-        pending-requests (uix/use-ref #{})]
-
-    ;; Unified mutation interface
-    {:update (fn [options]
-               (let [request-key [:update (:variables options)]]
-                 (when-not (contains? @pending-requests request-key)
-                   (swap! pending-requests conj request-key)
-                   (-> (update-fn options)
-                       (.finally #(swap! pending-requests disj request-key))))))
-
-     :create (fn [options]
-               (let [request-key [:create (:variables options)]]
-                 (when-not (contains? @pending-requests request-key)
-                   (swap! pending-requests conj request-key)
-                   (-> (create-fn options)
-                       (.finally #(swap! pending-requests disj request-key))))))
-
-     ;; Combined state information
-     :state {:loading (or (:loading update-state) (:loading create-state))
-             :error (or (:error update-state) (:error create-state))
-             :data (or (:data update-state) (:data create-state))
-             :update-state update-state
-             :create-state create-state}
-
-     ;; Utility functions
-     :is-updating? (:loading update-state)
-     :is-creating? (:loading create-state)
-     :has-error? (boolean (or (:error update-state) (:error create-state)))
-     :get-error (or (:error update-state) (:error create-state))}))
+(defhook use-card-field-update
+  "Returns mutation hook for updating a specific field.
+   Returns [update-fn state] where update-fn takes card identifier and field value."
+  [field-name]
+  (let [mutation-name (field-mutations field-name)
+        mutation-schema (field-mutation-schemas field-name)]
+    (gql.client/use-mutation
+     {mutation-name [::models/GameCard :app.graphql.compiler/all-fields
+                     {:gameAsset [::models/GameAsset]}]}
+     (name mutation-name)
+     mutation-schema)))
