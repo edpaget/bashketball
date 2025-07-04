@@ -142,6 +142,7 @@
 
            data
            (when-let [loaded-card (:card data)]
+             (reset! last-auto-saved loaded-card)
              (dispatch {:type :card-loaded :card loaded-card})))))
      [card-query-result])
 
@@ -195,6 +196,8 @@
                card-version (:version debounced-card)
                current-value (field-key debounced-card)
                last-saved-value (get @last-auto-saved field-key)]
+           (prn current-value)
+           (prn @last-auto-saved)
            (when (not= current-value last-saved-value)
              (dispatch {:type :field-update-loading
                         :field field-key

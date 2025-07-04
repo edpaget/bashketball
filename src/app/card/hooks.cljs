@@ -110,8 +110,14 @@
         mutation-schema (field-mutation-schemas field-name)
         mutation-args (->> mutation-schema mc/schema mc/deref mc/children (map first))]
     (gql.client/use-mutation
-     {mutation-name (list* [::models/GameCard :app.graphql.compiler/all-fields
-                            {:gameAsset [::models/GameAsset]}]
+     {mutation-name (list* [::models/GameCard
+                            [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/SplitPlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/PlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                            [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
                            mutation-args)}
      (name mutation-name)
      mutation-schema)))
