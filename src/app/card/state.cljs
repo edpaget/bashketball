@@ -122,7 +122,8 @@
 
 (defhook use-card-state
   "Card state management for existing cards"
-  [{:keys [name version debounce-ms] :or {debounce-ms 500}}]
+  [{:keys [name version debounce-ms new?] :or {debounce-ms 500
+                                               new? false}}]
   (let [[{:keys [card/data] :as state} dispatch] (uix/use-reducer card-state-reducer
                                                                   (initial-card-state {}))
         card-query-result (card.hooks/use-card-query name version)
@@ -132,19 +133,20 @@
     ;; Card loading effect
     (uix/use-effect
      (fn []
-       (let [{:keys [loading data error]} card-query-result]
-         (cond
-           loading
-           (dispatch {:type :loading-card})
+       (when-not new?
+         (let [{:keys [loading data error]} card-query-result]
+           (cond
+             loading
+             (dispatch {:type :loading-card})
 
-           error
-           (dispatch {:type :card-load-error :error (str error)})
+             error
+             (dispatch {:type :card-load-error :error (str error)})
 
-           data
-           (when-let [loaded-card (:card data)]
-             (reset! last-auto-saved loaded-card)
-             (dispatch {:type :card-loaded :card loaded-card})))))
-     [card-query-result])
+             data
+             (when-let [loaded-card (:card data)]
+               (reset! last-auto-saved loaded-card)
+               (dispatch {:type :card-loaded :card loaded-card}))))))
+     [card-query-result new?])
 
     {:state state
      :debounced-card debounced-card
