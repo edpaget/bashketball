@@ -154,7 +154,6 @@
                                                                  lift-keys#)
                                                cols# (vec (keys data-map#))
                                                vals# (vec (vals data-map#))]
-                                           (prn lift-keys#)
                                            (log/debug "Inserting into" table# "with data:" ~data-map)
                                            (db/execute-one! {:insert-into table#
                                                              :columns     cols#

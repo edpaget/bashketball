@@ -7,44 +7,35 @@
    [uix.core :as uix :refer [defui $]]))
 
 (defui card-label
-  [{:keys [display-label loading? validating?]}]
+  [{:keys [display-label loading? ]}]
   ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-1"}
      display-label
-     (when loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))
-     (when validating? ($ :span {:class "text-yellow-600 ml-2"} "🔍"))))
+     (when loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))))
 
 (defui card-status
-  [{:keys [dirty? validating? loading?]}]
+  [{:keys [dirty? loading?]}]
   ($ :div {:class "mt-1 flex items-center text-xs space-x-2"}
      (when dirty?
        ($ :span {:class "text-blue-600"} "📝 Modified"))
      (when loading?
        ($ :span {:class "text-purple-600"} "💾 Saving..."))))
 
-
 (defui multi-text [{:keys [value update-value]}]
-  (prn value)
-  (prn update-value)
-  (let [[widget-state set-widget-state!] (uix/use-state (or value [""]))]
-    (uix/use-effect
-     (fn []
-       (update-value widget-state))
-     [update-value widget-state])
-    ($ :div {:class "mt-1 flex flex-col flex-grow"} ;; This div remains for structure
-       (for [[idx item] (map-indexed vector widget-state)]
-         ($ :span {:key (str "ability-" idx) :class "flex items-center mb-2"} ;; Span remains for layout
-            ($ headless/Textarea {:value item
-                                  :on-change #(set-widget-state! (assoc widget-state idx (.. % -target -value)))
-                                  :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
-            ($ headless/Button {:type "button"
-                                :on-click #(set-widget-state! (into (subvec widget-state 0 idx)
-                                                                    (subvec widget-state (+ idx 1))))
-                                :class "px-3 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium"}
-               "-")))
-       ($ headless/Button {:type "button"
-                           :on-click #(set-widget-state! (conj widget-state ""))
-                           :class "mt-2 px-3 py-2 border border-green-500 text-green-500 rounded-md hover:bg-green-50 text-sm font-medium self-start"}
-          "+"))))
+  ($ :div {:class "mt-1 flex flex-col flex-grow"} ;; This div remains for structure
+     (for [[idx item] (map-indexed vector value)]
+       ($ :span {:key (str "ability-" idx) :class "flex items-center mb-2"} ;; Span remains for layout
+          ($ headless/Textarea {:value item
+                                :on-change #(update-value (assoc value idx (.. % -target -value)))
+                                :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
+          ($ headless/Button {:type "button"
+                              :on-click #(update-value (into (subvec value 0 idx)
+                                                                  (subvec value (+ idx 1))))
+                              :class "px-3 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium"}
+             "-")))
+     ($ headless/Button {:type "button"
+                         :on-click #(update-value (conj value ""))
+                         :class "mt-2 px-3 py-2 border border-green-500 text-green-500 rounded-md hover:bg-green-50 text-sm font-medium self-start"}
+        "+")))
 
 (defui card-input
   [{:keys [input-type value update-value final-classes placeholder display-label options]}]
@@ -75,7 +66,7 @@
   "Self-managing card field component with automatic validation and styling"
   [{:keys [field-key card-state label type class-name placeholder]}]
   (let [field-state (card.state/use-card-field field-key)
-        {:keys [value update-value dirty? loading? validating?
+        {:keys [value update-value dirty? loading?
                 has-error? error ]} field-state
 
         ;; Determine input type
@@ -92,7 +83,6 @@
         base-classes "w-full px-3 py-2 border rounded-md transition-colors"
         status-classes (cond
                          has-error? "border-red-500 bg-red-50"
-                         validating? "border-yellow-500 bg-yellow-50"
                          dirty? "border-blue-500 bg-blue-50"
                          :else "border-gray-300")
         final-classes (str base-classes " " status-classes " " (or class-name ""))]
@@ -100,8 +90,7 @@
     ($ headless/Field {:class "mb-4"}
        ;; Label
        ($ card-label {:display-label display-label
-                      :loading? loading?
-                      :validating? validating?})
+                      :loading? loading?})
 
        ;; Input field
        ($ card-input {:input-type input-type
@@ -113,7 +102,6 @@
 
        ;; Status indicators
        ($ card-status {:loading? loading?
-                       :validating? validating?
                        :dirty? dirty?})
        ;; Error display
        (when error

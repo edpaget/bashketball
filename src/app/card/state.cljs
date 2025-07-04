@@ -191,13 +191,20 @@
        (when (and dirty?
                   (not loading?)
                   (not errored?))
-         (let [current-value (get debounced-card field-key)
+         (let [card-name (:name debounced-card)
+               card-version (:version debounced-card)
+               current-value (field-key debounced-card)
                last-saved-value (get @last-auto-saved field-key)]
            (when (not= current-value last-saved-value)
              (dispatch {:type :field-update-loading
                         :field field-key
                         :loading? true})
-             (doto (save-field current-value)
+             (prn {:input {:name card-name
+                                        :version card-version}
+                                field-key current-value})
+             (doto (save-field {:variables {:input {:name card-name
+                                                    :version card-version}
+                                            field-key current-value}})
                (.then #(do
                          (swap! last-auto-saved assoc field-key current-value)
                          (dispatch {:type :field-update-success

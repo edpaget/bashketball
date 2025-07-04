@@ -254,11 +254,10 @@
                   (into #{}))
       ;; default case for map, merge, etc.
       (if-let [entries (mc/children schema)]
-        (do (prn entries)
-          (->> entries
-               (filter (fn [[_ _ child-schema]] (= :vector (mc/type child-schema))))
-               (map first)
-               (into #{})))
+        (->> entries
+             (filter (fn [[_ _ child-schema]] (= :vector (mc/type child-schema))))
+             (map first)
+             (into #{}))
         #{}))))
 
 (def ->model-type

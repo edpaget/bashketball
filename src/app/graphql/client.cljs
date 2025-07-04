@@ -15,8 +15,9 @@
 (defn- transform-variable-keys
   "Transforms the keys of a variables map from kebab-case to camelCase."
   [variables-map]
-  (when variables-map
-    (update-keys variables-map csk/->camelCase)))
+  (walk/postwalk #(cond-> %1
+                    (map? %1) (update-keys csk/->camelCase))
+                 variables-map))
 
 (defn- build-decode-response-data-fn
   "Returns a function that decodes response data based on type-mappings.
@@ -47,8 +48,7 @@
 (defn- update-options
   [options]
   (clj->js
-   (cond-> options
-     (:variables options) (update :variables transform-variable-keys))))
+   (update options :variables transform-variable-keys)))
 
 (defn use-mutation
   ([mutation-edn]

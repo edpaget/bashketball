@@ -36,19 +36,6 @@
    [:size {:optional true :default :size-enum/SM} ::models/PlayerSize]
    [:abilities {:optional true :default [""]} [:vector :string]]])
 
-(registry/defschema ::update-player-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:deck-size {:optional true} [:maybe :int]]
-   [:sht {:optional true} [:maybe :int]]
-   [:pss {:optional true} [:maybe :int]]
-   [:def {:optional true} [:maybe :int]]
-   [:speed {:optional true} [:maybe :int]]
-   [:size {:optional true} [:maybe ::models/PlayerSize]]
-   [:abilities {:optional true} [:maybe [:vector :string]]]])
-
 ;; --- AbilityCard ---
 (registry/defschema ::ability-card-args
   [:map
@@ -56,13 +43,6 @@
    [:version {:optional true :default "0"} [:maybe :string]]
    [:game-asset-id {:optional true} [:maybe :uuid]]
    [:abilities {:optional true :default [""]} [:vector :string]]])
-
-(registry/defschema ::update-ability-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:abilities {:optional true} [:maybe [:vector :string]]]])
 
 ;; --- SplitPlayCard ---
 (registry/defschema ::split-play-card-args
@@ -74,15 +54,6 @@
    [:offense {:optional true :default ""} :string]
    [:defense {:optional true :default ""} :string]])
 
-(registry/defschema ::update-split-play-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} [:maybe :int]]
-   [:offense {:optional true} [:maybe :string]]
-   [:defense {:optional true} [:maybe :string]]])
-
 ;; --- PlayCard ---
 (registry/defschema ::play-card-args
   [:map
@@ -92,14 +63,6 @@
    [:fate {:optional true :default 0} :int]
    [:play {:optional true :default ""} :string]])
 
-(registry/defschema ::update-play-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} [:maybe :int]]
-   [:play {:optional true} [:maybe :string]]])
-
 ;; --- CoachingCard ---
 (registry/defschema ::coaching-card-args
   [:map
@@ -108,14 +71,6 @@
    [:game-asset-id {:optional true} [:maybe :uuid]]
    [:fate {:optional true :default 0} :int]
    [:coaching {:optional true :default ""} :string]])
-
-(registry/defschema ::update-coaching-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} [:maybe :int]]
-   [:coaching {:optional true} [:maybe :string]]])
 
 ;; --- StandardActionCard ---
 (registry/defschema ::standard-action-card-args
@@ -127,15 +82,6 @@
    [:offense {:optional true :default ""} :string]
    [:defense {:optional true :default ""} :string]])
 
-(registry/defschema ::update-standard-action-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} [:maybe :int]]
-   [:offense {:optional true} [:maybe :string]]
-   [:defense {:optional true} [:maybe :string]]])
-
 ;; --- TeamAssetCard ---
 (registry/defschema ::team-asset-card-args
   [:map
@@ -144,14 +90,6 @@
    [:game-asset-id {:optional true} [:maybe :uuid]]
    [:fate {:optional true :default 0} :int]
    [:asset-power :string]])
-
-(registry/defschema ::update-team-asset-card-args
-  [:map
-   [:name :string]
-   [:version :string]
-   [:game-asset-id {:optional true} [:maybe :uuid]]
-   [:fate {:optional true} [:maybe :int]]
-   [:asset-power {:optional true} [:maybe :string]]])
 
 ;; =============================================================================
 ;; Field-Based Mutation Schemas
