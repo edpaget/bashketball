@@ -48,7 +48,8 @@
                                               ($ :p {:class "text-gray-600"} (:speed card)))
                                            ($ :div {:class "text-sm"} ($ :p {:class "font-semibold text-gray-700"} "SIZE")
                                               ($ :p {:class "text-gray-600"}
-                                                 (name (:size card)))))
+                                                 (some->> (:size card)
+                                                          name))))
                                         ($ list-abilities card))
          :card-type-enum/COACHING_CARD ($ :div {:class "p-4 border-t border-gray-200"}
                                           ($ :p {:class "text-sm text-gray-600"} (:coaching card)))

@@ -16,9 +16,7 @@
   [{:keys [dirty? loading?]}]
   ($ :div {:class "mt-1 flex items-center text-xs space-x-2"}
      (when dirty?
-       ($ :span {:class "text-blue-600"} "📝 Modified"))
-     (when loading?
-       ($ :span {:class "text-purple-600"} "💾 Saving..."))))
+       ($ :span {:class "text-blue-600"} "📝 Modified"))))
 
 (defui multi-text [{:keys [value update-value disabled]}]
   ($ :div {:class "mt-1 flex flex-col flex-grow"} ;; This div remains for structure
@@ -49,14 +47,18 @@
                                      :class final-classes
                                      :placeholder (or placeholder (str "Enter " display-label))
                                      :rows 3})
-    "select" ($ headless/Select {:on-change #(update-value (.. % -target -value))
-                                 :disabled disabled
-                                 :value value
-                                 :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
-                ($ :option {:value ""} (or placeholder
-                                           (str "Select " display-label)))
-                (for [[option-value option-label] options]
-                  ($ :option {:key option-value :value option-value} option-label)))
+    "select" (let [value->kw (zipmap (->> options keys (map name))
+                                     (keys options))]
+               ($ headless/Select {:on-change #(update-value
+                                                (value->kw
+                                                 (.. % -target -value)))
+                                   :disabled disabled
+                                   :value value
+                                   :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
+                  ($ :option {:value ""} (or placeholder
+                                             (str "Select " display-label)))
+                  (for [[option-value option-label] options]
+                    ($ :option {:key (name option-value) :value option-value} option-label))))
     "multitext" ($ multi-text {:value value :update-value update-value})
     ($ headless/Input {:type input-type
                        :disabled disabled
@@ -70,10 +72,10 @@
 
 (defui card-field
   "Self-managing card field component with automatic validation and styling"
-  [{:keys [field-key label type class-name placeholder disabled]}]
+  [{:keys [field-key label type class-name placeholder disabled options]}]
   (let [field-state (card.state/use-card-field field-key)
         {:keys [value update-value dirty? loading?
-                has-error? error]} field-state
+                errored? error]} field-state
 
         ;; Determine input type
         input-type (or type
@@ -88,7 +90,7 @@
         ;; Build CSS classes
         base-classes "w-full px-3 py-2 border rounded-md transition-colors"
         status-classes (cond
-                         has-error? "border-red-500 bg-red-50"
+                         errored? "border-red-500 bg-red-50"
                          dirty? "border-blue-500 bg-blue-50"
                          :else "border-gray-300")
         final-classes (str base-classes " " status-classes " " (or class-name ""))]
@@ -105,7 +107,8 @@
                       :update-value update-value
                       :placeholder placeholder
                       :display-label display-label
-                      :final-classes final-classes})
+                      :final-classes final-classes
+                      :options options})
 
        ;; Status indicators
        ($ card-status {:loading? loading?
@@ -114,12 +117,17 @@
        (when error
          ($ :p {:class "mt-1 text-sm text-red-600"} error)))))
 
+(defui card-upload-field
+  []
+  (let [{:keys [update-value]} (card.state/use-card-field :game-asset-id)]
+    ($ a.uploader/asset-upload {:update-card-field update-value})))
+
 ;; Example card components for each type
 
 (defui player-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :sht :label "Shot"})
      ($ card-field {:field-key :pss :label "Pass"})
      ($ card-field {:field-key :def :label "Defense"})
@@ -130,21 +138,21 @@
 (defui ability-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui play-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui split-play-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :offense :label "Offense" :type "textarea"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
@@ -152,21 +160,21 @@
 (defui coaching-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :coaching :label "Coaching" :type "textarea"})))
 
 (defui standard-action-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui team-asset-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ a.uploader/asset-upload {:update-card-field update-field})
+     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :asset-power :label "Asset Power" :type "textarea"})))
 

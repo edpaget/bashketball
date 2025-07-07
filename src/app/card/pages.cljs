@@ -4,7 +4,6 @@
    [app.authn.provider :as authn]
    [app.card.edit :refer [edit-card]]
    [app.card.graphql-types :as card.gql-types]
-   [app.card.hooks :as card.hooks]
    [app.card.show :refer [show-card]]
    [app.card.state :as card.state]
    [app.graphql.client :as gql.client]
@@ -40,56 +39,9 @@
                 ($ edit-card {:new? false})))))))
 
 (defui cards-new []
-  (comment
-    (let [;; Initialize with basic card structure
-          initial-card {:card-type :card-type-enum/INVALID
-                        :name ""
-                        :fate 1}
-
-          ;; Use unified state management
-          card.state (card.state/use-card.state initial-card
-                                                :auto-save? false
-                                                :validate-on-change? true)
-
-          ;; Get unified mutations
-          {:keys [is-creating? create state]} (card.hooks/use-card-mutations (:card-type (:card card.state)))
-
-          ;; Handle form submission
-          handle-submit (fn []
-                          (when-not (:has-errors? card.state)
-                            (create {:variables (:card card.state)})))]
-
-      ;; Navigate to card after creation
-      (uix/use-effect
-       (fn []
-         (when-let [new-card (-> state :data vals first)]
-           (router/navigate! :cards-show {:id (:name new-card)})))
-       [state])
-
-      ;; Wrap content in a styled container, similar to cards-show
-      ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
-         ($ :div {} ; Column for showing the card preview
-            ($ show-card (:card card.state)))
-         ($ :div {} ; Column for edit form
-            ($ authn/login-required {:show-prompt false}
-               ($ edit-card {:card (:card card.state)
-                             :new? true
-                             :update-card-field (:update-field card.state)})
-
-               ;; Error display
-               (when (:has-errors? card.state)
-                 ($ :div {:class "mt-4 p-3 bg-red-50 border border-red-200 rounded-md max-w-2xl mx-auto"}
-                    ($ :h4 {:class "text-red-800 font-medium mb-2"} "Please fix the following errors:")
-                    ($ :ul {:class "text-red-700 text-sm list-disc list-inside"}
-                       (for [[field error] (:errors card.state)]
-                         ($ :li {:key field} (str (name field) ": " error))))))
-
-               ;; Submit button
-               ($ :div {:class "mt-6 flex justify-end max-w-2xl mx-auto"}
-                  ($ headless/Button {:type "button"
-                                      :on-click handle-submit
-                                      :disabled (or is-creating?
-                                                    (:has-errors? card.state)
-                                                    (empty? (get-in card.state [:card :name])))
-                                      :class "bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400"}
-                     (if is-creating? "Creating..." "Create Card")))))))))
+  ($ card.state/with-card {:new? true}
+     ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
+        ($ :div {}
+           ($ show-card))
+        ($ :div {}
+           ($ edit-card {:new? true})))))

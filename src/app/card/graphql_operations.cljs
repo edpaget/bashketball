@@ -1,4 +1,4 @@
-(ns app.card.hooks
+(ns app.card.graphql-operations
   (:require
    [app.card.graphql-types :as card.gql-types]
    [app.graphql.client :as gql.client]
@@ -8,7 +8,7 @@
 
 ;; === FIELD-BASED MUTATION SYSTEM ===
 
-(def ^:private field-mutations
+(def field-mutations
   "Maps field names to their corresponding field-based GraphQL mutations"
   {:game-asset-id :Mutation/updateCardGameAsset
    :deck-size :Mutation/updateCardDeckSize
@@ -71,45 +71,47 @@
      [value delay])
     debounced-value))
 
-(defhook use-card-create
+(defn card-create
   "Returns a graphql mutation hook [create-fn state] based on the type of card passed"
   [type]
   (let [mutation-name (->create-mutation-name type)
         model-type (models/->model-type type)
         mutation-args-schema (->create-mutation-args-schema type)
         mutation-args (->> mutation-args-schema mc/schema mc/deref mc/children (map first))]
-    (gql.client/use-mutation
-     {mutation-name (list* [model-type :app.graphql.compiler/all-fields]
-                           mutation-args)}
-     (name mutation-name)
-     mutation-args-schema)))
+    [#(gql.client/mutate
+       {mutation-name (list* [model-type :app.graphql.compiler/all-fields]
+                             mutation-args)}
+       (name mutation-name)
+       mutation-args-schema
+       %)
+     {:loading false :error nil}]))
 
-(defhook use-card-query
-  "Hook for loading a card by name and version"
+(defn card-query
+  "Functionfor loading a card by name and version"
   [card-name & [card-version]]
   (let [variables {:name card-name
                    :version (or card-version "0")}]
-    (gql.client/use-query {:Query/card (list [::models/GameCard
-                                              [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/SplitPlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/PlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
-                                              [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
-                                             :name)}
-                          "getCardByName"
-                          ::card.gql-types/card-args
-                          variables)))
+    (gql.client/query {:Query/card (list [::models/GameCard
+                                          [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/SplitPlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/PlayCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/CoachingCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/StandardActionCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
+                                          [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
+                                         :name)}
+                      "getCardByName"
+                      ::card.gql-types/card-args
+                      variables)))
 
-(defhook use-card-field-update
+(defn card-field-update
   "Returns mutation hook for updating a specific field.
    Returns [update-fn state] where update-fn takes card identifier and field value."
-  [field-name]
+  [field-name exec-args]
   (let [mutation-name (field-mutations field-name)
         mutation-schema (field-mutation-schemas field-name)
         mutation-args (->> mutation-schema mc/schema mc/deref mc/children (map first))]
-    (gql.client/use-mutation
+    (gql.client/mutate
      {mutation-name (list* [::models/GameCard
                             [::models/PlayerCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
                             [::models/AbilityCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]
@@ -120,4 +122,5 @@
                             [::models/TeamAssetCard :app.graphql.compiler/all-fields {:gameAsset [::models/GameAsset]}]]
                            mutation-args)}
      (name mutation-name)
-     mutation-schema)))
+     mutation-schema
+     exec-args)))

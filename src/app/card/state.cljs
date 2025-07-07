@@ -1,6 +1,6 @@
 (ns app.card.state
   (:require
-   [app.card.hooks :as card.hooks]
+   [app.card.graphql-operations :as card.operations]
    [app.models :as models]
    [malli.core :as mc]
    [uix.core :as uix :refer [$ defhook defui]]))
@@ -120,38 +120,68 @@
 
     state))
 
+(def ^:private non-autosaving-fields #{:card-type :name})
+
 (defhook use-card-state
   "Card state management for existing cards"
   [{:keys [name version debounce-ms new?] :or {debounce-ms 500
                                                new? false}}]
   (let [[{:keys [card/data] :as state} dispatch] (uix/use-reducer card-state-reducer
                                                                   (initial-card-state {}))
-        card-query-result (card.hooks/use-card-query name version)
-        debounced-card (card.hooks/use-debounce data debounce-ms)
-        last-auto-saved (uix/use-ref {})]
+        debounced-card (card.operations/use-debounce data debounce-ms)
+        last-auto-saved (uix/use-ref {})
+
+        dirty  (seq (:card/dirty state))
+        loading? (boolean (seq (:card/loading state)))
+        errored? (boolean (seq (:card/errors state)))]
 
     ;; Card loading effect
     (uix/use-effect
      (fn []
+       (prn new?)
        (when-not new?
-         (let [{:keys [loading data error]} card-query-result]
-           (cond
-             loading
-             (dispatch {:type :loading-card})
+         (dispatch {:type :loading-card})
+         (doto (card.operations/card-query name version)
+           (.then #(prn %))
+           (.then #(when-let [loaded-card (get-in % [:data :card])]
+                     (prn %)
+                     (reset! last-auto-saved loaded-card)
+                     (dispatch {:type :card-loaded :card loaded-card})))
+           (.catch #(dispatch {:type :card-load-error :error (str %)})))))
+     [name version new?])
 
-             error
-             (dispatch {:type :card-load-error :error (str error)})
-
-             data
-             (when-let [loaded-card (:card data)]
-               (reset! last-auto-saved loaded-card)
-               (dispatch {:type :card-loaded :card loaded-card}))))))
-     [card-query-result new?])
+    (uix/use-effect
+     (fn []
+       (when (and dirty
+                  (not new?)
+                  (not loading?)
+                  (not errored?))
+         (doseq [field dirty]
+           (when-not (contains? non-autosaving-fields field)
+             (let [card-name (:name debounced-card)
+                   card-version (:version debounced-card)
+                   current-value (field debounced-card)
+                   last-saved-value (get @last-auto-saved field)]
+               (when (not= current-value last-saved-value)
+                 (dispatch {:type :field-update-loading
+                            :field field
+                            :loading? true})
+                 (-> (card.operations/card-field-update field {:input {:name card-name
+                                                                  :version card-version}
+                                                          field current-value})
+                     (.then #(do
+                               (prn %)
+                               (swap! last-auto-saved assoc field current-value)
+                               (dispatch {:type :field-update-success
+                                          :field field
+                                          :updated-card (get-in % [:data (-> (card.operations/field-mutations field)
+                                                                             clojure.core/name keyword)])})))
+                     (.catch #(dispatch {:type :field-update-error
+                                         :field field
+                                         :error %})))))))))
+     [dirty loading? errored? debounced-card new?])
 
     {:state state
-     :debounced-card debounced-card
-     :dispatch dispatch
-     :last-auto-saved last-auto-saved
      :update-field (uix/use-callback
                     (fn [field value]
                       (dispatch {:type :update-field :field field :value value}))
@@ -167,7 +197,7 @@
      :dirty? (boolean (seq (:card/dirty state)))
      :loading? (boolean (seq (:card/loading state)))
      :loading-card? (:card/loading-card? state)
-     :has-errors? (boolean (seq (:card/errors state)))
+     :errored? (boolean (seq (:card/errors state)))
      :errors (:card/errors state)
      :card-load-error (:card/load-error state)
      :card (:card/data state)}))
@@ -175,56 +205,17 @@
 (defhook use-card-field
   "Field-level state management with validation and loading states"
   [field-key]
-  (let [{:keys [state
-                dispatch
-                debounced-card
-                last-auto-saved
-                update-field]
-         :as card-state} (uix/use-context card-provider)
-        [save-field] (card.hooks/use-card-field-update field-key)
+  (let [{:keys [state update-field]} (uix/use-context card-provider)
         value (get-in state [:card/data field-key])
         pristine-value (get-in state [:card/pristine field-key])
-        field-error (get-in state [:card/errors field-key])
-        dirty? (contains? (:card/dirty state) field-key)
-        loading? (contains? (:card/loading state) field-key)
-        errored? (boolean field-error)]
-
-    (uix/use-effect
-     (fn []
-       (when (and dirty?
-                  (not loading?)
-                  (not errored?))
-         (let [card-name (:name debounced-card)
-               card-version (:version debounced-card)
-               current-value (field-key debounced-card)
-               last-saved-value (get @last-auto-saved field-key)]
-           (prn current-value)
-           (prn @last-auto-saved)
-           (when (not= current-value last-saved-value)
-             (dispatch {:type :field-update-loading
-                        :field field-key
-                        :loading? true})
-             (doto (save-field {:variables {:input {:name card-name
-                                                    :version card-version}
-                                            field-key current-value}})
-               (.then #(do
-                         (prn %)
-                         (swap! last-auto-saved assoc field-key current-value)
-                         (dispatch {:type :field-update-success
-                                    :field field-key
-                                    ;; TODO: Extract from correct operation name
-                                    :updated-card (-> % :data vals first)})))
-               (.catch #(dispatch {:type :field-update-error
-                                   :field field-key
-                                   :error %})))))))
-     [dirty? loading? errored? debounced-card last-auto-saved dispatch field-key save-field])
+        field-error (get-in state [:card/errors field-key])]
 
     {:value value
+     :dirty? (contains? (:card/dirty state) field-key)
+     :loading? (contains? (:card/loading state) field-key)
      :pristine-value pristine-value
      :update-value (fn [new-value] (update-field field-key new-value))
-     :dirty? dirty?
-     :loading? loading?
-     :has-error? (boolean field-error)
+     :errored? (boolean field-error)
      :error field-error
      :revert-to-pristine (fn []
                            (update-field field-key pristine-value))}))

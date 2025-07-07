@@ -76,3 +76,45 @@
       (-> mutation-state-js
           (js->clj :keywordize-keys true)
           (update :data decode-data-fn))])))
+
+ ;; Direct Apollo Client Functions (without React hooks)
+
+(defn query
+  "Execute a GraphQL query directly using Apollo Client.
+   Returns a Promise that resolves to decoded response data."
+  ([query-edn]
+   (query query-edn nil nil nil))
+  ([query-edn query-name]
+   (query query-edn query-name nil nil))
+  ([query-edn query-name arguments variables]
+   (let [[query-string type-mappings] (gql.compiler/->query query-edn query-name arguments)
+         decode-data-fn (build-decode-response-data-fn type-mappings)
+         js-options (clj->js (transform-variable-keys variables))]
+     (-> client
+         (.query (js-obj "query" (apollo.client/gql query-string)
+                         "variables" js-options))
+         (.then (fn [response]
+                  (-> response
+                      (js->clj :keywordize-keys true)
+                      (update :data decode-data-fn))))))))
+
+(defn mutate
+  "Execute a GraphQL mutation directly using Apollo Client.
+   Returns a Promise that resolves to decoded response data."
+  ([mutation-edn]
+   (mutate mutation-edn nil nil nil))
+  ([mutation-edn mutation-name]
+   (mutate mutation-edn mutation-name nil nil))
+  ([mutation-edn mutation-name mutation-args variables]
+   (let [[mutation-string type-mappings] (gql.compiler/->mutation mutation-edn mutation-name mutation-args)
+         decode-data-fn (build-decode-response-data-fn type-mappings)
+         js-options (clj->js (transform-variable-keys variables))]
+(.log js/console (js-obj "mutation" (apollo.client/gql mutation-string)
+                          "variables" js-options))
+     (-> client
+         (.mutate (js-obj "mutation" (apollo.client/gql mutation-string)
+                          "variables" js-options))
+         (.then (fn [response]
+                  (-> response
+                      (js->clj :keywordize-keys true)
+                      (update :data decode-data-fn))))))))
