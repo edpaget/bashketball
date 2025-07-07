@@ -20,32 +20,37 @@
      (when loading?
        ($ :span {:class "text-purple-600"} "💾 Saving..."))))
 
-(defui multi-text [{:keys [value update-value]}]
+(defui multi-text [{:keys [value update-value disabled]}]
   ($ :div {:class "mt-1 flex flex-col flex-grow"} ;; This div remains for structure
      (for [[idx item] (map-indexed vector value)]
        ($ :span {:key (str "ability-" idx) :class "flex items-center mb-2"} ;; Span remains for layout
           ($ headless/Textarea {:value item
+                                :disabled disabled
                                 :on-change #(update-value (assoc value idx (.. % -target -value)))
                                 :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
           ($ headless/Button {:type "button"
+                              :disabled disabled
                               :on-click #(update-value (into (subvec value 0 idx)
                                                              (subvec value (+ idx 1))))
                               :class "px-3 py-2 border border-red-500 text-red-500 rounded-md hover:bg-red-50 text-sm font-medium"}
              "-")))
      ($ headless/Button {:type "button"
+                         :disabled disabled
                          :on-click #(update-value (conj value ""))
                          :class "mt-2 px-3 py-2 border border-green-500 text-green-500 rounded-md hover:bg-green-50 text-sm font-medium self-start"}
         "+")))
 
 (defui card-input
-  [{:keys [input-type value update-value final-classes placeholder display-label options]}]
+  [{:keys [input-type value update-value final-classes placeholder display-label options disabled]}]
   (case input-type
     "textarea" ($ headless/Textarea {:value (or value "")
+                                     :disabled disabled
                                      :on-change #(update-value (.. % -target -value))
                                      :class final-classes
                                      :placeholder (or placeholder (str "Enter " display-label))
                                      :rows 3})
     "select" ($ headless/Select {:on-change #(update-value (.. % -target -value))
+                                 :disabled disabled
                                  :value value
                                  :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
                 ($ :option {:value ""} (or placeholder
@@ -54,6 +59,7 @@
                   ($ :option {:key option-value :value option-value} option-label)))
     "multitext" ($ multi-text {:value value :update-value update-value})
     ($ headless/Input {:type input-type
+                       :disabled disabled
                        :value (or value "")
                        :on-change #(let [new-value (.. % -target -value)]
                                      (update-value (if (= input-type "number")
@@ -64,7 +70,7 @@
 
 (defui card-field
   "Self-managing card field component with automatic validation and styling"
-  [{:keys [field-key label type class-name placeholder]}]
+  [{:keys [field-key label type class-name placeholder disabled]}]
   (let [field-state (card.state/use-card-field field-key)
         {:keys [value update-value dirty? loading?
                 has-error? error]} field-state
@@ -95,6 +101,7 @@
        ;; Input field
        ($ card-input {:input-type input-type
                       :value value
+                      :disabled disabled
                       :update-value update-value
                       :placeholder placeholder
                       :display-label display-label

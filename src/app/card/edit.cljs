@@ -22,26 +22,22 @@
   (let [current-card (card.state/use-current-card)
 
         ;; Get the appropriate editor component for the selected type
-        editor-component (get card.components/card-type-components (:card-type current-card))]
+        ]
     ($ :div {:class "p-6 bg-white shadow-lg rounded-lg max-w-2xl mx-auto my-8"}
        ($ :div {:class "space-y-6"}
           ($ :h1 {:class "text-3xl font-bold text-gray-900 mb-6 text-center"}
              (if new? "Create Card" "Edit Card"))
 
-          ;; Card type selection (for new cards) or display (for existing cards)
-          (if new?
-            (comment
-              ($ card-type-selector {:selected-type selected-type
-                                     :on-type-change (fn [new-type]
-                                                       (set-selected-type new-type)
-                                                       (update-field :card-type new-type))}))
-            ($ headless/Field {:class "mb-6"}
-               ($ headless/Label {:class "block text-sm font-medium text-gray-700 mb-2"} "Card Type")
-               ($ :div {:class "w-full px-3 py-2 text-gray-500 bg-gray-100 rounded-md"}
-                  (get card-types/->type-label (:card-type current-card) "Unknown Type"))))
+          ($ card.components/card-field {:field-key :card-type
+                                         :label "Card Type"
+                                         :disabled new?
+                                         :type "select"})
+          ($ card.components/card-field {:field-key :name
+                                         :label "Name"
+                                         :disabled new?})
 
           ;; Render the appropriate card editor component based on type
-          (when editor-component
+          (when-let [editor-component (get card.components/card-type-components (:card-type current-card))]
             ($ editor-component))))))
 
 ;; Remove unused components
