@@ -120,7 +120,7 @@
 
     state))
 
-(def ^:private non-autosaving-fields #{:card-type :name})
+(def ^:private non-autosaving-fields #{:card-type :name :game-asset})
 
 (defhook use-card-state
   "Card state management for existing cards"

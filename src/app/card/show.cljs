@@ -1,7 +1,8 @@
 (ns app.card.show
-  (:require [app.card.types :as card-types]
-            [uix.core :as uix :refer [defui $]]
-            [app.card.state :as card.state]))
+  (:require
+   [app.card.state :as card.state]
+   [app.card.types :as card-types]
+   [uix.core :as uix :refer [defui $]]))
 
 (defui split-abilities [{:keys [offense defense]}]
   ($ :div {:class "grid grid-cols-2 gap-4 p-4 border-t border-gray-200"}

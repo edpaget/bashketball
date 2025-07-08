@@ -118,16 +118,17 @@
          ($ :p {:class "mt-1 text-sm text-red-600"} error)))))
 
 (defui card-upload-field
-  []
-  (let [{:keys [update-value]} (card.state/use-card-field :game-asset-id)]
-    ($ a.uploader/asset-upload {:update-card-field update-value})))
+  [{:keys [pass-blob?]}]
+  (let [{:keys [update-value]} (card.state/use-card-field :game-asset-id)
+        {update-img-url :update-value} (card.state/use-card-field :game-asset)]
+    ($ a.uploader/asset-upload (cond-> {:update-card-field update-value}
+                                 pass-blob? (assoc :update-img-url update-img-url)))))
 
 ;; Example card components for each type
 
 (defui player-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :sht :label "Shot"})
      ($ card-field {:field-key :pss :label "Pass"})
      ($ card-field {:field-key :def :label "Defense"})
@@ -138,21 +139,18 @@
 (defui ability-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui play-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui split-play-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :offense :label "Offense" :type "textarea"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
@@ -160,21 +158,18 @@
 (defui coaching-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :coaching :label "Coaching" :type "textarea"})))
 
 (defui standard-action-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui team-asset-card-editor
   [{:keys [update-field]}]
   ($ :div {:class "space-y-4"}
-     ($ card-upload-field)
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :asset-power :label "Asset Power" :type "textarea"})))
 

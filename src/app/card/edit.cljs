@@ -22,6 +22,7 @@
           ($ card.components/card-field {:field-key :name
                                          :label "Name"
                                          :disabled (not new?)})
+          ($ card.components/card-upload-field {:pass-blob? new?})
 
           ;; Render the appropriate card editor component based on type
           (when-let [editor-component (get card.components/card-type-components (:card-type current-card))]
