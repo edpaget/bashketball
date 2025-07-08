@@ -1,9 +1,7 @@
 (ns app.card.pages
   (:require
-   ["@headlessui/react" :as headless]
    [app.authn.provider :as authn]
    [app.card.edit :refer [edit-card]]
-   [app.card.graphql-types :as card.gql-types]
    [app.card.show :refer [show-card]]
    [app.card.state :as card.state]
    [app.graphql.client :as gql.client]
