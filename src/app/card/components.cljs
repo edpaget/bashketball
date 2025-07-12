@@ -13,7 +13,7 @@
      (when loading? ($ :span {:class "text-purple-600 ml-2"} "💾"))))
 
 (defui card-status
-  [{:keys [dirty? loading?]}]
+  [{:keys [dirty?]}]
   ($ :div {:class "mt-1 flex items-center text-xs space-x-2"}
      (when dirty?
        ($ :span {:class "text-blue-600"} "📝 Modified"))))
@@ -24,7 +24,7 @@
        ($ :span {:key (str "ability-" idx) :class "flex items-center mb-2"} ;; Span remains for layout
           ($ headless/Textarea {:value item
                                 :disabled disabled
-                                :on-change #(update-value (assoc value idx (.. % -target -value)))
+                                :on-change #(update-value (assoc (vec value) idx (.. % -target -value)))
                                 :class "flex-grow mr-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"})
           ($ headless/Button {:type "button"
                               :disabled disabled
