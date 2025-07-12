@@ -3,25 +3,20 @@
    [app.card.graphql-operations :as card.operations]
    [app.models :as models]
    [malli.core :as mc]
+   [malli.error :as me]
    [uix.core :as uix :refer [$ defhook defui]]))
 
 (def ^:private card-provider (uix/create-context {}))
 
 (defn validate-card
   "Validate a specific field using the appropriate card schema"
-  [existing-errors {:keys [card/data]}]
+  [{:keys [card/data] :as state}]
   (let [{:keys [card-type] :as card-value} data
         schema (get models/->model-type card-type ::models/Card)]
-    (merge existing-errors
-           (when (models/validate schema card-value)
-             (let [explain-data (mc/explain schema card-value)]
-               (reduce (fn [errors error]
-                         (let [field-path (:path error)
-                               field-key (first field-path)
-                               message (:message error)]
-                           (assoc errors field-key message)))
-                       {}
-                       (:errors explain-data)))))))
+    (assoc state :card/errors
+           (when-not (models/validate schema card-value)
+             (-> (mc/explain schema card-value)
+                 me/humanize)))))
 
 (defn initial-card-state
   "Create initial state structure for card management"
@@ -44,7 +39,7 @@
           (assoc-in [:card/data field] value)
           (update :card/dirty conj field)
           (update :card/errors dissoc field)
-          (update :card/errors validate-card state)))
+          validate-card))
 
     :field-update-loading
     (let [{:keys [field loading?]} action]
@@ -118,6 +113,25 @@
     :clear-errors
     (assoc state :card/errors {})
 
+    :card-creating
+    (assoc state :card/creating? true :card/create-error nil)
+
+    :card-created
+    (let [{:keys [card]} action]
+      (-> state
+          (assoc :card/creating? false)
+          (assoc :card/create-error nil)
+          (assoc :card/data card)
+          (assoc :card/pristine card)
+          (assoc :card/dirty #{})
+          (assoc :card/loading #{})))
+
+    :card-create-error
+    (let [{:keys [error]} action]
+      (-> state
+          (assoc :card/creating? false)
+          (assoc :card/create-error error)))
+
     state))
 
 (def ^:private non-autosaving-fields #{:card-type :name :game-asset})
@@ -131,20 +145,17 @@
         debounced-card (card.operations/use-debounce data debounce-ms)
         last-auto-saved (uix/use-ref {})
 
-        dirty  (seq (:card/dirty state))
+        dirty (seq (:card/dirty state))
         loading? (boolean (seq (:card/loading state)))
         errored? (boolean (seq (:card/errors state)))]
 
     ;; Card loading effect
     (uix/use-effect
      (fn []
-       (prn new?)
        (when-not new?
          (dispatch {:type :loading-card})
          (doto (card.operations/card-query name version)
-           (.then #(prn %))
            (.then #(when-let [loaded-card (get-in % [:data :card])]
-                     (prn %)
                      (reset! last-auto-saved loaded-card)
                      (dispatch {:type :card-loaded :card loaded-card})))
            (.catch #(dispatch {:type :card-load-error :error (str %)})))))
@@ -167,8 +178,8 @@
                             :field field
                             :loading? true})
                  (-> (card.operations/card-field-update field {:input {:name card-name
-                                                                  :version card-version}
-                                                          field current-value})
+                                                                       :version card-version}
+                                                               field current-value})
                      (.then #(do
                                (prn %)
                                (swap! last-auto-saved assoc field current-value)
@@ -194,9 +205,24 @@
                   (fn [card]
                     (dispatch {:type :reset-pristine :card card}))
                   [])
+     :create-card (uix/use-callback
+                   (fn []
+                     (when (and new? (not errored?))
+                       (dispatch {:type :card-creating})
+                       (let [[create-fn] (card.operations/card-create (:card-type data))]
+                         (-> (create-fn {:variables data})
+                             (.then #(do
+                                       (dispatch {:type :card-created
+                                                  :card (get-in % [:data])})
+                                       %))
+                             (.catch #(dispatch {:type :card-create-error :error %}))))))
+                   [new? data errored?])
+     :creating? (:card/creating? state)
+     :create-error (:card/create-error state)
      :dirty? (boolean (seq (:card/dirty state)))
      :loading? (boolean (seq (:card/loading state)))
      :loading-card? (:card/loading-card? state)
+     :new? new?
      :errored? (boolean (seq (:card/errors state)))
      :errors (:card/errors state)
      :card-load-error (:card/load-error state)
@@ -221,11 +247,16 @@
                            (update-field field-key pristine-value))}))
 
 (defhook use-current-card []
-  (-> (uix/use-context card-provider) :state :card/data))
+  (let [ctx (uix/use-context card-provider)]
+    {:current-card (-> ctx :state :card/data)
+     :creating? (:creating? ctx)
+     :create-error (:create-error ctx)
+     :create-card (:create-card ctx)
+     :new? (:new? ctx)}))
 
 (defui with-card
-  [{:keys [name version children]
+  [{:keys [name version children new?]
     :or {version 0}}]
-  (let [card-state (use-card-state {:name name :version version})]
+  (let [card-state (use-card-state {:name name :version version :new? new?})]
     ($ card-provider {:value card-state}
        children)))

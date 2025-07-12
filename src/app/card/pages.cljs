@@ -26,7 +26,6 @@
 
 (defui cards-show []
   (let [card-id (-> (router/use-router) :path-params :id)]
-
     ;; Wrap content in a styled container
     ($ card.state/with-card {:name card-id}
        ($ :div {:className "container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4"}
@@ -34,7 +33,7 @@
              ($ show-card))
           ($ :div {}             ; Column for edit form (conditionally rendered)
              ($ authn/login-required {:show-prompt false}
-                ($ edit-card {:new? false})))))))
+                ($ edit-card)))))))
 
 (defui cards-new []
   ($ card.state/with-card {:new? true}
@@ -42,4 +41,4 @@
         ($ :div {}
            ($ show-card))
         ($ :div {}
-           ($ edit-card {:new? true})))))
+           ($ edit-card)))))

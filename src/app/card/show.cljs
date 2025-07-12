@@ -20,7 +20,7 @@
           ($ :p ability)))))
 
 (defui show-card []
-  (let [{:keys [card-type] :as card} (card.state/use-current-card)]
+  (let [{{:keys [card-type] :as card} :current-card} (card.state/use-current-card)]
     ($ :div {:class "bg-white shadow-lg rounded-lg max-w-sm mx-auto overflow-hidden border border-gray-200 my-8"}
        ($ :div {:class "p-4 flex justify-between items-start border-b border-gray-200"}
           ($ :h1 {:class "text-xl font-bold text-gray-800"} (:name card))
