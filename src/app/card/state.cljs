@@ -13,6 +13,8 @@
   [{:keys [card/data] :as state}]
   (let [{:keys [card-type] :as card-value} data
         schema (get models/->model-type card-type ::models/Card)]
+    (prn (-> (mc/explain schema card-value)
+                 me/humanize))
     (assoc state :card/errors
            (when-not (models/validate schema card-value)
              (-> (mc/explain schema card-value)

@@ -10,11 +10,9 @@
   (:import
    [org.testcontainers Testcontainers]))
 
-(derive :e2e/fe-app :duct.compiler.cljs.shadow/server)
+(derive ::fe-app :dev.shadow-cljs/server)
 
 (def config (-> (io/resource "test.edn") slurp ig/read-string))
-
-(ig/load-namespaces config)
 
 ;; Define a Testcontainer for a headless Chrome browser
 (def chrome-container (atom
@@ -43,12 +41,10 @@
 ;; Fixture to manage the container lifecycle for all tests in this namespace
 (defn container-fixture [f]
   (swap! chrome-container tc/start!)
-  (try
-    (f)
-    (finally
-      (swap! chrome-container tc/stop!))))
+  (f))
 
 (defn- -server-fixture [f]
+  (ig/load-namespaces config)
   (let [system (ig/init config)]
     (Testcontainers/exposeHostPorts (int-array [9000]))
     (try

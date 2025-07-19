@@ -13,7 +13,7 @@
  :app.graphql.server/handler      {:resolvers #ig/ref :app.graphql.server/resolvers}
  :app.graphql.server/resolvers    {}
 
- :e2e/fe-app                      {:build
+ :e2e.fixtures/fe-app             {:build
                                    {:target :browser
                                     :modules {:main {:entries [app.core]
                                                      :init-fn app.core/init}}

@@ -39,9 +39,10 @@
         "+")))
 
 (defui card-input
-  [{:keys [input-type value update-value final-classes placeholder display-label options disabled]}]
+  [{:keys [field-key input-type value update-value final-classes placeholder display-label options disabled]}]
   (case input-type
     "textarea" ($ headless/Textarea {:value (or value "")
+                                     :name (name field-key)
                                      :disabled disabled
                                      :on-change #(update-value (.. % -target -value))
                                      :class final-classes
@@ -52,6 +53,7 @@
                ($ headless/Select {:on-change #(update-value
                                                 (value->kw
                                                  (.. % -target -value)))
+                                   :name (name field-key)
                                    :disabled disabled
                                    :value value
                                    :class "flex-grow mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"}
@@ -59,8 +61,9 @@
                                              (str "Select " display-label)))
                   (for [[option-value option-label] options]
                     ($ :option {:key (name option-value) :value option-value} option-label))))
-    "multitext" ($ multi-text {:value value :update-value update-value})
+    "multitext" ($ multi-text {:value value :update-value update-value :field-key field-key})
     ($ headless/Input {:type input-type
+                       :name (name field-key)
                        :disabled disabled
                        :value (or value "")
                        :on-change #(let [new-value (.. % -target -value)]
@@ -102,6 +105,7 @@
 
        ;; Input field
        ($ card-input {:input-type input-type
+                      :field-key field-key
                       :value value
                       :disabled disabled
                       :update-value update-value
