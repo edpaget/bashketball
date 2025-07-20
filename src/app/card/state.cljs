@@ -4,6 +4,7 @@
    [app.models :as models]
    [malli.core :as mc]
    [malli.error :as me]
+   [malli.util :as mu]
    [uix.core :as uix :refer [$ defhook defui]]))
 
 (def ^:private card-provider (uix/create-context {}))
@@ -12,9 +13,20 @@
   "Validate a specific field using the appropriate card schema"
   [{:keys [card/data] :as state}]
   (let [{:keys [card-type] :as card-value} data
-        schema (get models/->model-type card-type ::models/Card)]
+        schema (-> (get models/->model-type card-type ::models/Card)
+                   ;; these fields are managed by the server
+                   (mu/dissoc
+                    :version)
+                   (mu/dissoc
+                    :created-at)
+                   (mu/dissoc
+                    :updated-at)
+
+                   (mu/optional-keys
+                    ;; This field is optional on the front-end
+                    [:game-asset-id]))]
     (prn (-> (mc/explain schema card-value)
-                 me/humanize))
+             me/humanize))
     (assoc state :card/errors
            (when-not (models/validate schema card-value)
              (-> (mc/explain schema card-value)
