@@ -1,7 +1,6 @@
 (ns app.card.state-test
   (:require
    [app.card.state :as card.state]
-   [app.models :as models]
    [clojure.test :refer [deftest is testing]]))
 
 ;; Test data fixtures - using proper JS Date objects for time fields
