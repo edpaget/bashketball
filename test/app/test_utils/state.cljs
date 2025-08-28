@@ -26,7 +26,7 @@
   "Convenience function to render a component with both Apollo and card state contexts"
   ([component] (render-with-state component {}))
   ([component {:keys [card-options client] :as opts}]
-   (tlr/render
+   (test-utils/render
     ($ state-test-wrapper {:card-options card-options :client client}
        component))))
 
@@ -46,25 +46,25 @@
 
 (defn assert-field-value
   "Assert that a field has the expected value in a rendered component"
-  [result field-name expected-value]
+  [^js result field-name expected-value]
   (let [field (.queryByDisplayValue result expected-value)]
     (not (nil? field))))
 
 (defn assert-field-exists
   "Assert that a field with given label exists in a rendered component"
-  [result field-label]
+  [^js result field-label]
   (let [field (.queryByLabelText result field-label)]
     (not (nil? field))))
 
 (defn assert-button-exists
   "Assert that a button with given name exists in a rendered component"
-  [result button-name]
+  [^js result button-name]
   (let [button (.queryByRole result "button" #js {:name button-name})]
     (not (nil? button))))
 
 (defn click-button
   "Click a button with the given name in a rendered component"
-  [result button-name]
+  [^js result button-name]
   (when-let [button (.queryByRole result "button" #js {:name button-name})]
     (tlr/fireEvent.click button)
     true))

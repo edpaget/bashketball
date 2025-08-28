@@ -40,6 +40,12 @@
       (api/release* (-> config :builds (get key)) {}))
     key))
 
+(defmethod ig/init-key ::compile [key config]
+  (let [config (normalize-config key config)]
+    (with-runtime (make-runtime config)
+      (api/compile* (-> config :builds (get key)) {}))
+    key))
+
 (defn- quieten-loggers [loggers]
   (doseq [logger loggers]
     (doto (java.util.logging.Logger/getLogger logger)

@@ -16,9 +16,9 @@
 
 (t/deftest test-edit-card-renders-new
   ;; Render with Apollo context and card state context for new card
-  (let [result (test-utils/render-with-apollo
-                ($ card.state/with-card {:new? true}
-                   ($ sut/edit-card)))]
+  (let [^js result (test-utils/render-with-apollo
+                    ($ card.state/with-card {:new? true}
+                       ($ sut/edit-card)))]
 
     ;; Verify that the component renders with expected text for new card
     (t/is (not (nil? (.queryByRole result "heading" #js {:name "Create Card"})))
@@ -39,9 +39,9 @@
   (let [spy (test-utils/with-card-operation-spy)]
 
     ;; Render component
-    (let [result (test-utils/render-with-apollo
-                  ($ card.state/with-card {:new? true}
-                     ($ sut/edit-card)))]
+    (let [^js result (test-utils/render-with-apollo
+                      ($ card.state/with-card {:new? true}
+                         ($ sut/edit-card)))]
 
       ;; Find and click the create button
       (when-let [create-button (.queryByRole result "button" #js {:name "Create Card"})]
@@ -59,9 +59,9 @@
                 :card-type :card-type-enum/PLAYER_CARD}})
 
   ;; Render component with existing card context
-  (let [result (test-utils/render-with-apollo
-                ($ card.state/with-card {:card-name "existing-card" :version 1}
-                   ($ sut/edit-card)))]
+  (let [^js result (test-utils/render-with-apollo
+                    ($ card.state/with-card {:card-name "existing-card" :version 1}
+                       ($ sut/edit-card)))]
 
     ;; Verify card data is displayed
     (t/is (not (nil? (.queryByDisplayValue result "Existing Card")))

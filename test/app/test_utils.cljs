@@ -175,11 +175,16 @@
 ;; Convenience Functions
 ;; =============================================================================
 
+(defn render
+  "Convience function to annotate result type"
+  ^js [component]
+  (tlr/render component))
+
 (defn render-with-apollo
   "Convenience function to render a component with Apollo context"
-  ([component] (render-with-apollo component {}))
-  ([component {:keys [client] :as opts}]
-   (tlr/render
+  (^js [component] (render-with-apollo component {}))
+  (^js [component {:keys [client] :as opts}]
+   (render
     ($ apollo-test-wrapper (if client {:client client} {})
        component))))
 
