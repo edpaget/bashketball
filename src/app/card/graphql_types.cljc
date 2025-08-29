@@ -1,4 +1,7 @@
 (ns app.card.graphql-types
+  #?(:cljs
+     (:require-macros
+      [app.registry :as registry]))
   (:require
    [app.models :as models]
    [app.registry :as registry]))

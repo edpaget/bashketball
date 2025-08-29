@@ -5,7 +5,8 @@
    ["@testing-library/react" :as tlr]
    ["@testing-library/user-event" :default user-event]
    [app.card.graphql-operations :as card.operations]
-   [uix.core :refer [$ defui]]))
+   [uix.core :refer [$ defui]]
+   [uix.core :as uix]))
 
 ;; User Event Helpers
 ;; =============================================================================
@@ -158,6 +159,16 @@
    (render
     ($ apollo-test-wrapper (if client {:client client} {})
        component))))
+
+(defn render-with-state-value
+  ^js [component-cls props]
+  (let [component (fn []
+                    (let [[state set-state] (uix/use-state (:value props))]
+                      ($ component-cls (-> (assoc props :value state)
+                                           (assoc :update-value (fn [& args]
+                                                                  (apply set-state args)
+                                                                  (apply (:update-value props) args)))))))]
+    (render ($ component))))
 
 ;; Test Setup Helpers
 ;; =============================================================================

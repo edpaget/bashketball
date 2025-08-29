@@ -1,7 +1,7 @@
 {
   "name": "bashketball",
   "scripts": {
-    "test:cljs": "clojure -M:dev:test -m dev.build-cljs test && node target/cljs-tests.js",
+    "test:cljs": "clojure -M:dev:test -m dev.build-cljs test && node -r \"global-jsdom/register\" target/cljs-tests.js",
     "release": "clojure -M:dev -m dev.build-cljs release && npm run styles-release",
     "styles-dev": "tailwindcss -i ./src/app/core.css -o ./public/main.css --watch",
     "styles-release": "tailwindcss -i ./src/app/core.css -o ./public/main.css --minify"
@@ -12,7 +12,11 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "autoprefixer": "^10.0.0",
+    "global-jsdom": "26.0.0",
     "jsdom": "26.1.0",
+    "karma": "^6.4.4",
+    "karma-cljs-test": "^0.1.0",
+    "karma-jsdom-launcher": "^18.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-refresh": "^0.14.0",

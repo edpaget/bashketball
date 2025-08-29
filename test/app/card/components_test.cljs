@@ -348,8 +348,10 @@
   (t/async done
            (t/testing "updates item value on text change"
              (let [update-calls (atom [])
-                   result (test-utils/render ($ components/multi-text {:value ["Initial"]
-                                                                       :update-value #(swap! update-calls conj %)}))
+                   result (test-utils/render-with-state-value
+                           components/multi-text
+                           {:value ["Initial"]
+                            :update-value #(swap! update-calls conj %)})
                    textarea (.getByDisplayValue result "Initial")
                    user (test-utils/user-event-setup)]
                (-> (.clear user textarea)
@@ -363,29 +365,33 @@
 (t/deftest card-input-text-interaction-test
   (t/async done
            (t/testing "text input calls update-value on change"
-             (let [update-calls (atom [])
-                   result (test-utils/render ($ components/card-input {:field-key :name
-                                                                       :input-type "text"
-                                                                       :value "Initial"
-                                                                       :update-value #(swap! update-calls conj %)}))
+             (let [update-calls (atom ["Initial"])
+                   result (test-utils/render-with-state-value
+                           components/card-input
+                           {:field-key :name
+                            :input-type "text"
+                            :value (last @update-calls)
+                            :update-value #(swap! update-calls conj %)})
                    ^js input (.getByDisplayValue result "Initial")
                    user (test-utils/user-event-setup)]
                (-> (.clear user input)
                    (.then (fn [] (.type user input "Updated")))
                    (.then (fn []
                             (js/setTimeout (fn []
-                                             (t/is (and (not-empty @update-calls)
-                                                        (= "Updated" (last @update-calls))) "Should have called update with final value")
+                                             (t/is  (not-empty @update-calls))
+                                             (t/is (= "Updated" (last @update-calls)) "Should have called update with final value")
                                              (done)) 50))))))))
 
 (t/deftest card-input-number-interaction-test
   (t/async done
            (t/testing "number input converts string to number"
              (let [update-calls (atom [])
-                   result (test-utils/render ($ components/card-input {:field-key :sht
-                                                                       :input-type "number"
-                                                                       :value 5
-                                                                       :update-value #(swap! update-calls conj %)}))
+                   result (test-utils/render-with-state-value
+                           components/card-input
+                           {:field-key :sht
+                            :input-type "number"
+                            :value 5
+                            :update-value #(swap! update-calls conj %)})
                    ^js input (.getByDisplayValue result "5")
                    user (test-utils/user-event-setup)]
                (-> (.clear user input)

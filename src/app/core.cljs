@@ -17,7 +17,7 @@
         "Manage Cards"))) ; Changed text slightly for clarity
 
 (defui app []
-  ($ router/router {:router-store router/router-store}
+  ($ router/router {:router-store @router/router-store}
      ($ apollo.client/ApolloProvider {:client graphql/client}
         ($ authn/authn
            ;; Apply flex layout to the main container

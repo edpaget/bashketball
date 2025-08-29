@@ -29,7 +29,7 @@
     {:subscribe (fn [cb] (swap! subscribers conj cb) (fn [] (swap! subscribers disj cb)))
      :snapshot (fn [] @path)}))
 
-(defonce router-store (make-router-store))
+(defonce router-store (delay (make-router-store)))
 
 (defui router [{:keys [router-store children]}]
   (let [router-state (react/useSyncExternalStore (:subscribe router-store)
