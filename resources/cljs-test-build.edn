@@ -1,5 +1,6 @@
 {:dev.shadow-cljs/compile {:build
-                           {:target     :node-test
-                            :output-to  "target/cljs-tests.js"    ;; Single output file for Node.js execution
+                           {:target           :node-test
+                            :output-to        "target/cljs-tests.js"    ;; Single output file for Node.js execution
                             :compiler-options {:source-map true}
-                            :devtools   {:ns-regexp "-test$"}}}}
+                            :main             app.main-node/main
+                            :devtools         {:ns-regexp "-test$"}}}}

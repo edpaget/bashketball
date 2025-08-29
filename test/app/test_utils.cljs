@@ -7,35 +7,14 @@
 
    ["@apollo/client" :as apollo.client]
    ["@testing-library/react" :as tlr]
-   ["jsdom" :as jsdom]))
+   ["@testing-library/user-event" :default user-event]))
 
-;; JSDOM Setup
+;; User Event Helpers
 ;; =============================================================================
 
-(defn setup-jsdom!
-  "Sets up JSDOM environment for React Testing Library.
-   Should be called once before running tests."
-  []
-  (when (and (exists? js/global)
-             (not (exists? js/document)))
-    (let [dom (jsdom/JSDOM. "<!DOCTYPE html><html><body></body></html>"
-                            #js {:url "http://localhost"
-                                 :pretendToBeVisual true
-                                 :resources "usable"})
-          window (.-window dom)]
-      ;; Set global properties
-      (set! js/global.window window)
-      (set! js/global.document (.-document window))
-      (set! js/global.navigator (.-navigator window))
-      (set! js/global.HTMLElement (.-HTMLElement window))
-      ;; Also set on js/document for Testing Library
-      (set! js/document (.-document window))
-      ;; Copy window properties to global for React
-      (doseq [key (.keys js/Object window)]
-        (when (and (not (exists? (aget js/global key)))
-                   (not= key "localStorage")
-                   (not= key "sessionStorage"))
-          (aset js/global key (aget window key)))))))
+(defn user-event-setup
+  ^js []
+  (.setup user-event #js {:document js/document}))
 
 ;; React Testing Fixtures
 ;; =============================================================================
@@ -100,9 +79,13 @@
   (set! card.operations/use-debounce
         (fn [value delay] value)))
 
+(def ^:dynamic *mock-card-data* nil)
+(def ^:dynamic *mock-create-response* nil)
+(def ^:dynamic *mock-update-response* nil)
+
 (defn mock-card-operations-with-data!
   "Mocks card operations with custom test data.
-   
+
    Options:
    - :card-data - Data to return from card-query
    - :create-response - Data to return from card-create
@@ -113,25 +96,15 @@
                                              :version 0
                                              :card-type :card-type-enum/PLAYER_CARD}}
          update-response {}}}]
-
-  (set! card.operations/card-query
-        (fn [name version]
-          (js/Promise.resolve {:data {:card card-data}})))
-
-  (set! card.operations/card-field-update
-        (fn [field exec-args]
-          (js/Promise.resolve {:data update-response})))
-
-  (set! card.operations/card-create
-        (fn [type]
-          [(fn [variables]
-             (js/Promise.resolve {:data create-response}))
-           {:loading false :error nil}])))
+  ;; Set global mocks that the functions can reference
+  (set! *mock-card-data* card-data)
+  (set! *mock-create-response* create-response)
+  (set! *mock-update-response* update-response))
 
 (defn with-card-operation-spy
   "Creates a spy function that tracks calls to card operations.
    Returns a map with the spy functions and access to call tracking.
-   
+
    Usage:
    (let [spy (with-card-operation-spy)]
      ;; Run test code
@@ -195,7 +168,6 @@
   "Complete setup for frontend testing environment.
    Call this once at the beginning of test files that need React/Apollo testing."
   []
-  (setup-jsdom!)
   (mock-card-operations!)
   ;; Load Apollo error messages for better debugging
   (when (exists? js/goog.DEBUG)

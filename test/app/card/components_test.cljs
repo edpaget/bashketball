@@ -4,13 +4,10 @@
    [app.card.components :as components]
    [app.card.state :as card.state]
    [app.test-utils :as test-utils]
-   [app.test-utils.state :as state-utils]
    [cljs.test :as t :include-macros true]
    [uix.core :refer [$]]
 
-   ["@testing-library/react" :as tlr]
-   ["@testing-library/user-event" :as user-event]
-   ))
+   ["@testing-library/react" :as tlr]))
 
 ;; Setup test environment
 (test-utils/setup-frontend-test-env!)
@@ -324,87 +321,119 @@
 ;; Integration Tests with Interactions
 ;; ============================================================================
 
-(defn ue [] (user-event/userEvent.setup #js {:document js/document}))
-
 (t/deftest multi-text-add-item-test
-  (t/testing "adds new item when + button clicked"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/multi-text {:value ["Item 1"]
-                                                              :update-value #(swap! update-calls conj %)}))]
-      (js/console.log result)
-      (js/console.log (.getByText result "+"))
-      (.click (ue) (.getByText result "+"))
-      (t/is (= [["Item 1" ""]] @update-calls)))))
+  (t/async done
+           (t/testing "adds new item when + button clicked"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/multi-text {:value ["Item 1"]
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   user (test-utils/user-event-setup)]
+               (-> (.click user (.getByText result "+"))
+                   (.then (fn []
+                            (t/is (= [["Item 1" ""]] @update-calls))
+                            (done))))))))
 
 (t/deftest multi-text-remove-item-test
-  (t/testing "removes item when - button clicked"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/multi-text {:value ["Item 1" "Item 2"]
-                                                              :update-value #(swap! update-calls conj %)}))]
-      ;; Click the first remove button
-      (tlr/fireEvent.click (first (.getAllByText result "-")))
-      (t/is (= [["Item 2"]] @update-calls)))))
+  (t/async done
+           (t/testing "removes item when - button clicked"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/multi-text {:value ["Item 1" "Item 2"]
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   user (test-utils/user-event-setup)]
+               ;; Click the first remove button
+               (-> (.click user (first (.getAllByText result "-")))
+                   (.then (fn []
+                            (t/is (= [["Item 2"]] @update-calls))
+                            (done))))))))
 
 (t/deftest multi-text-update-item-test
-  (t/testing "updates item value on text change"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/multi-text {:value ["Unique Item"]
-                                                              :update-value #(swap! update-calls conj %)}))
-          textarea (.getByDisplayValue result "Unique Item")]
-      (user-event/userEvent.type textarea "Updated Unique Item")
-      (t/is (= [["Updated Unique Item"]] @update-calls)))))
+  (t/async done
+           (t/testing "updates item value on text change"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/multi-text {:value ["Initial"]
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   textarea (.getByDisplayValue result "Initial")
+                   user (test-utils/user-event-setup)]
+               (-> (.clear user textarea)
+                   (.then (fn [] (.type user textarea "Updated")))
+                   (.then (fn []
+                            (js/setTimeout (fn []
+                                             (let [final-call (last @update-calls)]
+                                               (t/is (= final-call ["Updated"]) "Should contain final updated value")
+                                               (done))) 50))))))))
 
 (t/deftest card-input-text-interaction-test
-  (t/testing "text input calls update-value on change"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/card-input {:field-key :name
-                                                              :input-type "text"
-                                                              :value "Initial"
-                                                              :update-value #(swap! update-calls conj %)}))
-          ^js input (.getByDisplayValue result "Initial")]
-      (user-event/userEvent.type input "Updated")
-      (t/is (= ["Updated"] @update-calls)))))
+  (t/async done
+           (t/testing "text input calls update-value on change"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/card-input {:field-key :name
+                                                                       :input-type "text"
+                                                                       :value "Initial"
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   ^js input (.getByDisplayValue result "Initial")
+                   user (test-utils/user-event-setup)]
+               (-> (.clear user input)
+                   (.then (fn [] (.type user input "Updated")))
+                   (.then (fn []
+                            (js/setTimeout (fn []
+                                             (t/is (and (not-empty @update-calls)
+                                                        (= "Updated" (last @update-calls))) "Should have called update with final value")
+                                             (done)) 50))))))))
 
 (t/deftest card-input-number-interaction-test
-  (t/testing "number input converts string to number"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/card-input {:field-key :sht
-                                                              :input-type "number"
-                                                              :value 5
-                                                              :update-value #(swap! update-calls conj %)}))
-          ^js input (.getByDisplayValue result "5")]
-      (tlr/fireEvent.change input #js {:target #js {:value "10"}})
-      (t/is (= [10] @update-calls)))))
+  (t/async done
+           (t/testing "number input converts string to number"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/card-input {:field-key :sht
+                                                                       :input-type "number"
+                                                                       :value 5
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   ^js input (.getByDisplayValue result "5")
+                   user (test-utils/user-event-setup)]
+               (-> (.clear user input)
+                   (.then (fn [] (.type user input "10")))
+                   (.then (fn []
+                            (js/setTimeout (fn []
+                                             (t/is (and (not-empty @update-calls)
+                                                        (= 10 (last @update-calls))) "Should have called update with final number value")
+                                             (done)) 50))))))))
 
 (t/deftest card-input-select-interaction-test
-  (t/testing "select calls update-value with correct keyword"
-    (let [update-calls (atom [])
-          result (test-utils/render ($ components/card-input {:field-key :size
-                                                              :input-type "select"
-                                                              :value :SM
-                                                              :options {:SM "Small" :MD "Medium" :LG "Large"}
-                                                              :update-value #(swap! update-calls conj %)}))
-          select (.getByRole result "combobox")]
-      (tlr/fireEvent.change select #js {:target #js {:value ":MD"}})
-      (t/is (= [:MD] @update-calls)))))
+  (t/async done
+           (t/testing "select calls update-value with correct keyword"
+             (let [update-calls (atom [])
+                   result (test-utils/render ($ components/card-input {:field-key :size
+                                                                       :input-type "select"
+                                                                       :value :SM
+                                                                       :options {:SM "Small" :MD "Medium" :LG "Large"}
+                                                                       :update-value #(swap! update-calls conj %)}))
+                   select (.getByRole result "combobox")
+                   user (test-utils/user-event-setup)]
+               (-> (.selectOptions user select "Medium")
+                   (.then (fn []
+                            (t/is (= [:MD] @update-calls))
+                            (done))))))))
 
 ;; ============================================================================
 ;; Card Field Integration Tests with State
 ;; ============================================================================
 
 (t/deftest card-field-state-integration-test
-  (t/testing "card field integrates with state management"
-    (let [spy (test-utils/with-card-operation-spy)
-          ^js result (test-utils/render-with-apollo
-                      ($ card.state/with-card {:new? true}
-                         ($ components/card-field {:field-key :name})))
-          ^js input (.queryByLabelText result "Name")]
+  (t/async done
+           (t/testing "card field integrates with state management"
+             (let [^js result (test-utils/render-with-apollo
+                               ($ card.state/with-card {:new? true}
+                                  ($ components/card-field {:field-key :name})))
+                   ^js input (.queryByLabelText result "Name")
+                   user (test-utils/user-event-setup)]
 
-      ;; Find the input field
-      (t/is (not (nil? input)))
+               ;; Find the input field
+               (t/is (not (nil? input)))
 
-      ;; Type into the field
-      (tlr/fireEvent.change input #js {:target #js {:value "Test Card Name"}})
-
-      ;; Verify the field shows the new value
-      (t/is (= "Test Card Name" (.-value input))))))
+               ;; Type into the field using user-event
+               (-> (.clear user input)
+                   (.then #(.type user input "Test Card Name"))
+                   (.then (fn []
+                     ;; Verify the field shows the new value
+                            (t/is (= "Test Card Name" (.-value input)))
+                            (done))))))))
