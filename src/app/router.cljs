@@ -1,7 +1,7 @@
 (ns app.router
-  (:require [reitit.core :as r]
+  (:require [react]
+            [reitit.core :as r]
             [reitit.frontend.easy :as rfe]
-            [react]
             [uix.core :as uix :refer [defui $]]))
 
 (def router-def
@@ -51,5 +51,4 @@
 
 (defn navigate!
   [page & args]
-  (.push js/window.history (apply href page args))
-  )
+  (.push js/window.history (apply href page args)))

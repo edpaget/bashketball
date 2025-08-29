@@ -5,9 +5,7 @@
    [app.card.state :as card.state]
    [app.test-utils :as test-utils]
    [cljs.test :as t :include-macros true]
-   [uix.core :refer [$]]
-
-   ["@testing-library/react" :as tlr]))
+   [uix.core :refer [$]]))
 
 ;; Setup test environment
 (test-utils/setup-frontend-test-env!)

@@ -1,11 +1,11 @@
 (ns app.graphql.client
   (:require
-   [uix.core :as uix :refer [defhook]]
-   [clojure.walk :as walk]
-   [app.graphql.transformer :as gql.transformer]
+   ["@apollo/client" :as apollo.client]
    [app.graphql.compiler :as gql.compiler]
+   [app.graphql.transformer :as gql.transformer]
    [camel-snake-kebab.core :as csk]
-   ["@apollo/client" :as apollo.client]))
+   [clojure.walk :as walk]
+   [uix.core :as uix]))
 
 (def client (apollo.client/ApolloClient. #js {:uri "/graphql"
                                               :cache (apollo.client/InMemoryCache.)}))
@@ -109,8 +109,8 @@
    (let [[mutation-string type-mappings] (gql.compiler/->mutation mutation-edn mutation-name mutation-args)
          decode-data-fn (build-decode-response-data-fn type-mappings)
          js-options (clj->js (transform-variable-keys variables))]
-(.log js/console (js-obj "mutation" (apollo.client/gql mutation-string)
-                          "variables" js-options))
+     (.log js/console (js-obj "mutation" (apollo.client/gql mutation-string)
+                              "variables" js-options))
      (-> client
          (.mutate (js-obj "mutation" (apollo.client/gql mutation-string)
                           "variables" js-options))

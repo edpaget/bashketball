@@ -1,9 +1,9 @@
 (ns app.db.jdbc-ext
   (:require
+   [camel-snake-kebab.core :as csk]
    [jsonista.core :as json]
-   [next.jdbc.result-set :as rs]
    [next.jdbc.prepare :as prepare]
-   [camel-snake-kebab.core :as csk])
+   [next.jdbc.result-set :as rs])
   (:import
    [java.sql PreparedStatement]
    [org.postgresql.util PGobject]))

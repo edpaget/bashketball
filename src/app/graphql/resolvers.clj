@@ -95,4 +95,4 @@
   (let [resolvers (ns-gql-resolvers *ns*)]
     (doseq [alias alias-kws]
       (alter-var-root (ns-resolve *ns* 'ns-resolvers-map)
-                       assoc alias (get resolvers target-kw)))))
+                      assoc alias (get resolvers target-kw)))))

@@ -1,9 +1,9 @@
 (ns app.db.migrate
   (:require
+   [app.db :as db]
    [clojure.tools.logging :as log]
    [ragtime.next-jdbc :as next-jdbc]
-   [ragtime.repl :as repl]
-   [app.db :as db]))
+   [ragtime.repl :as repl]))
 
 (def ^:dynamic *ragtime-config* nil)
 

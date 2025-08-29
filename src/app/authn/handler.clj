@@ -3,12 +3,12 @@
    [app.db :as db]
    [app.models :as models]
    [app.registry :as registry]
+   [clojure.tools.logging :as log]
    [com.github.sikt-no.clj-jwt :as clj-jwt]
    [integrant.core :as ig]
    [java-time.api :as t]
    [malli.experimental :as me]
-   [ring.util.response :as ring.response]
-   [clojure.tools.logging :as log]))
+   [ring.util.response :as ring.response]))
 
 (registry/defschema ::authenticator
   [:=> [:cat :map] [:maybe ::models/Identity]])

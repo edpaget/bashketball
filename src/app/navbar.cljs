@@ -1,7 +1,7 @@
 (ns app.navbar
   (:require
-   [uix.core :as uix :refer [defui $]]
-   [app.authn.provider :as authn]))
+   [app.authn.provider :as authn]
+   [uix.core :as uix :refer [defui $]]))
 
 (defui navbar []
   ($ :nav {:class "bg-gray-800"}

@@ -1,9 +1,9 @@
 (ns app.authn.handler-test
   (:require
    [app.authn.handler :as authn.handler]
-   [app.test-utils :as tu]
-   [app.models :as models]
    [app.db :as db]
+   [app.models :as models]
+   [app.test-utils :as tu]
    [clojure.test :refer [deftest is use-fixtures testing]]
    [java-time.api :as t]))
 

@@ -1,7 +1,7 @@
 (ns app.db.connection-pool
   (:require
-   [next.jdbc.connection :as connection]
-   [clojure.tools.logging :as log])
+   [clojure.tools.logging :as log]
+   [next.jdbc.connection :as connection])
   (:import
    [com.mchange.v2.c3p0 ComboPooledDataSource]))
 

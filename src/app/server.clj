@@ -1,15 +1,15 @@
 (ns app.server
   (:require
-   [reitit.ring :as r]
-   [ring.adapter.jetty :refer [run-jetty]]
-   [ring.middleware.json :as ring.json]
-   [ring.middleware.cookies :as ring.cookies]
-   [ring.middleware.reload :as ring.reload]
-   [ring.util.response :as ring.response]
-   [integrant.core :as ig]
    [app.authz.middleware :as authz]
    [app.db :as db]
-   [app.s3 :as s3]))
+   [app.s3 :as s3]
+   [integrant.core :as ig]
+   [reitit.ring :as r]
+   [ring.adapter.jetty :refer [run-jetty]]
+   [ring.middleware.cookies :as ring.cookies]
+   [ring.middleware.json :as ring.json]
+   [ring.middleware.reload :as ring.reload]
+   [ring.util.response :as ring.response]))
 
 (defn ping-handler [_]
   {:status 200 :body "pong" :headers {"content-type" "text/plain"}})

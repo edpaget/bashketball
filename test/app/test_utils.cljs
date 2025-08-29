@@ -1,13 +1,11 @@
 (ns app.test-utils
   "ClojureScript test utilities for frontend testing"
   (:require
-   [app.card.graphql-operations :as card.operations]
-   [cljs.test :as t :include-macros true]
-   [uix.core :refer [$ defui]]
-
    ["@apollo/client" :as apollo.client]
    ["@testing-library/react" :as tlr]
-   ["@testing-library/user-event" :default user-event]))
+   ["@testing-library/user-event" :default user-event]
+   [app.card.graphql-operations :as card.operations]
+   [uix.core :refer [$ defui]]))
 
 ;; User Event Helpers
 ;; =============================================================================
@@ -34,7 +32,7 @@
                               :query {:errorPolicy "all"}}
              :link (apollo.client/createHttpLink
                     (clj->js {:uri "http://localhost:3000/test-graphql"
-                              :fetch (fn [& args]
+                              :fetch (fn [& _args]
                                        ;; Mock fetch that returns empty GraphQL response
                                        (js/Promise.resolve
                                         (js/Response.
@@ -58,18 +56,18 @@
   []
   ;; Mock card-query to return a resolved promise with empty data
   (set! card.operations/card-query
-        (fn [name version]
+        (fn [_name _version]
           (js/Promise.resolve {:data {:card nil}})))
 
   ;; Mock card-field-update to return a resolved promise
   (set! card.operations/card-field-update
-        (fn [field exec-args]
+        (fn [_field _exec-args]
           (js/Promise.resolve {:data {}})))
 
   ;; Mock card-create to return a tuple with a function that returns a promise
   (set! card.operations/card-create
-        (fn [type]
-          [(fn [variables]
+        (fn [_type]
+          [(fn [_variables]
              (js/Promise.resolve {:data {:createPlayerCard {:name "Test Card"
                                                             :version 0
                                                             :card-type :card-type-enum/PLAYER_CARD}}}))
@@ -77,7 +75,7 @@
 
   ;; Mock use-debounce hook to return the value immediately
   (set! card.operations/use-debounce
-        (fn [value delay] value)))
+        (fn [value _delay] value)))
 
 (def ^:dynamic *mock-card-data* nil)
 (def ^:dynamic *mock-create-response* nil)
@@ -134,7 +132,7 @@
             (swap! state (fn [s] (-> s
                                      (update :create-calls inc)
                                      (update :create-args conj args))))
-            [(fn [variables]
+            [(fn [_variables]
                (js/Promise.resolve {:data {:createPlayerCard {:name "Test Card"
                                                               :version 0
                                                               :card-type :card-type-enum/PLAYER_CARD}}}))
@@ -156,7 +154,7 @@
 (defn render-with-apollo
   "Convenience function to render a component with Apollo context"
   (^js [component] (render-with-apollo component {}))
-  (^js [component {:keys [client] :as opts}]
+  (^js [component {:keys [client]}]
    (render
     ($ apollo-test-wrapper (if client {:client client} {})
        component))))
@@ -177,47 +175,3 @@
         (.loadErrorMessages apollo-dev))
       (catch js/Error e
         (js/console.log "Could not load Apollo dev messages:" e)))))
-
-;; Usage Examples (for documentation)
-;; =============================================================================
-
-(comment
-  ;; Basic usage in a test file:
-
-  (ns my.component-test
-    (:require
-     [app.test-utils :as test-utils]
-     [cljs.test :as t :include-macros true]))
-
-  ;; Setup environment once
-  (test-utils/setup-frontend-test-env!)
-
-  ;; Use fixture for cleanup
-  (t/use-fixtures :each test-utils/react-cleanup-fixture)
-
-  ;; Simple test
-  (t/deftest test-my-component
-    (let [result (test-utils/render-with-apollo
-                  ($ my-component))]
-      (t/is (not (nil? (.queryByText result "Expected Text"))))))
-
-  ;; Test with custom data
-  (t/deftest test-with-data
-    (test-utils/mock-card-operations-with-data!
-     {:card-data {:name "Test Card" :version 1}})
-
-    (let [result (test-utils/render-with-apollo
-                  ($ card-component))]
-      ;; Test assertions...
-      ))
-
-  ;; Test with spy to track calls
-  (t/deftest test-operations-called
-    (let [spy (test-utils/with-card-operation-spy)]
-      (let [result (test-utils/render-with-apollo
-                    ($ interactive-component))]
-        ;; Interact with component
-        (tlr/fireEvent.click (.getByRole result "button"))
-
-        ;; Check that operations were called
-        (t/is (= 1 (:create-calls @(:state spy))))))))

@@ -3,8 +3,8 @@
   (:require
    #?(:clj [clojure.test :refer [deftest is testing]]
       :cljs [cljs.test :refer [deftest is testing]]) ; Note: cljs.test macros are referred above
-   [app.graphql.transformer :as sut]
-   #?(:cljs [cljs.core :as cljs]))) ; For random-uuid in CLJS
+   #?(:cljs [cljs.core :as cljs])
+   [app.graphql.transformer :as sut])) ; For random-uuid in CLJS
 
 ;; --- Test Schemas ---
 (def SimpleMapSchema

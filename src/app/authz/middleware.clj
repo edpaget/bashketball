@@ -2,8 +2,8 @@
   (:require
    [app.db :as db]
    [app.models :as models]
-   [malli.experimental :as me]
-   [com.walmartlabs.lacinia.resolve :as resolve]))
+   [com.walmartlabs.lacinia.resolve :as resolve]
+   [malli.experimental :as me]))
 
 (me/defn get-actor! :- ::models/Actor
   [app-authorization-id :- :uuid]

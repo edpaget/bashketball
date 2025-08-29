@@ -1,11 +1,10 @@
 (ns app.test-utils.state
   "Test utilities specifically for state management testing"
   (:require
+   ["@testing-library/react" :as tlr]
    [app.card.state :as card.state]
    [app.test-utils :as test-utils]
-   [uix.core :refer [$ defui]]
-
-   ["@testing-library/react" :as tlr]))
+   [uix.core :refer [$ defui]]))
 
 ;; State Testing Wrappers
 ;; =============================================================================
@@ -25,7 +24,7 @@
 (defn render-with-state
   "Convenience function to render a component with both Apollo and card state contexts"
   ([component] (render-with-state component {}))
-  ([component {:keys [card-options client] :as opts}]
+  ([component {:keys [card-options client]}]
    (test-utils/render
     ($ state-test-wrapper {:card-options card-options :client client}
        component))))
@@ -46,7 +45,7 @@
 
 (defn assert-field-value
   "Assert that a field has the expected value in a rendered component"
-  [^js result field-name expected-value]
+  [^js result _field-name expected-value]
   (let [field (.queryByDisplayValue result expected-value)]
     (not (nil? field))))
 
@@ -68,37 +67,3 @@
   (when-let [button (.queryByRole result "button" #js {:name button-name})]
     (tlr/fireEvent.click button)
     true))
-
-;; Usage Examples (for documentation)
-;; =============================================================================
-
-(comment
-  ;; Basic usage in a state test file:
-
-  (ns my.state-test
-    (:require
-     [app.test-utils.state :as state-utils]
-     [cljs.test :as t :include-macros true]))
-
-  ;; Test new card state
-  (t/deftest test-new-card-state
-    (let [result (state-utils/render-new-card-component
-                  ($ my-card-component))]
-      (t/is (state-utils/assert-button-exists result "Create Card"))))
-
-  ;; Test existing card state
-  (t/deftest test-existing-card-state
-    (let [result (state-utils/render-existing-card-component
-                  ($ my-card-component)
-                  {:card-name "my-card" :version 2})]
-      (t/is (state-utils/assert-field-value result "name" "my-card"))))
-
-  ;; Test interactions
-  (t/deftest test-button-interaction
-    (let [spy (test-utils/with-card-operation-spy)
-          result (state-utils/render-new-card-component
-                  ($ my-interactive-component))]
-
-      (state-utils/click-button result "Save Card")
-
-      (t/is (> (:update-calls @(:state spy)) 0)))))

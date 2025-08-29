@@ -1,13 +1,13 @@
 (ns app.core
   (:require
-   [uix.core :as uix :refer [defui $]]
-   [uix.dom]
-   [app.router :as router]
+   ["@apollo/client" :as apollo.client]
    [app.authn.provider :as authn]
-   [app.graphql.client :as graphql]
    [app.card.pages :as card.pages]
+   [app.graphql.client :as graphql]
    [app.navbar :as navbar]
-   ["@apollo/client" :as apollo.client]))
+   [app.router :as router]
+   [uix.core :as uix :refer [defui $]]
+   [uix.dom]))
 
 (defui home-page []
   ;; Style the home page link

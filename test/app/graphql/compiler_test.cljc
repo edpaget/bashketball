@@ -926,9 +926,9 @@
 
   (testing "->mutation with a var holding an args schema"
     (let [[mutation-str types-map] (sut/->mutation
-                                     {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
-                                     "SomeMutationWithVarargs"
-                                     RegisteredOperationArgs)]
+                                    {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
+                                    "SomeMutationWithVarargs"
+                                    RegisteredOperationArgs)]
       (is (= "mutation SomeMutationWithVarargs($arg1: String!, $arg2: Int) { someMutation(arg1: $arg1, arg2: $arg2) { name } }" mutation-str)
           "Should correctly compile a mutation using a var for operation arguments.")
       (is (= {"SimpleObject" SimpleObject} types-map))))
@@ -938,9 +938,9 @@
       (try
         (registry/register-type! ::RegisteredOperationArgs RegisteredOperationArgs)
         (let [[mutation-str types-map] (sut/->mutation
-                                         {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
-                                         "SomeMutationWithRegisteredArgs"
-                                         ::RegisteredOperationArgs)]
+                                        {:Mutation/someMutation (list [SimpleObject :name] :arg1 :arg2)}
+                                        "SomeMutationWithRegisteredArgs"
+                                        ::RegisteredOperationArgs)]
           (is (= "mutation SomeMutationWithRegisteredArgs($arg1: String!, $arg2: Int) { someMutation(arg1: $arg1, arg2: $arg2) { name } }" mutation-str)
               "Should correctly compile a mutation using a registered schema for operation arguments.")
           (is (= {"SimpleObject" SimpleObject} types-map)))

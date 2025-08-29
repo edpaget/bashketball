@@ -4,10 +4,10 @@
    ;; require namespaces with resolvers
    [app.actor.resolvers]
    [app.asset.resolvers]
-   [app.card.resolvers]
-
    ;; deps
    [app.authz.middleware :as authz]
+
+   [app.card.resolvers]
    [app.graphql.compiler :as gql.compiler]
    [app.graphql.resolvers :as gql.resolvers]
    [clojure.tools.logging :as log]

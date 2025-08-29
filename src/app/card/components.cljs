@@ -131,7 +131,7 @@
 ;; Example card components for each type
 
 (defui player-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :sht :label "Shot"})
      ($ card-field {:field-key :pss :label "Pass"})
@@ -141,38 +141,38 @@
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui ability-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui play-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui split-play-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :offense :label "Offense" :type "textarea"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui coaching-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :coaching :label "Coaching" :type "textarea"})))
 
 (defui standard-action-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :abilities :label "Abilities" :type "multitext"})))
 
 (defui team-asset-card-editor
-  [{:keys [update-field]}]
+  [_opts]
   ($ :div {:class "space-y-4"}
      ($ card-field {:field-key :fate :label "Fate"})
      ($ card-field {:field-key :asset-power :label "Asset Power" :type "textarea"})))

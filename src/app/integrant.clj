@@ -1,8 +1,8 @@
 (ns app.integrant
   "Shared vars for helpers and scripts to load the current system"
   (:require
-   [integrant.core :as ig]
-   [clojure.java.io :as io]))
+   [clojure.java.io :as io]
+   [integrant.core :as ig]))
 
 (defn prep
   [& [system]]

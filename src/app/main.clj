@@ -1,9 +1,9 @@
 (ns app.main
   "Entrypoint point for the uberjar version"
   (:require
-   [app.integrant :as i]
    [app.db :as db]
    [app.db.migrate :as db.migrate]
+   [app.integrant :as i]
    [clojure.tools.logging :as log])
   (:gen-class))
 

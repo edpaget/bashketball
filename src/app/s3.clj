@@ -1,10 +1,10 @@
 (ns app.s3
   (:require
+   [app.registry :as registry]
    [aws-simple-sign.core :as aws.sign]
    [cognitect.aws.client.api :as aws]
    [integrant.core :as ig]
-   [malli.experimental :as me]
-   [app.registry :as registry]))
+   [malli.experimental :as me]))
 
 (def ^:dynamic *s3-client* nil)
 

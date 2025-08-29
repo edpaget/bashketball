@@ -27,8 +27,7 @@
     :multi (into {} (map (juxt first last)) children)
     :map   (map (fn [[key {:keys [ui/input-type] :as properties} type]]
                   (cond-> (assoc properties :field key)
-                    (nil? input-type) (assoc :ui/input-type (->input-type type))
-                    ))
+                    (nil? input-type) (assoc :ui/input-type (->input-type type))))
                 children)
     :merge (mc/walk (mc/deref schema) build-field-defs*)
     schema))

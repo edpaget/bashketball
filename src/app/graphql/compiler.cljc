@@ -340,8 +340,8 @@
 (defn- build-type-map
   [ast]
   (let [types (keep :schema (tree-seq #(or (seq? %) (map? %))
-                                    #(or (:children %) (seq %))
-                                    ast))]
+                                      #(or (:children %) (seq %))
+                                      ast))]
     (zipmap (map (comp name ->graphql-type-name) types) types)))
 
 (defn ->query

@@ -378,88 +378,84 @@
 ;; Integration-style tests that test the interaction between functions
 (deftest card-state-workflow-test
   (testing "Card state workflow"
-    (let [initial-state (card.state/initial-card-state sample-player-card)]
-      ;; Update a field
-      (let [state-after-update (card.state/card-state-reducer
+    (let [initial-state (card.state/initial-card-state sample-player-card)
+          state-after-update (card.state/card-state-reducer
                                 initial-state
                                 {:type :update-field :field :deck-size :value 10})]
-        (is (= 10 (get-in state-after-update [:card/data :deck-size]))
-            "Field should be updated")
+      (is (= 10 (get-in state-after-update [:card/data :deck-size]))
+          "Field should be updated")
 
-        (is (contains? (:card/dirty state-after-update) :deck-size)
-            "Field should be marked as dirty")
+      (is (contains? (:card/dirty state-after-update) :deck-size)
+          "Field should be marked as dirty")
 
-        ;; Validate the updated state
-        (let [validated-state (card.state/validate-card state-after-update)]
-          (is (contains? validated-state :card/errors)
-              "Should have validation results"))))))
+      ;; Validate the updated state
+      (let [validated-state (card.state/validate-card state-after-update)]
+        (is (contains? validated-state :card/errors)
+            "Should have validation results")))))
 
 (deftest error-handling-workflow-test
   (testing "Error handling workflow"
-    (let [initial-state (card.state/initial-card-state sample-player-card)]
-      ;; Set an invalid value and validate
-      (let [state-with-invalid (card.state/card-state-reducer
+    (let [initial-state (card.state/initial-card-state sample-player-card)
+          state-with-invalid (card.state/card-state-reducer
                                 initial-state
                                 {:type :update-field :field :deck-size :value "invalid"})]
-        ;; The update-field action automatically validates via validate-card
-        (is (= "invalid" (get-in state-with-invalid [:card/data :deck-size]))
-            "Invalid value should be set")
+      ;; The update-field action automatically validates via validate-card
+      (is (= "invalid" (get-in state-with-invalid [:card/data :deck-size]))
+          "Invalid value should be set")
 
-        ;; Set additional error manually
-        (let [state-with-error (card.state/card-state-reducer
-                                state-with-invalid
-                                {:type :set-field-error :field :deck-size :error "Manual error"})]
-          (is (= "Manual error" (get-in state-with-error [:card/errors :deck-size]))
-              "Manual error should be set")
+      ;; Set additional error manually
+      (let [state-with-error (card.state/card-state-reducer
+                              state-with-invalid
+                              {:type :set-field-error :field :deck-size :error "Manual error"})]
+        (is (= "Manual error" (get-in state-with-error [:card/errors :deck-size]))
+            "Manual error should be set")
 
-          ;; Clear the error
-          (let [state-error-cleared (card.state/card-state-reducer
-                                     state-with-error
-                                     {:type :clear-field-error :field :deck-size})]
-            (is (not (contains? (:card/errors state-error-cleared) :deck-size))
-                "Error should be cleared")))))))
+        ;; Clear the error
+        (let [state-error-cleared (card.state/card-state-reducer
+                                   state-with-error
+                                   {:type :clear-field-error :field :deck-size})]
+          (is (not (contains? (:card/errors state-error-cleared) :deck-size))
+              "Error should be cleared"))))))
 
 (deftest loading-state-workflow-test
   (testing "Loading state workflow"
-    (let [initial-state (card.state/initial-card-state sample-player-card)]
-      ;; Start loading
-      (let [loading-state (card.state/card-state-reducer
+    (let [initial-state (card.state/initial-card-state sample-player-card)
+          loading-state (card.state/card-state-reducer
                            initial-state
                            {:type :field-update-loading :field :deck-size :loading? true})]
-        (is (contains? (:card/loading loading-state) :deck-size)
-            "Field should be in loading state")
+      (is (contains? (:card/loading loading-state) :deck-size)
+          "Field should be in loading state")
 
-        ;; Simulate successful update
-        (let [success-state (card.state/card-state-reducer
-                             loading-state
-                             {:type :field-update-success
-                              :field :deck-size
-                              :updated-card {:deck-size 15}})]
-          (is (= 15 (get-in success-state [:card/data :deck-size]))
-              "Field should be updated")
+      ;; Simulate successful update
+      (let [success-state (card.state/card-state-reducer
+                           loading-state
+                           {:type :field-update-success
+                            :field :deck-size
+                            :updated-card {:deck-size 15}})]
+        (is (= 15 (get-in success-state [:card/data :deck-size]))
+            "Field should be updated")
 
-          (is (not (contains? (:card/loading success-state) :deck-size))
-              "Field should no longer be loading"))))))
+        (is (not (contains? (:card/loading success-state) :deck-size))
+            "Field should no longer be loading")))))
 
 (deftest card-creation-workflow-test
   (testing "Card creation workflow"
-    (let [initial-state (card.state/initial-card-state {})]
-      ;; Start creating
-      (let [creating-state (card.state/card-state-reducer
+    (let [initial-state (card.state/initial-card-state {})
+          creating-state (card.state/card-state-reducer
                             initial-state
                             {:type :card-creating})]
-        (is (:card/creating? creating-state)
-            "Should be in creating state")
+      (is (:card/creating? creating-state)
+          "Should be in creating state")
 
-        ;; Successful creation
-        (let [created-state (card.state/card-state-reducer
-                             creating-state
-                             {:type :card-created :card sample-player-card})]
-          (is (not (:card/creating? created-state))
-              "Should no longer be creating")
+      ;; Successful creation
+      (let [created-state (card.state/card-state-reducer
+                           creating-state
+                           {:type :card-created :card sample-player-card})]
+        (is (not (:card/creating? created-state))
+            "Should no longer be creating")
 
-          (is (= sample-player-card (:card/data created-state))
-              "Should have created card data")
+        (is (= sample-player-card (:card/data created-state))
+            "Should have created card data")
 
-          (is (= sample-player-card (:card/pristine created-state))
-              "Should set pristine state"))))))
+        (is (= sample-player-card (:card/pristine created-state))
+            "Should set pristine state")))))

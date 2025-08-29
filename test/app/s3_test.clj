@@ -1,10 +1,10 @@
 (ns app.s3-test
   (:require
-   [clojure.test :refer [deftest testing is use-fixtures]]
    [app.s3 :as s3]
    [app.test-utils.s3 :as tu.s3]
-   [cognitect.aws.client.api :as aws]
-   [clojure.java.io :as io]))
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest testing is use-fixtures]]
+   [cognitect.aws.client.api :as aws]))
 
 (use-fixtures :once tu.s3/s3-test-fixture)
 

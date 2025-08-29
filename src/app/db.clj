@@ -2,13 +2,13 @@
   (:require
    [app.db.connection-pool :as db.pool]
    [app.db.jdbc-ext]
+   [camel-snake-kebab.core :as csk]
+   [clojure.tools.logging :as log]
+   [honey.sql :as sql]
    [integrant.core :as ig]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as rs]
    [next.jdbc.date-time]
-   [honey.sql :as sql]
-   [clojure.tools.logging :as log]
-   [camel-snake-kebab.core :as csk])
+   [next.jdbc.result-set :as rs])
   (:import
    [org.postgresql.util PGobject]))
 

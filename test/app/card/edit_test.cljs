@@ -1,12 +1,11 @@
 (ns app.card.edit-test
   (:require
+   ["@testing-library/react" :as tlr]
    [app.card.edit :as sut]
    [app.card.state :as card.state]
    [app.test-utils :as test-utils]
    [cljs.test :as t :include-macros true]
-   [uix.core :refer [$]]
-
-   ["@testing-library/react" :as tlr]))
+   [uix.core :refer [$]]))
 
 ;; Set up test environment once
 (test-utils/setup-frontend-test-env!)
@@ -36,20 +35,17 @@
 
 (t/deftest test-create-button-clicks
   ;; Set up spy to track create calls
-  (let [spy (test-utils/with-card-operation-spy)]
-
-    ;; Render component
-    (let [^js result (test-utils/render-with-apollo
+  (let [spy (test-utils/with-card-operation-spy)
+        ^js result (test-utils/render-with-apollo
                       ($ card.state/with-card {:new? true}
                          ($ sut/edit-card)))]
+    ;; Find and click the create button
+    (when-let [create-button (.queryByRole result "button" #js {:name "Create Card"})]
+      (tlr/fireEvent.click create-button))
 
-      ;; Find and click the create button
-      (when-let [create-button (.queryByRole result "button" #js {:name "Create Card"})]
-        (tlr/fireEvent.click create-button))
-
-      ;; Check that create was called
-      (t/is (> (:create-calls @(:state spy)) 0)
-            "Create function should have been called when button clicked"))))
+    ;; Check that create was called
+    (t/is (> (:create-calls @(:state spy)) 0)
+          "Create function should have been called when button clicked")))
 
 (t/deftest test-edit-card-with-custom-data
   ;; Skip this test temporarily due to GraphQL mocking complexity
